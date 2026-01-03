@@ -58,7 +58,7 @@ OWNERSHIP: CLI
   - [x] `3` dependency/install failure
 
 ## 1.9 Acceptance
-- [ ] Build passes on clean repo.
+- [x] Build passes on clean repo.
 - [ ] Dev CLI and built CLI run `--help`.
 - [ ] `rns --version` prints version.
 - [ ] Forced error prints standard failure format, prints log path, and returns non-zero exit code.
