@@ -15,15 +15,15 @@ OWNERSHIP: CLI
   - [x] any CLI-owned module helpers (if needed) must live in `packages/@rns/*`, not in user business folders
 
 ## 5.2 Pack manifest (required)
-- [ ] Each pack has a manifest file named `pack.json`, containing:
-  - [ ] `id`
-  - [ ] `type` (`core` | `plugin` | `module`)
-  - [ ] `delivery` (`workspace` | `user-code`)  // defines attachment destination ownership
-  - [ ] supported targets (`expo`, `bare`)
-  - [ ] supported languages (`ts`, `js`)
-  - [ ] variant resolution hints (if any)
-  - [ ] default destination mapping (optional, but must be deterministic if present)
-- [ ] CORE packs must have a manifest (no implicit packs in Option A).
+- [x] Each pack has a manifest file named `pack.json`, containing:
+  - [x] `id`
+  - [x] `type` (`core` | `plugin` | `module`)
+  - [x] `delivery` (`workspace` | `user-code`)  // defines attachment destination ownership
+  - [x] supported targets (`expo`, `bare`)
+  - [x] supported languages (`ts`, `js`)
+  - [x] variant resolution hints (if any)
+  - [x] default destination mapping (optional, but must be deterministic if present)
+- [x] CORE packs must have a manifest (no implicit packs in Option A). (validated in loadPackManifest - fails if manifest missing)
 
 ## 5.3 Variant convention (deterministic)
 - [ ] Variants must be resolvable deterministically by:
