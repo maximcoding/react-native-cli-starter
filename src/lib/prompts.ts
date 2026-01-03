@@ -63,12 +63,6 @@ function cursorDown(n: number): void {
   process.stdout.write(`\x1b[${n}B`);
 }
 
-/**
- * Clears from cursor to end of screen
- */
-function clearToEndOfScreen(): void {
-  process.stdout.write('\x1b[0J');
-}
 
 /**
  * Prompts for text input
