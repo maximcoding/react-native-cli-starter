@@ -50,9 +50,9 @@ OWNERSHIP: CORE(packages/@rns) + INIT(host configs)
   - [x] safe defaults OR clear, actionable runtime error message (defined by CORE). (safe defaults provided for all env vars)
 
 ## 4.5 Base scripts (developer workflow)
-- [ ] Add baseline scripts into generated app `package.json` (clean/doctor/reset/etc. as defined by CLI).
-- [ ] Scripts are target-safe (Expo/Bare) and do not require user edits.
-- [ ] Scripts must not assume business code exists in user `src/**` (Option A clean boundary).
+- [x] Add baseline scripts into generated app `package.json` (clean/doctor/reset/etc. as defined by CLI).
+- [x] Scripts are target-safe (Expo/Bare) and do not require user edits.
+- [x] Scripts must not assume business code exists in user `src/**` (Option A clean boundary).
 
 ## 4.6 Acceptance
 - [ ] After init: `@rns/*` imports compile (Expo + Bare).

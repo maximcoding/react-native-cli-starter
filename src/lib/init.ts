@@ -25,7 +25,7 @@ import { getCliVersion } from './version';
 import { verifyInitResult, verifyCoreBaselineAcceptance } from './init-verification';
 import { generateCoreContracts } from './core-contracts';
 import { generateRuntimeComposition } from './runtime-composition';
-import { configureImportAliases, configureSvgPipeline, configureFontsPipeline, configureEnvPipeline } from './dx-config';
+import { configureImportAliases, configureSvgPipeline, configureFontsPipeline, configureEnvPipeline, configureBaseScripts } from './dx-config';
 
 export interface InitOptions {
   projectName?: string;
@@ -484,6 +484,9 @@ function applyCoreDxConfigs(
   if (inputs.coreToggles.env) {
     configureEnvPipeline(appRoot, inputs);
   }
+  
+  // 4.5: Configure base scripts (developer workflow)
+  configureBaseScripts(appRoot, inputs);
   
   stepRunner.ok('Apply CORE DX configs');
 }

@@ -709,3 +709,67 @@ export const env = {
   writeTextFile(indexPath, indexContent);
 }
 
+/**
+ * Configures base scripts for developer workflow (section 4.5)
+ * - Adds clean/doctor/reset scripts to package.json
+ * - Scripts are target-safe (Expo/Bare) and don't assume user src/** exists
+ */
+export function configureBaseScripts(
+  appRoot: string,
+  inputs: InitInputs
+): void {
+  const packageJsonPath = join(appRoot, 'package.json');
+  
+  if (!pathExists(packageJsonPath)) {
+    return; // Skip if package.json doesn't exist (shouldn't happen, but safe)
+  }
+
+  const packageJson = readJsonFile<any>(packageJsonPath);
+  
+  if (!packageJson.scripts) {
+    packageJson.scripts = {};
+  }
+
+  // Base scripts that work for both Expo and Bare
+  const baseScripts: Record<string, string> = {
+    'cache:clean': 'npm cache clean --force',
+  };
+
+  // Target-specific scripts
+  if (inputs.target === 'expo') {
+    Object.assign(baseScripts, {
+      'start': 'expo start',
+      'start:clear': 'expo start --clear',
+      'ios': 'expo start --ios',
+      'android': 'expo start --android',
+      'doctor': 'npx expo-doctor',
+      'clean': 'rm -rf .expo node_modules && npm install',
+      'clean:watchman': 'watchman watch-del-all 2>/dev/null || true',
+      'reset': 'npm run cache:clean && npm run clean && npm run clean:watchman',
+    });
+  } else {
+    // Bare React Native
+    Object.assign(baseScripts, {
+      'start': 'react-native start',
+      'start:clear': 'react-native start --reset-cache',
+      'ios': 'react-native run-ios',
+      'android': 'react-native run-android',
+      'doctor': 'npx react-native doctor',
+      'clean': 'rm -rf node_modules && npm install',
+      'clean:watchman': 'watchman watch-del-all 2>/dev/null || true',
+      'clean:metro': 'rm -rf /tmp/metro-* /tmp/haste-map-* 2>/dev/null || true',
+      'reset': 'npm run cache:clean && npm run clean && npm run clean:watchman && npm run clean:metro',
+    });
+  }
+
+  // Add scripts to package.json (merge with existing, don't overwrite)
+  for (const [scriptName, scriptCommand] of Object.entries(baseScripts)) {
+    // Only add if script doesn't already exist (preserve user customizations)
+    if (!packageJson.scripts[scriptName]) {
+      packageJson.scripts[scriptName] = scriptCommand;
+    }
+  }
+
+  writeJsonFile(packageJsonPath, packageJson);
+}
+
