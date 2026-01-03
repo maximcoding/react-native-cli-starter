@@ -38,12 +38,12 @@ OWNERSHIP: CLI
 - [x] Ensure every command receives a single runtime context object (resolvedRoot + flags + logger + runId).
 
 ## 1.6 Standard filesystem layer (single source)
-- [ ] Implement one FS utility module used everywhere:
-  - [ ] atomic write (temp → rename)
-  - [ ] ensureDir
-  - [ ] copyDir (deterministic; stable ordering)
-  - [ ] exists/stat helpers
-  - [ ] safe read/write text + json helpers (no JSON comments)
+- [x] Implement one FS utility module used everywhere:
+  - [x] atomic write (temp → rename)
+  - [x] ensureDir
+  - [x] copyDir (deterministic; stable ordering)
+  - [x] exists/stat helpers
+  - [x] safe read/write text + json helpers (no JSON comments)
 
 ## 1.7 Step runner + logs baseline
 - [ ] Implement a step runner utility (start/ok/fail) shared by init/plugins/modules.

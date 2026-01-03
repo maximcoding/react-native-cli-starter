@@ -9,6 +9,7 @@ import { createRuntimeContext, GlobalFlags } from './lib/runtime';
 import { ConsoleLogger } from './lib/logger';
 import { resolveProjectRoot } from './lib/fs';
 import { generateRunId } from './lib/utils';
+import { CliError, ExitCode, formatErrorOutput } from './lib/errors';
 import * as commands from './commands';
 
 /**
@@ -55,11 +56,10 @@ async function main() {
         process.exit(1);
     }
   } catch (error) {
-    logger.error('Command failed:', error instanceof Error ? error.message : String(error));
-    if (flags.verbose && error instanceof Error) {
-      logger.debug(error.stack || '');
-    }
-    process.exit(1);
+    const cliError = error instanceof CliError ? error : new CliError(error instanceof Error ? error.message : String(error));
+    const errorOutput = formatErrorOutput(cliError, flags.verbose);
+    logger.error(errorOutput);
+    process.exit(cliError.exitCode);
   }
 }
 
