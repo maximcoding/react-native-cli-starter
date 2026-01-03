@@ -7,15 +7,15 @@ OWNERSHIP: CLI
 # 2) INIT Pipeline (`rns init` / `npm run init`) — Task List
 
 ## 2.1 Init inputs (selection-first UX)
-- [ ] Project name (text).
-- [ ] Destination path (default: `./<ProjectName>`).
-- [ ] Target: Expo or Bare (select).
-- [ ] Language: TS or JS (select).
-- [ ] Package manager: npm / pnpm / yarn (select).
-- [ ] Bare-only: RN version (select) if needed by creation step.
-- [ ] CORE toggles (checkbox, defaults ON): alias / svg / fonts / env.
-- [ ] Optional: apply plugins right after init (checkbox list from registry).
-- [ ] Support non-interactive mode: `--yes` selects defaults and skips prompts.
+- [x] Project name (text).
+- [x] Destination path (default: `./<ProjectName>`).
+- [x] Target: Expo or Bare (select).
+- [x] Language: TS or JS (select).
+- [x] Package manager: npm / pnpm / yarn (select).
+- [x] Bare-only: RN version (select) if needed by creation step.
+- [x] CORE toggles (checkbox, defaults ON): alias / svg / fonts / env.
+- [x] Optional: apply plugins right after init (checkbox list from registry).
+- [x] Support non-interactive mode: `--yes` selects defaults and skips prompts.
 
 ## 2.2 Init pipeline steps (implemented in `src/lib/init/*`)
 - [ ] Resolve destination (from `--cwd` + destination + project name).
