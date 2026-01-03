@@ -7,12 +7,12 @@ OWNERSHIP: CLI
 # 5) Template Packs System (Option A) — Task List
 
 ## 5.1 Standardize pack locations (fixed)
-- [ ] CORE packs live under `templates/packs/core/*` and are attached into generated app as workspace packages under `packages/@rns/*`.
-- [ ] Plugin packs live under `templates/packs/plugins/<pluginId>/...` and are attached into generated app as workspace packages:
-  - [ ] default target path: `packages/@rns/plugin-<pluginId>/...` (or a stable naming scheme defined by CLI)
-- [ ] Module packs live under `templates/packs/modules/<moduleId>/...` and generate **user-owned business code** by default:
-  - [ ] default target path: `src/modules/<moduleId>/...` (or `src/features/<moduleId>`), configurable by CLI policy
-  - [ ] any CLI-owned module helpers (if needed) must live in `packages/@rns/*`, not in user business folders
+- [x] CORE packs live under `templates/packs/core/*` and are attached into generated app as workspace packages under `packages/@rns/*`.
+- [x] Plugin packs live under `templates/packs/plugins/<pluginId>/...` and are attached into generated app as workspace packages:
+  - [x] default target path: `packages/@rns/plugin-<pluginId>/...` (or a stable naming scheme defined by CLI)
+- [x] Module packs live under `templates/packs/modules/<moduleId>/...` and generate **user-owned business code** by default:
+  - [x] default target path: `src/modules/<moduleId>/...` (or `src/features/<moduleId>`), configurable by CLI policy
+  - [x] any CLI-owned module helpers (if needed) must live in `packages/@rns/*`, not in user business folders
 
 ## 5.2 Pack manifest (required)
 - [ ] Each pack has a manifest file named `pack.json`, containing:
