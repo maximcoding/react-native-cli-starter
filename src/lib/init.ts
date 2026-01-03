@@ -213,40 +213,107 @@ async function createHostApp(
   destination: string,
   verbose: boolean,
   stepRunner: ReturnType<typeof createStepRunner>
-): Promise<void> {
+): Promise<string> {
   stepRunner.start('Create host app');
+  
+  // The CLI tools (create-expo-app/react-native init) create app in cwd/projectName
+  // So we need to ensure destination points to where the app will actually be created
+  let actualDestination: string;
+  let parentDir: string;
+  
+  // If destination ends with project name, use it as-is
+  if (destination.endsWith(inputs.projectName)) {
+    actualDestination = destination;
+    parentDir = dirname(destination);
+  } else {
+    // Destination is a parent directory, app will be created at destination/projectName
+    actualDestination = join(destination, inputs.projectName);
+    parentDir = destination;
+  }
+  
+  ensureDir(parentDir);
   
   if (inputs.target === 'expo') {
     // Create Expo app using official Expo CLI
     const template = inputs.language === 'ts' ? 'blank-typescript' : 'blank';
-    const command = `npx create-expo-app@latest ${inputs.projectName} --template ${template} --no-install`;
+    // Use --yes flag to skip prompts, and create in current directory with project name
+    const command = `npx --yes create-expo-app@latest ${inputs.projectName} --template ${template} --no-install`;
     
-    // Run from parent directory
-    const parentDir = dirname(destination);
-    ensureDir(parentDir);
-    
-    execCommand(command, {
-      cwd: parentDir,
-      stdio: verbose ? 'inherit' : 'pipe',
-    });
+    try {
+      execCommand(command, {
+        cwd: parentDir,
+        stdio: verbose ? 'inherit' : 'pipe',
+      });
+    } catch (error) {
+      throw new CliError(
+        `Failed to create Expo app: ${error instanceof Error ? error.message : String(error)}\n` +
+        `Command: ${command}\n` +
+        `Working directory: ${parentDir}`,
+        ExitCode.GENERIC_FAILURE
+      );
+    }
   } else {
     // Create Bare React Native app using official RN CLI
+    // Note: TypeScript is now the default, no need for --template flag
     const versionFlag = inputs.reactNativeVersion && inputs.reactNativeVersion !== 'latest'
       ? `--version ${inputs.reactNativeVersion}`
       : '';
-    const template = inputs.language === 'ts' ? 'react-native-template-typescript' : '';
-    const command = `npx @react-native-community/cli@latest init ${inputs.projectName} ${versionFlag} ${template ? `--template ${template}` : ''} --skip-install`.trim();
+    // Use --skip-install to skip npm install, we'll handle it later
+    // No --template flag needed - TypeScript/JavaScript is detected automatically
+    const command = `npx --yes @react-native-community/cli@latest init ${inputs.projectName} ${versionFlag} --skip-install`.trim();
     
-    const parentDir = dirname(destination);
-    ensureDir(parentDir);
-    
-    execCommand(command, {
-      cwd: parentDir,
-      stdio: verbose ? 'inherit' : 'pipe',
-    });
+    try {
+      execCommand(command, {
+        cwd: parentDir,
+        stdio: verbose ? 'inherit' : 'pipe',
+      });
+    } catch (error) {
+      throw new CliError(
+        `Failed to create Bare React Native app: ${error instanceof Error ? error.message : String(error)}\n` +
+        `Command: ${command}\n` +
+        `Working directory: ${parentDir}`,
+        ExitCode.GENERIC_FAILURE
+      );
+    }
+  }
+  
+  // Verify the app was actually created
+  if (!pathExists(actualDestination) || !isDirectory(actualDestination)) {
+    throw new CliError(
+      `App creation failed: expected app directory not found at ${actualDestination}\n` +
+      `Please check the command output above for errors.`,
+      ExitCode.GENERIC_FAILURE
+    );
+  }
+  
+  // Verify essential files exist (package.json, App.tsx/App.js)
+  const packageJsonPath = join(actualDestination, 'package.json');
+  
+  if (!pathExists(packageJsonPath)) {
+    throw new CliError(
+      `App creation incomplete: package.json not found at ${packageJsonPath}\n` +
+      `The generated app may be corrupted or incomplete.`,
+      ExitCode.GENERIC_FAILURE
+    );
+  }
+  
+  // Verify app entry point exists (check for both TS and JS - React Native CLI may create either)
+  const appEntryTs = join(actualDestination, 'App.tsx');
+  const appEntryJs = join(actualDestination, 'App.js');
+  
+  if (!pathExists(appEntryTs) && !pathExists(appEntryJs)) {
+    throw new CliError(
+      `App creation incomplete: App entry point not found at ${appEntryTs} or ${appEntryJs}\n` +
+      `Expected either App.tsx or App.js in the generated app root.\n` +
+      `The generated app may be corrupted or incomplete.`,
+      ExitCode.GENERIC_FAILURE
+    );
   }
   
   stepRunner.ok('Create host app');
+  
+  // Return the actual app root directory
+  return actualDestination;
 }
 
 /**
@@ -694,8 +761,8 @@ export async function runInit(options: InitOptions): Promise<void> {
     stepRunner.ok('Preflight check');
     
     // 3. Create the host app (Expo or Bare)
-    await createHostApp(inputs, absoluteDestination, options.context.flags.verbose, stepRunner);
-    const appRoot = absoluteDestination;
+    // createHostApp returns the actual app root directory where the app was created
+    const appRoot = await createHostApp(inputs, absoluteDestination, options.context.flags.verbose, stepRunner);
     
     // 4. Initialize CLI-managed folders
     stepRunner.start('Initialize CLI folders');
