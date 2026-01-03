@@ -6,12 +6,17 @@
 
 import { RuntimeContext } from '../lib/runtime';
 import { ParsedArgs } from '../lib/args';
+import { runInit } from '../lib/init';
 
 /**
  * Init command - creates a new React Native app with CORE baseline
  * This is a thin entrypoint; all logic lives in src/lib/init.ts
  */
 export async function init(ctx: RuntimeContext, args: ParsedArgs): Promise<void> {
-  // TODO: Implement in src/lib/init.ts
-  ctx.logger.info('Init command (not yet implemented)');
+  // args._[0] is the command 'init', so skip it
+  await runInit({
+    projectName: args._[1],
+    destination: args._[2],
+    context: ctx,
+  });
 }
