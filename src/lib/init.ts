@@ -9,7 +9,7 @@ import { createStepRunner } from './step-runner';
 import { CliError, ExitCode } from './errors';
 import { promptText, promptSelect, promptMultiSelect, promptConfirm } from './prompts';
 import { join, resolve, dirname } from 'path';
-import { pathExists, ensureDir, writeJsonFile, readJsonFile, isDirectory } from './fs';
+import { pathExists, ensureDir, writeJsonFile, readJsonFile, isDirectory, writeTextFile } from './fs';
 import { execCommand, execPackageManager } from './exec';
 import { 
   PROJECT_STATE_FILE, 
@@ -323,6 +323,55 @@ function installWorkspacePackages(
 }
 
 /**
+ * Ensures host App.tsx is minimal and only imports @rns/runtime (section 3.1)
+ * This keeps developer code isolated and stable across plugins/modules
+ */
+function ensureMinimalAppEntrypoint(
+  appRoot: string,
+  inputs: InitInputs
+): void {
+  const appEntryPath = inputs.language === 'ts' 
+    ? join(appRoot, 'App.tsx')
+    : join(appRoot, 'App.js');
+  
+  // Only update if App.tsx/App.js exists (created by Expo/RN)
+  if (!pathExists(appEntryPath)) {
+    return; // May not exist in some templates
+  }
+  
+  // Create minimal App.tsx that imports and renders @rns/runtime
+  // This ensures no heavy glue code in user-owned src/**
+  const minimalAppContent = inputs.language === 'ts'
+    ? `import React from 'react';
+import { RnsApp } from '@rns/runtime';
+
+/**
+ * Minimal app entrypoint.
+ * All runtime composition is handled by @rns/runtime.
+ * User code in src/** remains clean and isolated.
+ */
+export default function App() {
+  return <RnsApp />;
+}
+`
+    : `import React from 'react';
+import { RnsApp } from '@rns/runtime';
+
+/**
+ * Minimal app entrypoint.
+ * All runtime composition is handled by @rns/runtime.
+ * User code in src/** remains clean and isolated.
+ */
+export default function App() {
+  return <RnsApp />;
+}
+`;
+  
+  // Write the minimal App.tsx (this replaces the generated one)
+  writeTextFile(appEntryPath, minimalAppContent);
+}
+
+/**
  * Applies CORE DX configs (stub - will be completed in section 04)
  * 
  * BLUEPRINT REFERENCE RULE (section 2.4):
@@ -528,6 +577,11 @@ export async function runInit(options: InitOptions): Promise<void> {
     
     // 5. Install Option A Workspace Packages model
     installWorkspacePackages(appRoot, inputs, stepRunner);
+    
+    // 5.1 Ensure minimal App.tsx entrypoint (section 3.1)
+    stepRunner.start('Ensure minimal App entrypoint');
+    ensureMinimalAppEntrypoint(appRoot, inputs);
+    stepRunner.ok('Ensure minimal App entrypoint');
     
     // 6. Apply CORE DX configs
     applyCoreDxConfigs(appRoot, inputs, stepRunner);

@@ -7,9 +7,9 @@ OWNERSHIP: CORE(packages/@rns)
 # 3) CORE Baseline (Option A Workspace Packages) — Task List
 
 ## 3.1 Canonical host entry (minimal app-owned surface)
-- [ ] Host `App.tsx` is minimal and only mounts `@rns/runtime` (no heavy glue in user `src/**`).
-- [ ] Host keeps developer code isolated: user-owned `src/**` (if present) is not required for CORE to run.
-- [ ] Host remains stable across plugins/modules (plugins must not rewrite user-owned code).
+- [x] Host `App.tsx` is minimal and only mounts `@rns/runtime` (no heavy glue in user `src/**`).
+- [x] Host keeps developer code isolated: user-owned `src/**` (if present) is not required for CORE to run.
+- [x] Host remains stable across plugins/modules (plugins must not rewrite user-owned code).
 
 ## 3.2 CORE packages exist (stable layout)
 - [ ] `packages/@rns/core/*` exists (pure contracts + safe defaults; zero plugin deps).
