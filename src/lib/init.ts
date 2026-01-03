@@ -24,6 +24,7 @@ import {
 import { getCliVersion } from './version';
 import { verifyInitResult } from './init-verification';
 import { generateCoreContracts } from './core-contracts';
+import { generateRuntimeComposition } from './runtime-composition';
 
 export interface InitOptions {
   projectName?: string;
@@ -359,44 +360,10 @@ export * from './contracts';
 export * from './contracts';
 `;
   
-  const runtimeIndexContent = inputs.language === 'ts'
-    ? `/**
- * FILE: packages/@rns/runtime/index.ts
- * PURPOSE: Runtime composition layer that wires CORE into the app
- * OWNERSHIP: CORE
- */
-
-import React from 'react';
-import { View } from 'react-native';
-
-/**
- * Runtime app component - actual implementation in section 3.4
- */
-export function RnsApp(): React.ReactElement {
-  // Placeholder - will be implemented in section 3.4
-  return React.createElement(View, { style: { flex: 1, backgroundColor: '#fff' } });
-}
-`
-    : `/**
- * FILE: packages/@rns/runtime/index.js
- * PURPOSE: Runtime composition layer that wires CORE into the app
- * OWNERSHIP: CORE
- */
-
-import React from 'react';
-import { View } from 'react-native';
-
-/**
- * Runtime app component - actual implementation in section 3.4
- */
-export function RnsApp() {
-  // Placeholder - will be implemented in section 3.4
-  return React.createElement(View, { style: { flex: 1, backgroundColor: '#fff' } });
-}
-`;
+  // Generate runtime files (section 3.4)
+  generateRuntimeComposition(runtimeDir, inputs);
   
   writeTextFile(join(coreDir, `index.${inputs.language === 'ts' ? 'ts' : 'js'}`), coreIndexContent);
-  writeTextFile(join(runtimeDir, `index.${inputs.language === 'ts' ? 'ts' : 'js'}`), runtimeIndexContent);
   
   // Configure workspaces in host app package.json
   const hostPackageJsonPath = join(appRoot, 'package.json');

@@ -30,10 +30,10 @@ All must live under `packages/@rns/core` (or `@rns/shared` when appropriate) and
 ## 3.4 Runtime composition (bootable without plugins)
 All must live under `packages/@rns/runtime`:
 
-- [ ] `@rns/runtime` exposes a single app component (e.g. `RnsApp`) that can render without any plugins.
-- [ ] Runtime calls CORE init exactly once (equivalent to prior `appInit()` behavior).
-- [ ] Runtime provides a minimal provider/root composition that is stable for future plugin integration.
-- [ ] Runtime renders a minimal UI (not blank) without requiring navigation/i18n/query/auth.
+- [x] `@rns/runtime` exposes a single app component (e.g. `RnsApp`) that can render without any plugins.
+- [x] Runtime calls CORE init exactly once (equivalent to prior `appInit()` behavior).
+- [x] Runtime provides a minimal provider/root composition that is stable for future plugin integration.
+- [x] Runtime renders a minimal UI (not blank) without requiring navigation/i18n/query/auth.
 
 ## 3.5 Plugin-free guarantee (hard)
 - [ ] No imports of plugin-only dependencies inside `packages/@rns/core` or `packages/@rns/runtime`.
