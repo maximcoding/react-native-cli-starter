@@ -43,6 +43,13 @@ function clearLine(): void {
 }
 
 /**
+ * Moves cursor to the beginning of the line
+ */
+function cursorToStart(): void {
+  process.stdout.write('\r');
+}
+
+/**
  * Moves cursor up by n lines
  */
 function cursorUp(n: number): void {
@@ -95,6 +102,9 @@ export async function promptSelect<T>(
   // Display question
   process.stdout.write(`\n${question}\n`);
 
+  // Calculate how many lines we need to move up to redraw
+  const totalLines = choices.length + 2; // choices + blank line + instruction line
+
   // Display choices with arrow indicator
   const renderChoices = () => {
     choices.forEach((choice, index) => {
@@ -108,12 +118,31 @@ export async function promptSelect<T>(
 
   renderChoices();
 
-  // Calculate how many lines we need to move up to redraw
-  const totalLines = choices.length + 2; // choices + blank line + instruction line
-
   return new Promise((resolve) => {
     enableRawMode();
     let buffer = '';
+
+    const updateDisplay = () => {
+      // Move cursor up to beginning of first choice line
+      cursorUp(totalLines);
+      
+      // Clear and redraw all choices line by line
+      for (let i = 0; i < choices.length; i++) {
+        clearLine();
+        const marker = i === selectedIndex ? '→ ' : '  ';
+        const selected = i === selectedIndex ? '\x1b[36m' : '';
+        const reset = '\x1b[0m';
+        process.stdout.write(`${marker}${selected}${choices[i].label}${reset}`);
+        // Move to next line (without printing \n yet)
+        process.stdout.write('\n');
+      }
+      // Clear blank line
+      clearLine();
+      process.stdout.write('\n');
+      // Clear and rewrite instruction line
+      clearLine();
+      process.stdout.write('(Use ↑/↓ to navigate, Enter to select)');
+    };
 
     const onData = (data: Buffer) => {
       buffer += data.toString();
@@ -167,26 +196,6 @@ export async function promptSelect<T>(
       }
     };
 
-    const updateDisplay = () => {
-      // Move cursor up to beginning of choices
-      cursorUp(totalLines);
-      
-      // Clear and redraw all choices
-      for (let i = 0; i < totalLines; i++) {
-        clearLine();
-        if (i < choices.length) {
-          const marker = i === selectedIndex ? '→ ' : '  ';
-          const selected = i === selectedIndex ? '\x1b[36m' : '';
-          const reset = '\x1b[0m';
-          process.stdout.write(`${marker}${selected}${choices[i].label}${reset}\n`);
-        } else if (i === choices.length) {
-          process.stdout.write('\n');
-        } else {
-          process.stdout.write('(Use ↑/↓ to navigate, Enter to select)');
-        }
-      }
-    };
-
     const handleSelection = () => {
       disableRawMode();
       process.stdin.removeListener('data', onData);
@@ -227,45 +236,151 @@ export async function promptConfirm(question: string, defaultValue: boolean = tr
 }
 
 /**
- * Prompts for multiple selections (checkboxes)
+ * Prompts for multiple selections (checkboxes) with arrow key navigation
  */
 export async function promptMultiSelect<T>(
   question: string,
   choices: Array<{ label: string; value: T; default?: boolean }>
 ): Promise<T[]> {
-  const rl = createReadlineInterface();
+  if (!process.stdin.isTTY) {
+    // Fallback for non-TTY: return all default selections
+    return Promise.resolve(choices.filter((c) => c.default !== false).map((c) => c.value));
+  }
 
-  console.log(`\n${question}`);
-  choices.forEach((choice, index) => {
-    const marker = choice.default !== false ? '[x]' : '[ ]';
-    console.log(`${marker} ${index + 1}. ${choice.label}`);
-  });
+  // Initialize selected state
+  const selected: boolean[] = choices.map((c) => c.default !== false);
+  let selectedIndex = 0;
 
-  const prompt = `\nSelect items (comma-separated numbers, default: all checked): `;
+  // Display question
+  process.stdout.write(`\n${question}\n`);
+
+  // Display choices with checkbox indicator
+  const renderChoices = () => {
+    choices.forEach((choice, index) => {
+      const checkbox = selected[index] ? '[x]' : '[ ]';
+      const marker = index === selectedIndex ? '→ ' : '  ';
+      const highlighted = index === selectedIndex ? '\x1b[36m' : '';
+      const reset = '\x1b[0m';
+      process.stdout.write(`${marker}${checkbox} ${highlighted}${choice.label}${reset}\n`);
+    });
+    process.stdout.write('\n(Use ↑/↓ to navigate, Space to toggle, Enter to confirm)');
+  };
+
+  renderChoices();
+
+  // Calculate how many lines we need to move up to redraw
+  const totalLines = choices.length + 2; // choices + blank line + instruction line
 
   return new Promise((resolve) => {
-    rl.question(prompt, (answer) => {
-      rl.close();
-      const input = answer.trim();
+    enableRawMode();
+    let buffer = '';
 
-      if (!input) {
-        // Return all items where default !== false
-        resolve(choices.filter((c) => c.default !== false).map((c) => c.value));
+    const onData = (data: Buffer) => {
+      buffer += data.toString();
+      
+      // Handle escape sequences (arrow keys)
+      if (buffer.startsWith('\x1b[')) {
+        if (buffer.length >= 3) {
+          const code = buffer.slice(2, 3);
+          buffer = '';
+          
+          if (code === 'A') {
+            // Up arrow
+            if (selectedIndex > 0) {
+              selectedIndex--;
+            } else {
+              selectedIndex = choices.length - 1;
+            }
+            updateDisplay();
+          } else if (code === 'B') {
+            // Down arrow
+            if (selectedIndex < choices.length - 1) {
+              selectedIndex++;
+            } else {
+              selectedIndex = 0;
+            }
+            updateDisplay();
+          }
+        }
         return;
       }
 
-      const selectedIndices = input
-        .split(',')
-        .map((s) => parseInt(s.trim(), 10) - 1)
-        .filter((n) => n >= 0 && n < choices.length);
-
-      if (selectedIndices.length === 0) {
-        resolve(choices.filter((c) => c.default !== false).map((c) => c.value));
+      // Handle Space (toggle selection)
+      if (buffer === ' ') {
+        buffer = '';
+        selected[selectedIndex] = !selected[selectedIndex];
+        updateDisplay();
         return;
       }
 
-      resolve(selectedIndices.map((i) => choices[i].value));
-    });
+      // Handle Enter
+      if (buffer === '\r' || buffer === '\n') {
+        buffer = '';
+        handleSelection();
+        return;
+      }
+
+      // Handle Ctrl+C
+      if (buffer === '\x03') {
+        buffer = '';
+        disableRawMode();
+        process.stdin.removeListener('data', onData);
+        process.stdout.write('\n');
+        process.exit(130);
+      }
+
+      // Reset buffer if it's not a valid sequence
+      if (buffer.length > 10) {
+        buffer = '';
+      }
+    };
+
+    const updateDisplay = () => {
+      // Move cursor up to beginning of first choice line
+      cursorUp(totalLines);
+      
+      // Clear and redraw all choices line by line
+      for (let i = 0; i < choices.length; i++) {
+        clearLine();
+        const checkbox = selected[i] ? '[x]' : '[ ]';
+        const marker = i === selectedIndex ? '→ ' : '  ';
+        const highlighted = i === selectedIndex ? '\x1b[36m' : '';
+        const reset = '\x1b[0m';
+        process.stdout.write(`${marker}${checkbox} ${highlighted}${choices[i].label}${reset}`);
+        process.stdout.write('\n');
+      }
+      // Clear blank line
+      clearLine();
+      process.stdout.write('\n');
+      // Clear and rewrite instruction line
+      clearLine();
+      process.stdout.write('(Use ↑/↓ to navigate, Space to toggle, Enter to confirm)');
+    };
+
+    const handleSelection = () => {
+      disableRawMode();
+      process.stdin.removeListener('data', onData);
+      
+      // Move cursor down past the prompt
+      cursorDown(totalLines);
+      
+      const selectedLabels = choices
+        .filter((_, index) => selected[index])
+        .map((c) => c.label)
+        .join(', ');
+      
+      process.stdout.write(`\nSelected: ${selectedLabels || '(none)'}\n`);
+      
+      // Return selected values
+      const selectedValues = choices
+        .filter((_, index) => selected[index])
+        .map((c) => c.value);
+      
+      resolve(selectedValues);
+    };
+
+    process.stdin.on('data', onData);
+    process.stdin.resume();
   });
 }
 
