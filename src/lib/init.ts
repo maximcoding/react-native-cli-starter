@@ -271,32 +271,129 @@ function installWorkspacePackages(
 ): void {
   stepRunner.start('Install workspace packages');
   
-  // Create workspace packages directory structure
+  // Create workspace packages directory structure (section 3.2)
   // Reference: docs/ReactNativeCLITemplate/ for patterns, but don't copy directly
   ensureDir(join(appRoot, WORKSPACE_PACKAGES_DIR));
-  ensureDir(join(appRoot, WORKSPACE_PACKAGES_DIR, 'runtime'));
-  ensureDir(join(appRoot, WORKSPACE_PACKAGES_DIR, 'core'));
+  const runtimeDir = join(appRoot, WORKSPACE_PACKAGES_DIR, 'runtime');
+  const coreDir = join(appRoot, WORKSPACE_PACKAGES_DIR, 'core');
+  ensureDir(runtimeDir);
+  ensureDir(coreDir);
   
-  // TODO: Copy CORE base pack from templates (section 03)
-  // This will reference blueprint patterns but create packages/@rns/* structure,
-  // not copy blueprint's src/ structure into generated app
-  // For now, create minimal package.json files
-  const runtimePackageJson = {
-    name: RUNTIME_PACKAGE_NAME,
-    version: '0.1.0',
-    main: 'index.ts',
-    private: true,
-  };
-  
+  // Create @rns/core package (section 3.2)
+  // Create @rns/core package (section 3.2)
   const corePackageJson = {
     name: CORE_PACKAGE_NAME,
     version: '0.1.0',
-    main: 'index.ts',
+    main: inputs.language === 'ts' ? 'index.ts' : 'index.js',
+    types: inputs.language === 'ts' ? 'index.ts' : undefined,
     private: true,
   };
   
-  writeJsonFile(join(appRoot, WORKSPACE_PACKAGES_DIR, 'runtime', 'package.json'), runtimePackageJson);
-  writeJsonFile(join(appRoot, WORKSPACE_PACKAGES_DIR, 'core', 'package.json'), corePackageJson);
+  writeJsonFile(join(coreDir, 'package.json'), corePackageJson);
+  
+  // Create @rns/runtime package (section 3.2)
+  const runtimePackageJson: any = {
+    name: RUNTIME_PACKAGE_NAME,
+    version: '0.1.0',
+    main: inputs.language === 'ts' ? 'index.ts' : 'index.js',
+    private: true,
+    dependencies: {
+      [CORE_PACKAGE_NAME]: 'workspace:*',
+      'react': '^18.0.0',
+      'react-native': '^0.74.0',
+    },
+  };
+  
+  if (inputs.language === 'ts') {
+    runtimePackageJson.types = 'index.ts';
+  }
+  
+  writeJsonFile(join(runtimeDir, 'package.json'), runtimePackageJson);
+  
+  // Create TypeScript config for packages (if TypeScript project)
+  if (inputs.language === 'ts') {
+    const coreTsConfig = {
+      extends: '../../tsconfig.json',
+      compilerOptions: {
+        outDir: './dist',
+        rootDir: '.',
+      },
+      include: ['**/*.ts', '**/*.tsx'],
+      exclude: ['node_modules', 'dist'],
+    };
+    
+    const runtimeTsConfig = {
+      extends: '../../tsconfig.json',
+      compilerOptions: {
+        outDir: './dist',
+        rootDir: '.',
+      },
+      include: ['**/*.ts', '**/*.tsx'],
+      exclude: ['node_modules', 'dist'],
+    };
+    
+    writeJsonFile(join(coreDir, 'tsconfig.json'), coreTsConfig);
+    writeJsonFile(join(runtimeDir, 'tsconfig.json'), runtimeTsConfig);
+  }
+  
+  // Create minimal index entry points (actual implementation in sections 3.3, 3.4)
+  const coreIndexContent = inputs.language === 'ts'
+    ? `/**
+ * FILE: packages/@rns/core/index.ts
+ * PURPOSE: CORE contracts and safe defaults (plugin-free)
+ * OWNERSHIP: CORE
+ */
+
+// CORE contracts and implementations will be added in section 3.3
+export {};
+`
+    : `/**
+ * FILE: packages/@rns/core/index.js
+ * PURPOSE: CORE contracts and safe defaults (plugin-free)
+ * OWNERSHIP: CORE
+ */
+
+// CORE contracts and implementations will be added in section 3.3
+`;
+  
+  const runtimeIndexContent = inputs.language === 'ts'
+    ? `/**
+ * FILE: packages/@rns/runtime/index.ts
+ * PURPOSE: Runtime composition layer that wires CORE into the app
+ * OWNERSHIP: CORE
+ */
+
+import React from 'react';
+import { View } from 'react-native';
+
+/**
+ * Runtime app component - actual implementation in section 3.4
+ */
+export function RnsApp(): React.ReactElement {
+  // Placeholder - will be implemented in section 3.4
+  return React.createElement(View, { style: { flex: 1, backgroundColor: '#fff' } });
+}
+`
+    : `/**
+ * FILE: packages/@rns/runtime/index.js
+ * PURPOSE: Runtime composition layer that wires CORE into the app
+ * OWNERSHIP: CORE
+ */
+
+import React from 'react';
+import { View } from 'react-native';
+
+/**
+ * Runtime app component - actual implementation in section 3.4
+ */
+export function RnsApp() {
+  // Placeholder - will be implemented in section 3.4
+  return React.createElement(View, { style: { flex: 1, backgroundColor: '#fff' } });
+}
+`;
+  
+  writeTextFile(join(coreDir, `index.${inputs.language === 'ts' ? 'ts' : 'js'}`), coreIndexContent);
+  writeTextFile(join(runtimeDir, `index.${inputs.language === 'ts' ? 'ts' : 'js'}`), runtimeIndexContent);
   
   // Configure workspaces in host app package.json
   const hostPackageJsonPath = join(appRoot, 'package.json');

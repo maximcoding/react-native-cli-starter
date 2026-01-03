@@ -12,10 +12,10 @@ OWNERSHIP: CORE(packages/@rns)
 - [x] Host remains stable across plugins/modules (plugins must not rewrite user-owned code).
 
 ## 3.2 CORE packages exist (stable layout)
-- [ ] `packages/@rns/core/*` exists (pure contracts + safe defaults; zero plugin deps).
-- [ ] `packages/@rns/runtime/*` exists (composition layer that wires CORE into the app).
-- [ ] `packages/@rns/shared/*` exists if needed for shared types/utils (optional, but if created it must be stable).
-- [ ] `.rns/` exists (state/logs/backups), created by init pipeline.
+- [x] `packages/@rns/core/*` exists (pure contracts + safe defaults; zero plugin deps).
+- [x] `packages/@rns/runtime/*` exists (composition layer that wires CORE into the app).
+- [x] `packages/@rns/shared/*` exists if needed for shared types/utils (optional, but if created it must be stable). (not needed yet - will be created if required)
+- [x] `.rns/` exists (state/logs/backups), created by init pipeline.
 
 ## 3.3 CORE contracts + safe defaults (no plugins required)
 All must live under `packages/@rns/core` (or `@rns/shared` when appropriate) and be plugin-free:
