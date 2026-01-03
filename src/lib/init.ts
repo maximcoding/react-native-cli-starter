@@ -25,7 +25,7 @@ import { getCliVersion } from './version';
 import { verifyInitResult, verifyCoreBaselineAcceptance } from './init-verification';
 import { generateCoreContracts } from './core-contracts';
 import { generateRuntimeComposition } from './runtime-composition';
-import { configureImportAliases } from './dx-config';
+import { configureImportAliases, configureSvgPipeline } from './dx-config';
 
 export interface InitOptions {
   projectName?: string;
@@ -470,7 +470,12 @@ function applyCoreDxConfigs(
     configureImportAliases(appRoot, inputs);
   }
   
-  // TODO: 4.2-4.4: SVG, fonts, env configs (will be added in subsequent sections)
+  // 4.2: Configure SVG import pipeline
+  if (inputs.coreToggles.svg) {
+    configureSvgPipeline(appRoot, inputs);
+  }
+  
+  // TODO: 4.3-4.4: Fonts, env configs (will be added in subsequent sections)
   
   stepRunner.ok('Apply CORE DX configs');
 }

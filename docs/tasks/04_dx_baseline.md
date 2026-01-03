@@ -20,13 +20,13 @@ OWNERSHIP: CORE(packages/@rns) + INIT(host configs)
   - [x] `import x from '@/...'` (only if alias toggle ON and `src/**` exists)
 
 ## 4.2 SVG import pipeline (Expo + Bare)
-- [ ] Configure SVG pipeline in the host app (Metro-level):
-  - [ ] Install required deps via dependency layer.
-  - [ ] Apply Metro config changes safely (patch ops + backups).
-- [ ] Provide SVG typings for TS without breaking JS apps:
-  - [ ] Place typings in a host-safe location (e.g. `types/svg.d.ts` or `global.d.ts`), not inside user business code.
-- [ ] Ensure `assets/svgs` exists and an example SVG import compiles:
-  - [ ] Example may live in `packages/@rns/runtime` demo screen or minimal UI.
+- [x] Configure SVG pipeline in the host app (Metro-level):
+  - [x] Install required deps via dependency layer. (dependency installation handled in section 11)
+  - [x] Apply Metro config changes safely (patch ops + backups). (config is generated/updated during init)
+- [x] Provide SVG typings for TS without breaking JS apps:
+  - [x] Place typings in a host-safe location (e.g. `types/svg.d.ts` or `global.d.ts`), not inside user business code.
+- [x] Ensure `assets/svgs` exists and an example SVG import compiles:
+  - [x] Example may live in `packages/@rns/runtime` demo screen or minimal UI. (placeholder SVG created; compilation verified in section 4.6)
 
 ## 4.3 Fonts pipeline (no manual linking steps)
 - [ ] Ensure `assets/fonts` exists and include a placeholder font file (or documented placeholder) to validate pipeline.

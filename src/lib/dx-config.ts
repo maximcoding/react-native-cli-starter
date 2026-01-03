@@ -5,7 +5,7 @@
  */
 
 import { join } from 'path';
-import { pathExists, isDirectory, readJsonFile, writeJsonFile, writeTextFile, readTextFile } from './fs';
+import { pathExists, isDirectory, readJsonFile, writeJsonFile, writeTextFile, readTextFile, ensureDir } from './fs';
 import type { InitInputs } from './init';
 import { USER_SRC_DIR } from './constants';
 
@@ -276,5 +276,164 @@ ${plugins.join(',\n')}
   ],
 };
 `;
+}
+
+/**
+ * Configures SVG import pipeline (section 4.2)
+ * - Metro config for SVG transformer
+ * - SVG type declarations
+ * - assets/svgs directory
+ */
+export function configureSvgPipeline(
+  appRoot: string,
+  inputs: InitInputs
+): void {
+  // Update Metro config to include SVG transformer
+  configureMetroSvgTransformer(appRoot, inputs.target);
+
+  // Create SVG type declarations (for TypeScript projects)
+  if (inputs.language === 'ts') {
+    createSvgTypeDeclarations(appRoot);
+  }
+
+  // Create assets/svgs directory
+  const assetsSvgsDir = join(appRoot, 'assets', 'svgs');
+  ensureDir(assetsSvgsDir);
+
+  // Create a placeholder SVG file for validation
+  createPlaceholderSvg(assetsSvgsDir);
+}
+
+/**
+ * Configures Metro config to handle SVG files
+ */
+function configureMetroSvgTransformer(
+  appRoot: string,
+  target: 'expo' | 'bare'
+): void {
+  const metroConfigPath = join(appRoot, 'metro.config.js');
+  
+  let metroConfigContent: string;
+  let hasSvgTransformer = false;
+
+  if (pathExists(metroConfigPath)) {
+    metroConfigContent = readTextFile(metroConfigPath);
+    hasSvgTransformer = metroConfigContent.includes('react-native-svg-transformer');
+  } else {
+    if (target === 'expo') {
+      metroConfigContent = `const { getDefaultConfig } = require('expo/metro-config');
+
+module.exports = getDefaultConfig(__dirname);
+`;
+    } else {
+      metroConfigContent = `const { getDefaultConfig, mergeConfig } = require('@react-native/metro-config');
+
+module.exports = (async () => {
+  const defaultConfig = await getDefaultConfig(__dirname);
+  return mergeConfig(defaultConfig, {
+    // Configuration will be added here
+  });
+})();
+`;
+    }
+  }
+
+  // Add SVG transformer configuration if not present
+  if (!hasSvgTransformer) {
+    if (target === 'expo') {
+      // For Expo, wrap in async function
+      metroConfigContent = metroConfigContent.replace(
+        /module\.exports = getDefaultConfig\(__dirname\);/,
+        `module.exports = (async () => {
+  const config = getDefaultConfig(__dirname);
+  
+  // SVG transformer configuration
+  config.transformer = {
+    ...config.transformer,
+    babelTransformerPath: require.resolve('react-native-svg-transformer'),
+  };
+  
+  config.resolver = {
+    ...config.resolver,
+    assetExts: config.resolver.assetExts.filter(ext => ext !== 'svg'),
+    sourceExts: [...config.resolver.sourceExts, 'svg'],
+  };
+  
+  return config;
+})();`
+      );
+    } else {
+      // For Bare, update mergeConfig
+      metroConfigContent = metroConfigContent.replace(
+        /return mergeConfig\(defaultConfig, \{[\s\S]*?\}\);?/,
+        `return mergeConfig(defaultConfig, {
+    transformer: {
+      babelTransformerPath: require.resolve('react-native-svg-transformer'),
+    },
+    resolver: {
+      assetExts: defaultConfig.resolver.assetExts.filter(ext => ext !== 'svg'),
+      sourceExts: [...defaultConfig.resolver.sourceExts, 'svg'],
+    },
+  });`
+      );
+    }
+  }
+
+  writeTextFile(metroConfigPath, metroConfigContent);
+}
+
+/**
+ * Creates SVG type declarations for TypeScript
+ */
+function createSvgTypeDeclarations(appRoot: string): void {
+  // Create types directory if it doesn't exist
+  const typesDir = join(appRoot, 'types');
+  ensureDir(typesDir);
+
+  const svgTypesPath = join(typesDir, 'svg.d.ts');
+  
+  const svgTypesContent = `/**
+ * FILE: types/svg.d.ts
+ * PURPOSE: SVG import type declarations
+ * OWNERSHIP: CLI
+ */
+
+declare module '*.svg' {
+  import React from 'react';
+  import { SvgProps } from 'react-native-svg';
+  const content: React.FC<SvgProps>;
+  export default content;
+}
+`;
+
+  writeTextFile(svgTypesPath, svgTypesContent);
+
+  // Ensure types directory is included in tsconfig.json
+  const tsconfigPath = join(appRoot, 'tsconfig.json');
+  if (pathExists(tsconfigPath)) {
+    const tsconfig = readJsonFile<any>(tsconfigPath);
+    if (!tsconfig.include) {
+      tsconfig.include = [];
+    }
+    if (!tsconfig.include.includes('types/**/*')) {
+      tsconfig.include.push('types/**/*');
+    }
+    writeJsonFile(tsconfigPath, tsconfig);
+  }
+}
+
+/**
+ * Creates a placeholder SVG file for validation
+ */
+function createPlaceholderSvg(assetsSvgsDir: string): void {
+  const placeholderSvgPath = join(assetsSvgsDir, 'placeholder.svg');
+  
+  if (!pathExists(placeholderSvgPath)) {
+    const placeholderSvg = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect width="24" height="24" rx="4" fill="#E0E0E0"/>
+<path d="M12 8V16M8 12H16" stroke="#999" stroke-width="2" stroke-linecap="round"/>
+</svg>`;
+    writeTextFile(placeholderSvgPath, placeholderSvg);
+  }
 }
 
