@@ -46,8 +46,8 @@ OWNERSHIP: CLI
 - [x] Print next steps (commands to run).
 
 ## 2.3 Logs (mandatory)
-- [ ] Create one init log file per run (timestamp naming).
-- [ ] On failure: print failed step + log path.
+- [x] Create one init log file per run (timestamp naming).
+- [x] On failure: print failed step + log path.
 
 ## 2.4 Blueprint reference rule
 - [ ] Use `docs/ReactNativeCLITemplate/*` as reference for shapes/config patterns.
