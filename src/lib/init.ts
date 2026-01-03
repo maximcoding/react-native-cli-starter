@@ -337,7 +337,10 @@ function installWorkspacePackages(
     writeJsonFile(join(runtimeDir, 'tsconfig.json'), runtimeTsConfig);
   }
   
-  // Create minimal index entry points (actual implementation in sections 3.3, 3.4)
+  // Generate CORE contracts first (section 3.3)
+  generateCoreContracts(coreDir, inputs);
+  
+  // Create main index entry point that exports all contracts
   const coreIndexContent = inputs.language === 'ts'
     ? `/**
  * FILE: packages/@rns/core/index.ts
@@ -345,8 +348,7 @@ function installWorkspacePackages(
  * OWNERSHIP: CORE
  */
 
-// CORE contracts and implementations will be added in section 3.3
-export {};
+export * from './contracts';
 `
     : `/**
  * FILE: packages/@rns/core/index.js
@@ -354,7 +356,7 @@ export {};
  * OWNERSHIP: CORE
  */
 
-// CORE contracts and implementations will be added in section 3.3
+export * from './contracts';
 `;
   
   const runtimeIndexContent = inputs.language === 'ts'
@@ -395,10 +397,6 @@ export function RnsApp() {
   
   writeTextFile(join(coreDir, `index.${inputs.language === 'ts' ? 'ts' : 'js'}`), coreIndexContent);
   writeTextFile(join(runtimeDir, `index.${inputs.language === 'ts' ? 'ts' : 'js'}`), runtimeIndexContent);
-  
-  // Generate CORE contracts with safe defaults (section 3.3)
-  ensureDir(join(coreDir, 'contracts'));
-  generateCoreContracts(coreDir, inputs);
   
   // Configure workspaces in host app package.json
   const hostPackageJsonPath = join(appRoot, 'package.json');

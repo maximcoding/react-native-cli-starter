@@ -1,49 +1,70 @@
 /**
  * FILE: src/lib/core-contracts.ts
- * PURPOSE: Generate CORE contracts with safe defaults for packages/@rns/core
+ * PURPOSE: Generate CORE contracts with safe defaults during init
  * OWNERSHIP: CLI
  */
 
-import { writeTextFile, ensureDir } from './fs';
 import { join } from 'path';
-import { InitInputs } from './init';
+import { writeTextFile, ensureDir } from './fs';
+import type { InitInputs } from './init';
 
 /**
- * Generates CORE contract files for packages/@rns/core
+ * Generates CORE contracts with safe defaults in packages/@rns/core
+ * All contracts are plugin-free and provide noop/memory fallback implementations
  */
 export function generateCoreContracts(coreDir: string, inputs: InitInputs): void {
   const ext = inputs.language === 'ts' ? 'ts' : 'js';
-  
-  // Generate logging contract
-  writeLoggingContract(coreDir, ext);
-  
-  // Generate error contract
-  writeErrorContract(coreDir, ext);
-  
-  // Generate storage contracts
-  writeStorageContracts(coreDir, ext);
-  
-  // Generate network contract
-  writeNetworkContract(coreDir, ext);
-  
-  // Generate transport contracts
-  writeTransportContracts(coreDir, ext);
-  
-  // Generate offline contracts
-  writeOfflineContracts(coreDir, ext);
-  
-  // Update core index.ts to export all contracts
-  updateCoreIndex(coreDir, ext);
+  const contractsDir = join(coreDir, 'contracts');
+  ensureDir(contractsDir);
+
+  // Logging contract
+  const loggingContent = generateLoggingContract(ext);
+  writeTextFile(join(contractsDir, `logging.${ext}`), loggingContent);
+
+  // Error normalization contract
+  const errorContent = generateErrorContract(ext);
+  writeTextFile(join(contractsDir, `error.${ext}`), errorContent);
+
+  // Storage contracts (kv + cache)
+  const storageDir = join(contractsDir, 'storage');
+  ensureDir(storageDir);
+  const kvStorageContent = generateKvStorageContract(ext);
+  const cacheEngineContent = generateCacheEngineContract(ext);
+  writeTextFile(join(storageDir, `kv-storage.${ext}`), kvStorageContent);
+  writeTextFile(join(storageDir, `cache-engine.${ext}`), cacheEngineContent);
+
+  // Network contract
+  const networkContent = generateNetworkContract(ext);
+  writeTextFile(join(contractsDir, `network.${ext}`), networkContent);
+
+  // Transport contract
+  const transportDir = join(contractsDir, 'transport');
+  ensureDir(transportDir);
+  const transportTypesContent = generateTransportTypesContract(ext);
+  const transportContent = generateTransportContract(ext);
+  writeTextFile(join(transportDir, `types.${ext}`), transportTypesContent);
+  writeTextFile(join(transportDir, `transport.${ext}`), transportContent);
+
+  // Offline contracts
+  const offlineDir = join(contractsDir, 'offline');
+  ensureDir(offlineDir);
+  const offlineQueueContent = generateOfflineQueueContract(ext);
+  const syncEngineContent = generateSyncEngineContract(ext);
+  writeTextFile(join(offlineDir, `offline-queue.${ext}`), offlineQueueContent);
+  writeTextFile(join(offlineDir, `sync-engine.${ext}`), syncEngineContent);
+
+  // Update main index.ts to export all contracts
+  const indexContent = generateContractsIndex(ext);
+  writeTextFile(join(contractsDir, `index.${ext}`), indexContent);
 }
 
-function writeLoggingContract(coreDir: string, ext: string): void {
-  const content = ext === 'ts' ? `/**
+function generateLoggingContract(ext: 'ts' | 'js'): string {
+  if (ext === 'ts') {
+    return `/**
  * FILE: packages/@rns/core/contracts/logging.ts
  * PURPOSE: Stable logger API + default console implementation
  * OWNERSHIP: CORE
  */
-
-export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 export interface Logger {
   debug(message: string, ...args: unknown[]): void;
@@ -53,114 +74,141 @@ export interface Logger {
 }
 
 /**
- * Default console-based logger implementation (safe default, no plugin deps)
+ * Default console-based logger implementation
  */
 class ConsoleLogger implements Logger {
-  private enabled: boolean;
-
-  constructor(enabled: boolean = __DEV__) {
-    this.enabled = enabled;
-  }
-
   debug(message: string, ...args: unknown[]): void {
-    if (this.enabled) {
-      console.debug('[DEBUG] ' + message, ...args);
+    if (__DEV__) {
+      console.log('[DEBUG]', message, ...args);
     }
   }
 
   info(message: string, ...args: unknown[]): void {
-    if (this.enabled) {
-      console.info('[INFO] ' + message, ...args);
-    }
+    console.info('[INFO]', message, ...args);
   }
 
   warn(message: string, ...args: unknown[]): void {
-    if (this.enabled) {
-      console.warn('[WARN] ' + message, ...args);
-    }
+    console.warn('[WARN]', message, ...args);
   }
 
   error(message: string, ...args: unknown[]): void {
-    if (this.enabled) {
-      console.error('[ERROR] ' + message, ...args);
-    }
+    console.error('[ERROR]', message, ...args);
   }
 }
 
 /**
- * Default logger instance (can be replaced by plugins)
+ * Default logger instance (safe default, can be replaced via plugins)
  */
 export const logger: Logger = new ConsoleLogger();
-` : `/**
+`;
+  } else {
+    return `/**
  * FILE: packages/@rns/core/contracts/logging.js
  * PURPOSE: Stable logger API + default console implementation
  * OWNERSHIP: CORE
  */
 
-/**
- * Default logger instance (can be replaced by plugins)
- */
-export const logger = {
+class ConsoleLogger {
   debug(message, ...args) {
     if (__DEV__) {
-      console.debug('[DEBUG] ' + message, ...args);
+      console.log('[DEBUG]', message, ...args);
     }
-  },
+  }
 
   info(message, ...args) {
-    if (__DEV__) {
-      console.info('[INFO] ' + message, ...args);
-    }
-  },
+    console.info('[INFO]', message, ...args);
+  }
 
   warn(message, ...args) {
-    if (__DEV__) {
-      console.warn('[WARN] ' + message, ...args);
-    }
-  },
+    console.warn('[WARN]', message, ...args);
+  }
 
   error(message, ...args) {
-    if (__DEV__) {
-      console.error('[ERROR] ' + message, ...args);
-    }
-  },
-};
-`;
-  
-  writeTextFile(join(coreDir, 'contracts', `logging.${ext}`), content);
+    console.error('[ERROR]', message, ...args);
+  }
 }
 
-function writeErrorContract(coreDir: string, ext: string): void {
-  const content = ext === 'ts' ? `/**
+/**
+ * Default logger instance (safe default, can be replaced via plugins)
+ */
+export const logger = new ConsoleLogger();
+`;
+  }
+}
+
+function generateErrorContract(ext: 'ts' | 'js'): string {
+  if (ext === 'ts') {
+    return `/**
  * FILE: packages/@rns/core/contracts/error.ts
  * PURPOSE: Error normalization contract + safe default normalizer
  * OWNERSHIP: CORE
  */
 
-export type NormalizedError = {
+export interface NormalizedError {
   code: string | null;
   message: string;
   status?: number;
   raw: unknown;
-};
+}
 
-/**
- * Normalizes ANY error shape to consistent NormalizedError.
- * Safe default implementation (plugin-free).
- */
-export function normalizeError(error: unknown): NormalizedError {
-  // Already normalized
-  if (
-    error &&
-    typeof error === 'object' &&
-    'message' in error &&
-    'code' in error &&
-    'raw' in error
-  ) {
-    return error as NormalizedError;
+function isNormalizedError(x: any): x is NormalizedError {
+  return (
+    x &&
+    typeof x === 'object' &&
+    typeof x.message === 'string' &&
+    'raw' in x &&
+    'code' in x
+  );
+}
+
+function extractMessage(e: any): string {
+  if (Array.isArray(e?.graphQLErrors) && e.graphQLErrors.length > 0) {
+    return e.graphQLErrors[0].message ?? 'GraphQL error';
   }
 
-  // String thrown
+  if (e?.response?.data?.message) return e.response.data.message;
+  if (e?.response?.data?.error) return e.response.data.error;
+
+  if (e?.errors && Array.isArray(e.errors)) {
+    return e.errors.map((z: any) => z.message).join(', ');
+  }
+
+  if (e?.message && typeof e.message === 'string') return e.message;
+
+  return e?.message ?? 'Unknown error';
+}
+
+function extractCode(e: any): string | null {
+  return (
+    e?.code ??
+    e?.response?.data?.code ??
+    e?.graphQLErrors?.[0]?.extensions?.code ??
+    null
+  );
+}
+
+function extractStatus(e: any): number | undefined {
+  return e?.response?.status;
+}
+
+function isOfflineErrorLike(e: any): boolean {
+  const code = e?.code;
+  const msg = typeof e?.message === 'string' ? e.message : '';
+
+  if (code === 'NETWORK_OFFLINE') return true;
+  if (msg.startsWith('Offline:')) return true;
+  if (msg === 'Network Error' || msg === 'Failed to fetch') return true;
+  if (e?.isAxiosError && !e?.response) return true;
+
+  return false;
+}
+
+/**
+ * Normalize ANY error shape to consistent NormalizedError
+ */
+export function normalizeError(error: unknown): NormalizedError {
+  if (isNormalizedError(error)) return error;
+
   if (typeof error === 'string') {
     const offline = error.startsWith('Offline:') || error === 'Offline';
     return {
@@ -170,21 +218,10 @@ export function normalizeError(error: unknown): NormalizedError {
     };
   }
 
-  // Native JS Error
   if (error instanceof Error) {
     const e: any = error;
-    
-    // Offline detection
-    const code = e?.code;
-    const msg = typeof e?.message === 'string' ? e.message : '';
-    const isOffline =
-      code === 'NETWORK_OFFLINE' ||
-      msg.startsWith('Offline:') ||
-      msg === 'Network Error' ||
-      msg === 'Failed to fetch' ||
-      (e?.isAxiosError && !e?.response);
 
-    if (isOffline) {
+    if (isOfflineErrorLike(e)) {
       return {
         code: 'NETWORK_OFFLINE',
         message: 'No internet connection',
@@ -193,48 +230,96 @@ export function normalizeError(error: unknown): NormalizedError {
     }
 
     return {
-      code: e?.code ?? e?.response?.data?.code ?? null,
-      message: e?.message ?? 'Unknown error',
-      status: e?.response?.status,
+      code: extractCode(e),
+      message: extractMessage(e),
+      status: extractStatus(e),
       raw: error,
     };
   }
 
-  // Unknown object
   const e: any = error ?? {};
-  const msg = typeof e?.message === 'string' ? e.message : '';
-  const isOffline = msg.startsWith('Offline:') || msg === 'Network Error';
+
+  if (isOfflineErrorLike(e)) {
+    return {
+      code: 'NETWORK_OFFLINE',
+      message: 'No internet connection',
+      raw: error,
+    };
+  }
 
   return {
-    code: e?.code ?? null,
-    message: msg || 'Unknown error',
-    status: e?.response?.status,
+    code: extractCode(e),
+    message: extractMessage(e),
+    status: extractStatus(e),
     raw: error,
   };
 }
-` : `/**
+`;
+  } else {
+    return `/**
  * FILE: packages/@rns/core/contracts/error.js
  * PURPOSE: Error normalization contract + safe default normalizer
  * OWNERSHIP: CORE
  */
 
-/**
- * Normalizes ANY error shape to consistent NormalizedError.
- * Safe default implementation (plugin-free).
- */
-export function normalizeError(error) {
-  // Already normalized
-  if (
-    error &&
-    typeof error === 'object' &&
-    'message' in error &&
-    'code' in error &&
-    'raw' in error
-  ) {
-    return error;
+function isNormalizedError(x) {
+  return (
+    x &&
+    typeof x === 'object' &&
+    typeof x.message === 'string' &&
+    'raw' in x &&
+    'code' in x
+  );
+}
+
+function extractMessage(e) {
+  if (Array.isArray(e?.graphQLErrors) && e.graphQLErrors.length > 0) {
+    return e.graphQLErrors[0].message ?? 'GraphQL error';
   }
 
-  // String thrown
+  if (e?.response?.data?.message) return e.response.data.message;
+  if (e?.response?.data?.error) return e.response.data.error;
+
+  if (e?.errors && Array.isArray(e.errors)) {
+    return e.errors.map(z => z.message).join(', ');
+  }
+
+  if (e?.message && typeof e.message === 'string') return e.message;
+
+  return e?.message ?? 'Unknown error';
+}
+
+function extractCode(e) {
+  return (
+    e?.code ??
+    e?.response?.data?.code ??
+    e?.graphQLErrors?.[0]?.extensions?.code ??
+    null
+  );
+}
+
+function extractStatus(e) {
+  return e?.response?.status;
+}
+
+function isOfflineErrorLike(e) {
+  const code = e?.code;
+  const msg = typeof e?.message === 'string' ? e.message : '';
+
+  if (code === 'NETWORK_OFFLINE') return true;
+  if (msg.startsWith('Offline:')) return true;
+  if (msg === 'Network Error' || msg === 'Failed to fetch') return true;
+  if (e?.isAxiosError && !e?.response) return true;
+
+  return false;
+}
+
+/**
+ * Normalize ANY error shape to consistent NormalizedError
+ */
+export function normalizeError(error) {
+  if (isNormalizedError(error)) return error;
+
   if (typeof error === 'string') {
     const offline = error.startsWith('Offline:') || error === 'Offline';
     return {
@@ -244,21 +329,10 @@ export function normalizeError(error) {
     };
   }
 
-  // Native JS Error
   if (error instanceof Error) {
     const e = error;
-    
-    // Offline detection
-    const code = e?.code;
-    const msg = typeof e?.message === 'string' ? e.message : '';
-    const isOffline =
-      code === 'NETWORK_OFFLINE' ||
-      msg.startsWith('Offline:') ||
-      msg === 'Network Error' ||
-      msg === 'Failed to fetch' ||
-      (e?.isAxiosError && !e?.response);
 
-    if (isOffline) {
+    if (isOfflineErrorLike(e)) {
       return {
         code: 'NETWORK_OFFLINE',
         message: 'No internet connection',
@@ -267,33 +341,38 @@ export function normalizeError(error) {
     }
 
     return {
-      code: e?.code ?? e?.response?.data?.code ?? null,
-      message: e?.message ?? 'Unknown error',
-      status: e?.response?.status,
+      code: extractCode(e),
+      message: extractMessage(e),
+      status: extractStatus(e),
       raw: error,
     };
   }
 
-  // Unknown object
   const e = error ?? {};
-  const msg = typeof e?.message === 'string' ? e.message : '';
-  const isOffline = msg.startsWith('Offline:') || msg === 'Network Error';
+
+  if (isOfflineErrorLike(e)) {
+    return {
+      code: 'NETWORK_OFFLINE',
+      message: 'No internet connection',
+      raw: error,
+    };
+  }
 
   return {
-    code: e?.code ?? null,
-    message: msg || 'Unknown error',
-    status: e?.response?.status,
+    code: extractCode(e),
+    message: extractMessage(e),
+    status: extractStatus(e),
     raw: error,
   };
 }
 `;
-  
-  writeTextFile(join(coreDir, 'contracts', `error.${ext}`), content);
+  }
 }
 
-function writeStorageContracts(coreDir: string, ext: string): void {
-  const kvContent = ext === 'ts' ? `/**
- * FILE: packages/@rns/core/contracts/storage-kv.ts
+function generateKvStorageContract(ext: 'ts' | 'js'): string {
+  if (ext === 'ts') {
+    return `/**
+ * FILE: packages/@rns/core/contracts/storage/kv-storage.ts
  * PURPOSE: Key-value storage API with memory fallback default
  * OWNERSHIP: CORE
  */
@@ -306,237 +385,234 @@ export interface KeyValueStorage {
 }
 
 /**
- * Default in-memory storage implementation (safe default, no plugin deps)
+ * Memory-based fallback implementation (safe default)
+ * Plugins can replace this with MMKV/Keychain/etc.
  */
-class MemoryKeyValueStorage implements KeyValueStorage {
-  private memory: Map<string, string> = new Map();
+function createMemoryStorage(): KeyValueStorage {
+  const memory = new Map<string, string>();
 
-  getString(key: string): string | null {
-    return this.memory.has(key) ? this.memory.get(key)! : null;
-  }
-
-  setString(key: string, value: string): void {
-    this.memory.set(key, value);
-  }
-
-  delete(key: string): void {
-    this.memory.delete(key);
-  }
-
-  clearAll(): void {
-    this.memory.clear();
-  }
+  return {
+    getString(key: string): string | null {
+      return memory.has(key) ? memory.get(key)! : null;
+    },
+    setString(key: string, value: string): void {
+      memory.set(key, value);
+    },
+    delete(key: string): void {
+      memory.delete(key);
+    },
+    clearAll(): void {
+      memory.clear();
+    },
+  };
 }
 
 /**
- * Default storage instance (can be replaced by plugins with MMKV/Keychain)
+ * Default storage instance (memory fallback, can be replaced via plugins)
  */
-export const kvStorage: KeyValueStorage = new MemoryKeyValueStorage();
-` : `/**
- * FILE: packages/@rns/core/contracts/storage-kv.js
+export const kvStorage: KeyValueStorage = createMemoryStorage();
+`;
+  } else {
+    return `/**
+ * FILE: packages/@rns/core/contracts/storage/kv-storage.js
  * PURPOSE: Key-value storage API with memory fallback default
  * OWNERSHIP: CORE
  */
 
 /**
- * Default storage instance (can be replaced by plugins with MMKV/Keychain)
+ * Memory-based fallback implementation (safe default)
+ * Plugins can replace this with MMKV/Keychain/etc.
  */
-const memory = new Map();
+function createMemoryStorage() {
+  const memory = new Map();
 
-export const kvStorage = {
-  getString(key) {
-    return memory.has(key) ? memory.get(key) : null;
-  },
+  return {
+    getString(key) {
+      return memory.has(key) ? memory.get(key) : null;
+    },
+    setString(key, value) {
+      memory.set(key, value);
+    },
+    delete(key) {
+      memory.delete(key);
+    },
+    clearAll() {
+      memory.clear();
+    },
+  };
+}
 
-  setString(key, value) {
-    memory.set(key, value);
-  },
-
-  delete(key) {
-    memory.delete(key);
-  },
-
-  clearAll() {
-    memory.clear();
-  },
-};
+/**
+ * Default storage instance (memory fallback, can be replaced via plugins)
+ */
+export const kvStorage = createMemoryStorage();
 `;
+  }
+}
 
-  const cacheContent = ext === 'ts' ? `/**
- * FILE: packages/@rns/core/contracts/storage-cache.ts
+function generateCacheEngineContract(ext: 'ts' | 'js'): string {
+  if (ext === 'ts') {
+    return `/**
+ * FILE: packages/@rns/core/contracts/storage/cache-engine.ts
  * PURPOSE: Cache engine API with memory fallback default
  * OWNERSHIP: CORE
  */
 
 type CacheValue = unknown;
 
-/**
- * Cache engine interface
- */
-export interface CacheEngine {
-  setSnapshot(key: string, value: CacheValue): void;
-  getSnapshot<T>(key: string): T | undefined;
-  removeSnapshot(key: string): void;
-  clear(): void;
-}
+const MEMORY_CACHE = new Map<string, CacheValue>();
 
-/**
- * Default in-memory cache implementation (safe default, no plugin deps)
- */
-class MemoryCacheEngine implements CacheEngine {
-  private cache: Map<string, CacheValue> = new Map();
-
+export const cacheEngine = {
   setSnapshot(key: string, value: CacheValue): void {
-    this.cache.set(key, value);
-  }
+    MEMORY_CACHE.set(key, value);
+  },
 
   getSnapshot<T>(key: string): T | undefined {
-    return this.cache.get(key) as T | undefined;
-  }
+    return MEMORY_CACHE.get(key) as T | undefined;
+  },
 
   removeSnapshot(key: string): void {
-    this.cache.delete(key);
-  }
+    MEMORY_CACHE.delete(key);
+  },
 
   clear(): void {
-    this.cache.clear();
-  }
-}
-
-/**
- * Default cache engine instance (can be replaced by plugins with persistent storage)
- */
-export const cacheEngine: CacheEngine = new MemoryCacheEngine();
-` : `/**
- * FILE: packages/@rns/core/contracts/storage-cache.js
+    MEMORY_CACHE.clear();
+  },
+};
+`;
+  } else {
+    return `/**
+ * FILE: packages/@rns/core/contracts/storage/cache-engine.js
  * PURPOSE: Cache engine API with memory fallback default
  * OWNERSHIP: CORE
  */
 
-/**
- * Default cache engine instance (can be replaced by plugins with persistent storage)
- */
-const cache = new Map();
+const MEMORY_CACHE = new Map();
 
 export const cacheEngine = {
   setSnapshot(key, value) {
-    cache.set(key, value);
+    MEMORY_CACHE.set(key, value);
   },
 
   getSnapshot(key) {
-    return cache.get(key);
+    return MEMORY_CACHE.get(key);
   },
 
   removeSnapshot(key) {
-    cache.delete(key);
+    MEMORY_CACHE.delete(key);
   },
 
   clear() {
-    cache.clear();
+    MEMORY_CACHE.clear();
   },
 };
 `;
-  
-  writeTextFile(join(coreDir, 'contracts', `storage-kv.${ext}`), kvContent);
-  writeTextFile(join(coreDir, 'contracts', `storage-cache.${ext}`), cacheContent);
+  }
 }
 
-function writeNetworkContract(coreDir: string, ext: string): void {
-  const content = ext === 'ts' ? `/**
+function generateNetworkContract(ext: 'ts' | 'js'): string {
+  if (ext === 'ts') {
+    return `/**
  * FILE: packages/@rns/core/contracts/network.ts
  * PURPOSE: Network connectivity API with stub default
  * OWNERSHIP: CORE
  */
 
-type NetworkChangeListener = (offline: boolean) => void;
+type NetworkListener = (offline: boolean) => void;
 
-/**
- * Network connectivity interface
- */
-export interface NetworkConnectivity {
-  isOffline(): boolean;
-  onNetworkChange(listener: NetworkChangeListener): () => void;
-  init(): void;
+let offline = false;
+const listeners: NetworkListener[] = [];
+
+function emit(nextOffline: boolean): void {
+  offline = nextOffline;
+  listeners.forEach(cb => cb(nextOffline));
 }
 
 /**
- * Default stub implementation (safe default, no plugin deps)
- * Plugins can wire real NetInfo if installed
+ * Check if device is currently offline (stub default - always returns false)
  */
-class StubNetworkConnectivity implements NetworkConnectivity {
-  private offline: boolean = false;
-  private listeners: NetworkChangeListener[] = [];
+export function isOffline(): boolean {
+  return offline;
+}
 
-  isOffline(): boolean {
-    return this.offline;
-  }
-
-  onNetworkChange(listener: NetworkChangeListener): () => void {
-    this.listeners.push(listener);
-    return () => {
-      this.listeners = this.listeners.filter((l) => l !== listener);
-    };
-  }
-
-  init(): void {
-    // Stub: no-op. Plugins can override to wire real NetInfo
-  }
-
-  // Internal method for plugins to update state
-  _setOffline(offline: boolean): void {
-    if (this.offline !== offline) {
-      this.offline = offline;
-      this.listeners.forEach((listener) => listener(offline));
+/**
+ * Subscribe to network changes. Returns unsubscribe function.
+ */
+export function onNetworkChange(cb: NetworkListener): () => void {
+  listeners.push(cb);
+  return () => {
+    const index = listeners.indexOf(cb);
+    if (index > -1) {
+      listeners.splice(index, 1);
     }
-  }
+  };
 }
 
 /**
- * Default network connectivity instance (can be replaced by plugins)
+ * Initialize network monitoring (stub - no-op by default)
+ * Plugins can wire this to @react-native-community/netinfo
  */
-export const networkConnectivity: NetworkConnectivity = new StubNetworkConnectivity();
-` : `/**
+export function initNetInfoBridge(): void {
+  // Stub: no-op default implementation
+  // Plugins will replace this with actual NetInfo integration
+}
+`;
+  } else {
+    return `/**
  * FILE: packages/@rns/core/contracts/network.js
  * PURPOSE: Network connectivity API with stub default
  * OWNERSHIP: CORE
  */
 
-/**
- * Default network connectivity instance (can be replaced by plugins)
- */
 let offline = false;
 const listeners = [];
 
-export const networkConnectivity = {
-  isOffline() {
-    return offline;
-  },
-
-  onNetworkChange(listener) {
-    listeners.push(listener);
-    return () => {
-      const index = listeners.indexOf(listener);
-      if (index > -1) listeners.splice(index, 1);
-    };
-  },
-
-  init() {
-    // Stub: no-op. Plugins can override to wire real NetInfo
-  },
-};
-`;
-  
-  writeTextFile(join(coreDir, 'contracts', `network.${ext}`), content);
+function emit(nextOffline) {
+  offline = nextOffline;
+  listeners.forEach(cb => cb(nextOffline));
 }
 
-function writeTransportContracts(coreDir: string, ext: string): void {
-  const typesContent = ext === 'ts' ? `/**
- * FILE: packages/@rns/core/contracts/transport-types.ts
- * PURPOSE: Transport facade types + interfaces
+/**
+ * Check if device is currently offline (stub default - always returns false)
+ */
+export function isOffline() {
+  return offline;
+}
+
+/**
+ * Subscribe to network changes. Returns unsubscribe function.
+ */
+export function onNetworkChange(cb) {
+  listeners.push(cb);
+  return () => {
+    const index = listeners.indexOf(cb);
+    if (index > -1) {
+      listeners.splice(index, 1);
+    }
+  };
+}
+
+/**
+ * Initialize network monitoring (stub - no-op by default)
+ * Plugins can wire this to @react-native-community/netinfo
+ */
+export function initNetInfoBridge() {
+  // Stub: no-op default implementation
+  // Plugins will replace this with actual NetInfo integration
+}
+`;
+  }
+}
+
+function generateTransportTypesContract(ext: 'ts' | 'js'): string {
+  if (ext === 'ts') {
+    return `/**
+ * FILE: packages/@rns/core/contracts/transport/types.ts
+ * PURPOSE: Transport facade types
  * OWNERSHIP: CORE
  */
 
-export type Operation = string | { type: string; [key: string]: unknown };
+export type Operation = string;
 
 export type TransportRequestMeta = {
   offline?: boolean;
@@ -544,9 +620,6 @@ export type TransportRequestMeta = {
   tags?: string | readonly string[];
 };
 
-/**
- * Transport interface for backend-agnostic data operations
- */
 export interface Transport {
   query<TResponse = unknown, TVariables = unknown>(
     operation: Operation,
@@ -572,313 +645,296 @@ export interface Transport {
     meta?: TransportRequestMeta,
   ): Promise<TResponse>;
 }
-` : `/**
- * FILE: packages/@rns/core/contracts/transport-types.js
- * PURPOSE: Transport facade types + interfaces (JS version has no types)
+`;
+  } else {
+    return `/**
+ * FILE: packages/@rns/core/contracts/transport/types.js
+ * PURPOSE: Transport facade types
  * OWNERSHIP: CORE
  */
 `;
+  }
+}
 
-  const transportContent = ext === 'ts' ? `/**
- * FILE: packages/@rns/core/contracts/transport.ts
- * PURPOSE: Transport facade + noop adapter default
+function generateTransportContract(ext: 'ts' | 'js'): string {
+  if (ext === 'ts') {
+    return `/**
+ * FILE: packages/@rns/core/contracts/transport/transport.ts
+ * PURPOSE: Transport facade with noop adapter default
  * OWNERSHIP: CORE
  */
 
-import type { Transport, Operation, TransportRequestMeta } from './transport-types';
-import { networkConnectivity } from './network';
+import type { Transport, Operation, TransportRequestMeta } from './types';
+import { isOffline } from '../network';
+
+let activeTransport: Transport | null = null;
+let offline = false;
 
 /**
- * Noop adapter implementation (safe default, no plugin deps)
- */
-class NoopTransportAdapter implements Transport {
-  async query<TResponse = unknown, TVariables = unknown>(
-    operation: Operation,
-    variables?: TVariables,
-    meta?: TransportRequestMeta,
-  ): Promise<TResponse> {
-    throw new Error('Transport adapter not configured. Plugins must provide an adapter.');
-  }
-
-  async mutate<TResponse = unknown, TVariables = unknown>(
-    operation: Operation,
-    variables?: TVariables,
-    meta?: TransportRequestMeta,
-  ): Promise<TResponse> {
-    throw new Error('Transport adapter not configured. Plugins must provide an adapter.');
-  }
-
-  subscribe<TData = unknown>(
-    channel: string,
-    handler: (data: TData) => void,
-    meta?: TransportRequestMeta,
-  ): () => void {
-    return () => {};
-  }
-
-  async upload<TResponse = unknown>(
-    operation: Operation,
-    payload: { file: unknown; extra?: Record<string, unknown> },
-    meta?: TransportRequestMeta,
-  ): Promise<TResponse> {
-    throw new Error('Transport adapter not configured. Plugins must provide an adapter.');
-  }
-}
-
-/**
- * Transport wrapper that handles offline mode and delegates to adapter
- */
-class TransportWrapper implements Transport {
-  private adapter: Transport;
-
-  constructor(adapter: Transport) {
-    this.adapter = adapter;
-  }
-
-  setAdapter(adapter: Transport): void {
-    this.adapter = adapter;
-  }
-
-  async query<TResponse = unknown, TVariables = unknown>(
-    operation: Operation,
-    variables?: TVariables,
-    meta?: TransportRequestMeta,
-  ): Promise<TResponse> {
-    if (networkConnectivity.isOffline()) {
-      const err: any = new Error('Offline: query is not available');
-      err.code = 'NETWORK_OFFLINE';
-      throw err;
-    }
-    return this.adapter.query<TResponse, TVariables>(operation, variables, meta);
-  }
-
-  async mutate<TResponse = unknown, TVariables = unknown>(
-    operation: Operation,
-    variables?: TVariables,
-    meta?: TransportRequestMeta,
-  ): Promise<TResponse> {
-    if (networkConnectivity.isOffline()) {
-      // In offline mode, mutations should be queued (handled by offline contracts)
-      // For now, throw error - plugins can wire offline queue
-      const err: any = new Error('Offline: mutation is not available');
-      err.code = 'NETWORK_OFFLINE';
-      throw err;
-    }
-    return this.adapter.mutate<TResponse, TVariables>(operation, variables, meta);
-  }
-
-  subscribe<TData = unknown>(
-    channel: string,
-    handler: (data: TData) => void,
-    meta?: TransportRequestMeta,
-  ): () => void {
-    if (networkConnectivity.isOffline()) {
-      return () => {};
-    }
-    return this.adapter.subscribe<TData>(channel, handler, meta);
-  }
-
-  async upload<TResponse = unknown>(
-    operation: Operation,
-    payload: { file: unknown; extra?: Record<string, unknown> },
-    meta?: TransportRequestMeta,
-  ): Promise<TResponse> {
-    if (networkConnectivity.isOffline()) {
-      const err: any = new Error('Offline: upload is not available');
-      err.code = 'NETWORK_OFFLINE';
-      throw err;
-    }
-    return this.adapter.upload<TResponse>(operation, payload, meta);
-  }
-}
-
-const noopAdapter = new NoopTransportAdapter();
-const transportWrapper = new TransportWrapper(noopAdapter);
-
-/**
- * Default transport instance (can be configured by plugins)
- */
-export const transport = transportWrapper;
-
-/**
- * Set the active transport adapter (called by plugins)
+ * Set the active transport adapter (noop by default)
  */
 export function setTransport(adapter: Transport): void {
-  transportWrapper.setAdapter(adapter);
+  activeTransport = adapter;
 }
-` : `/**
- * FILE: packages/@rns/core/contracts/transport.js
- * PURPOSE: Transport facade + noop adapter default
+
+/**
+ * Set offline mode
+ */
+export function setOfflineMode(enabled: boolean): void {
+  offline = enabled;
+}
+
+/**
+ * Check if offline mode is enabled
+ */
+export function isOfflineMode(): boolean {
+  return offline;
+}
+
+/**
+ * Noop adapter - safe default implementation
+ */
+const noopAdapter: Transport = {
+  async query() {
+    if (offline || isOffline()) {
+      throw new Error('Offline: Cannot perform query while offline');
+    }
+    throw new Error('No transport adapter configured');
+  },
+
+  async mutate() {
+    if (offline || isOffline()) {
+      throw new Error('Offline: Cannot perform mutation while offline');
+    }
+    throw new Error('No transport adapter configured');
+  },
+
+  subscribe() {
+    return () => {}; // no-op unsubscribe
+  },
+
+  async upload() {
+    if (offline || isOffline()) {
+      throw new Error('Offline: Cannot upload while offline');
+    }
+    throw new Error('No transport adapter configured');
+  },
+};
+
+/**
+ * Transport wrapper that uses active adapter or falls back to noop
+ */
+export const transport: Transport = {
+  async query<TResponse = unknown, TVariables = unknown>(
+    operation: Operation,
+    variables?: TVariables,
+    meta?: TransportRequestMeta,
+  ): Promise<TResponse> {
+    if (activeTransport) {
+      return activeTransport.query(operation, variables, meta);
+    }
+    return noopAdapter.query(operation, variables, meta);
+  },
+
+  async mutate<TResponse = unknown, TVariables = unknown>(
+    operation: Operation,
+    variables?: TVariables,
+    meta?: TransportRequestMeta,
+  ): Promise<TResponse> {
+    if (activeTransport) {
+      return activeTransport.mutate(operation, variables, meta);
+    }
+    return noopAdapter.mutate(operation, variables, meta);
+  },
+
+  subscribe<TData = unknown>(
+    channel: string,
+    handler: (data: TData) => void,
+    meta?: TransportRequestMeta,
+  ): () => void {
+    if (activeTransport) {
+      return activeTransport.subscribe(channel, handler, meta);
+    }
+    return noopAdapter.subscribe(channel, handler, meta);
+  },
+
+  async upload<TResponse = unknown>(
+    operation: Operation,
+    payload: { file: unknown; extra?: Record<string, unknown> },
+    meta?: TransportRequestMeta,
+  ): Promise<TResponse> {
+    if (activeTransport) {
+      return activeTransport.upload(operation, payload, meta);
+    }
+    return noopAdapter.upload(operation, payload, meta);
+  },
+};
+`;
+  } else {
+    return `/**
+ * FILE: packages/@rns/core/contracts/transport/transport.js
+ * PURPOSE: Transport facade with noop adapter default
  * OWNERSHIP: CORE
  */
 
-import { networkConnectivity } from './network';
+import { isOffline } from '../network';
+
+let activeTransport = null;
+let offline = false;
 
 /**
- * Noop adapter implementation (safe default, no plugin deps)
- */
-class NoopTransportAdapter {
-  async query(operation, variables, meta) {
-    throw new Error('Transport adapter not configured. Plugins must provide an adapter.');
-  }
-
-  async mutate(operation, variables, meta) {
-    throw new Error('Transport adapter not configured. Plugins must provide an adapter.');
-  }
-
-  subscribe(channel, handler, meta) {
-    return () => {};
-  }
-
-  async upload(operation, payload, meta) {
-    throw new Error('Transport adapter not configured. Plugins must provide an adapter.');
-  }
-}
-
-/**
- * Transport wrapper that handles offline mode and delegates to adapter
- */
-class TransportWrapper {
-  constructor(adapter) {
-    this.adapter = adapter;
-  }
-
-  setAdapter(adapter) {
-    this.adapter = adapter;
-  }
-
-  async query(operation, variables, meta) {
-    if (networkConnectivity.isOffline()) {
-      const err = new Error('Offline: query is not available');
-      err.code = 'NETWORK_OFFLINE';
-      throw err;
-    }
-    return this.adapter.query(operation, variables, meta);
-  }
-
-  async mutate(operation, variables, meta) {
-    if (networkConnectivity.isOffline()) {
-      const err = new Error('Offline: mutation is not available');
-      err.code = 'NETWORK_OFFLINE';
-      throw err;
-    }
-    return this.adapter.mutate(operation, variables, meta);
-  }
-
-  subscribe(channel, handler, meta) {
-    if (networkConnectivity.isOffline()) {
-      return () => {};
-    }
-    return this.adapter.subscribe(channel, handler, meta);
-  }
-
-  async upload(operation, payload, meta) {
-    if (networkConnectivity.isOffline()) {
-      const err = new Error('Offline: upload is not available');
-      err.code = 'NETWORK_OFFLINE';
-      throw err;
-    }
-    return this.adapter.upload(operation, payload, meta);
-  }
-}
-
-const noopAdapter = new NoopTransportAdapter();
-const transportWrapper = new TransportWrapper(noopAdapter);
-
-/**
- * Default transport instance (can be configured by plugins)
- */
-export const transport = transportWrapper;
-
-/**
- * Set the active transport adapter (called by plugins)
+ * Set the active transport adapter (noop by default)
  */
 export function setTransport(adapter) {
-  transportWrapper.setAdapter(adapter);
-}
-`;
-  
-  writeTextFile(join(coreDir, 'contracts', `transport-types.${ext}`), typesContent);
-  writeTextFile(join(coreDir, 'contracts', `transport.${ext}`), transportContent);
+  activeTransport = adapter;
 }
 
-function writeOfflineContracts(coreDir: string, ext: string): void {
-  const queueContent = ext === 'ts' ? `/**
- * FILE: packages/@rns/core/contracts/offline-queue.ts
- * PURPOSE: Offline queue contract with noop default
+/**
+ * Set offline mode
+ */
+export function setOfflineMode(enabled) {
+  offline = enabled;
+}
+
+/**
+ * Check if offline mode is enabled
+ */
+export function isOfflineMode() {
+  return offline;
+}
+
+/**
+ * Noop adapter - safe default implementation
+ */
+const noopAdapter = {
+  async query() {
+    if (offline || isOffline()) {
+      throw new Error('Offline: Cannot perform query while offline');
+    }
+    throw new Error('No transport adapter configured');
+  },
+
+  async mutate() {
+    if (offline || isOffline()) {
+      throw new Error('Offline: Cannot perform mutation while offline');
+    }
+    throw new Error('No transport adapter configured');
+  },
+
+  subscribe() {
+    return () => {}; // no-op unsubscribe
+  },
+
+  async upload() {
+    if (offline || isOffline()) {
+      throw new Error('Offline: Cannot upload while offline');
+    }
+    throw new Error('No transport adapter configured');
+  },
+};
+
+/**
+ * Transport wrapper that uses active adapter or falls back to noop
+ */
+export const transport = {
+  async query(operation, variables, meta) {
+    if (activeTransport) {
+      return activeTransport.query(operation, variables, meta);
+    }
+    return noopAdapter.query(operation, variables, meta);
+  },
+
+  async mutate(operation, variables, meta) {
+    if (activeTransport) {
+      return activeTransport.mutate(operation, variables, meta);
+    }
+    return noopAdapter.mutate(operation, variables, meta);
+  },
+
+  subscribe(channel, handler, meta) {
+    if (activeTransport) {
+      return activeTransport.subscribe(channel, handler, meta);
+    }
+    return noopAdapter.subscribe(channel, handler, meta);
+  },
+
+  async upload(operation, payload, meta) {
+    if (activeTransport) {
+      return activeTransport.upload(operation, payload, meta);
+    }
+    return noopAdapter.upload(operation, payload, meta);
+  },
+};
+`;
+  }
+}
+
+function generateOfflineQueueContract(ext: 'ts' | 'js'): string {
+  if (ext === 'ts') {
+    return `/**
+ * FILE: packages/@rns/core/contracts/offline/offline-queue.ts
+ * PURPOSE: Offline queue contract with noop defaults
  * OWNERSHIP: CORE
  */
 
-import type { Operation } from './transport-types';
+export type Operation = string;
+export type Tag = string;
 
 export interface OfflineMutation {
   id: string;
   operation: Operation;
   variables: unknown;
   createdAt: number;
-  tags?: string[];
+  tags?: Tag[];
 }
 
 /**
- * Offline queue interface
+ * In-memory queue (noop defaults - no persistence)
  */
-export interface OfflineQueue {
-  push(operation: Operation, variables: unknown, tags?: readonly string[]): void;
-  getAll(): OfflineMutation[];
-  remove(id: string): void;
-  clear(): void;
-}
+const MEMORY_QUEUE: OfflineMutation[] = [];
 
-/**
- * Default in-memory queue implementation (safe default, no plugin deps)
- */
-class MemoryOfflineQueue implements OfflineQueue {
-  private queue: OfflineMutation[] = [];
-
-  push(operation: Operation, variables: unknown, tags?: readonly string[]): void {
-    this.queue.push({
+export const offlineQueue = {
+  push(operation: Operation, variables: unknown, tags?: readonly Tag[]): void {
+    MEMORY_QUEUE.push({
       id: Math.random().toString(36).slice(2),
       operation,
       variables,
       createdAt: Date.now(),
       tags: tags ? [...tags] : undefined,
     });
-  }
+  },
 
   getAll(): OfflineMutation[] {
-    return [...this.queue];
-  }
+    return [...MEMORY_QUEUE];
+  },
 
   remove(id: string): void {
-    const index = this.queue.findIndex((item) => item.id === id);
-    if (index !== -1) {
-      this.queue.splice(index, 1);
+    const index = MEMORY_QUEUE.findIndex(q => q.id === id);
+    if (index > -1) {
+      MEMORY_QUEUE.splice(index, 1);
     }
-  }
+  },
 
   clear(): void {
-    this.queue.length = 0;
-  }
-}
-
-/**
- * Default offline queue instance (can be replaced by plugins with persistent storage)
- */
-export const offlineQueue: OfflineQueue = new MemoryOfflineQueue();
-` : `/**
- * FILE: packages/@rns/core/contracts/offline-queue.js
- * PURPOSE: Offline queue contract with noop default
+    MEMORY_QUEUE.length = 0;
+  },
+};
+`;
+  } else {
+    return `/**
+ * FILE: packages/@rns/core/contracts/offline/offline-queue.js
+ * PURPOSE: Offline queue contract with noop defaults
  * OWNERSHIP: CORE
  */
 
 /**
- * Default offline queue instance (can be replaced by plugins with persistent storage)
+ * In-memory queue (noop defaults - no persistence)
  */
-const queue = [];
+const MEMORY_QUEUE = [];
 
 export const offlineQueue = {
   push(operation, variables, tags) {
-    queue.push({
+    MEMORY_QUEUE.push({
       id: Math.random().toString(36).slice(2),
       operation,
       variables,
@@ -888,162 +944,120 @@ export const offlineQueue = {
   },
 
   getAll() {
-    return [...queue];
+    return [...MEMORY_QUEUE];
   },
 
   remove(id) {
-    const index = queue.findIndex((item) => item.id === id);
-    if (index !== -1) {
-      queue.splice(index, 1);
+    const index = MEMORY_QUEUE.findIndex(q => q.id === id);
+    if (index > -1) {
+      MEMORY_QUEUE.splice(index, 1);
     }
   },
 
   clear() {
-    queue.length = 0;
+    MEMORY_QUEUE.length = 0;
   },
 };
 `;
+  }
+}
 
-  const syncContent = ext === 'ts' ? `/**
- * FILE: packages/@rns/core/contracts/sync-engine.ts
- * PURPOSE: Sync engine contract with noop default
+function generateSyncEngineContract(ext: 'ts' | 'js'): string {
+  if (ext === 'ts') {
+    return `/**
+ * FILE: packages/@rns/core/contracts/offline/sync-engine.ts
+ * PURPOSE: Sync engine contract with noop defaults (no background work)
  * OWNERSHIP: CORE
  */
 
 import { offlineQueue } from './offline-queue';
-import { transport } from './transport';
+import { transport } from '../transport/transport';
 
 /**
- * Sync engine interface for offline → online synchronization
- */
-export interface SyncEngine {
-  replayOfflineMutations(): Promise<void>;
-  onConnected(): Promise<void>;
-}
-
-/**
- * Default sync engine implementation (safe default, noop without plugin wiring)
- */
-class DefaultSyncEngine implements SyncEngine {
-  async replayOfflineMutations(): Promise<void> {
-    const items = offlineQueue.getAll();
-    
-    for (const item of items) {
-      try {
-        await transport.mutate(item.operation, item.variables);
-        offlineQueue.remove(item.id);
-      } catch {
-        // Stop on first failure
-        return;
-      }
-    }
-  }
-
-  async onConnected(): Promise<void> {
-    await this.replayOfflineMutations();
-  }
-}
-
-/**
- * Default sync engine instance (can be enhanced by plugins)
- */
-export const syncEngine: SyncEngine = new DefaultSyncEngine();
-` : `/**
- * FILE: packages/@rns/core/contracts/sync-engine.js
- * PURPOSE: Sync engine contract with noop default
- * OWNERSHIP: CORE
- */
-
-import { offlineQueue } from './offline-queue';
-import { transport } from './transport';
-
-/**
- * Default sync engine instance (can be enhanced by plugins)
+ * Sync engine with noop defaults (no automatic sync without plugin)
  */
 export const syncEngine = {
-  async replayOfflineMutations() {
-    const items = offlineQueue.getAll();
-    
-    for (const item of items) {
-      try {
-        await transport.mutate(item.operation, item.variables);
-        offlineQueue.remove(item.id);
-      } catch {
-        // Stop on first failure
-        return;
-      }
-    }
+  /**
+   * Replay offline mutations (noop by default, requires plugin to wire)
+   */
+  async replayOfflineMutations(): Promise<void> {
+    // No-op: requires plugin to implement actual replay logic
   },
 
-  async onConnected() {
-    await this.replayOfflineMutations();
+  /**
+   * Called when connectivity is restored (noop by default)
+   */
+  async onConnected(): Promise<void> {
+    // No-op: requires plugin to implement actual sync logic
   },
 };
 `;
-  
-  writeTextFile(join(coreDir, 'contracts', `offline-queue.${ext}`), queueContent);
-  writeTextFile(join(coreDir, 'contracts', `sync-engine.${ext}`), syncContent);
-}
-
-function updateCoreIndex(coreDir: string, ext: string): void {
-  const content = ext === 'ts' ? `/**
- * FILE: packages/@rns/core/index.ts
- * PURPOSE: CORE contracts and safe defaults (plugin-free)
+  } else {
+    return `/**
+ * FILE: packages/@rns/core/contracts/offline/sync-engine.js
+ * PURPOSE: Sync engine contract with noop defaults (no background work)
  * OWNERSHIP: CORE
  */
 
-// Logging
-export { logger, type Logger, type LogLevel } from './contracts/logging';
+import { offlineQueue } from './offline-queue';
+import { transport } from '../transport/transport';
 
-// Error
-export { normalizeError, type NormalizedError } from './contracts/error';
-
-// Storage
-export { kvStorage, type KeyValueStorage } from './contracts/storage-kv';
-export { cacheEngine, type CacheEngine } from './contracts/storage-cache';
-
-// Network
-export { networkConnectivity, type NetworkConnectivity } from './contracts/network';
-
-// Transport
-export {
-  transport,
-  setTransport,
-  type Transport,
-  type Operation,
-  type TransportRequestMeta,
-} from './contracts/transport';
-
-// Offline
-export { offlineQueue, type OfflineQueue, type OfflineMutation } from './contracts/offline-queue';
-export { syncEngine, type SyncEngine } from './contracts/sync-engine';
-` : `/**
- * FILE: packages/@rns/core/index.js
- * PURPOSE: CORE contracts and safe defaults (plugin-free)
- * OWNERSHIP: CORE
+/**
+ * Sync engine with noop defaults (no automatic sync without plugin)
  */
+export const syncEngine = {
+  /**
+   * Replay offline mutations (noop by default, requires plugin to wire)
+   */
+  async replayOfflineMutations() {
+    // No-op: requires plugin to implement actual replay logic
+  },
 
-// Logging
-export { logger } from './contracts/logging';
-
-// Error
-export { normalizeError } from './contracts/error';
-
-// Storage
-export { kvStorage } from './contracts/storage-kv';
-export { cacheEngine } from './contracts/storage-cache';
-
-// Network
-export { networkConnectivity } from './contracts/network';
-
-// Transport
-export { transport, setTransport } from './contracts/transport';
-
-// Offline
-export { offlineQueue } from './contracts/offline-queue';
-export { syncEngine } from './contracts/sync-engine';
+  /**
+   * Called when connectivity is restored (noop by default)
+   */
+  async onConnected() {
+    // No-op: requires plugin to implement actual sync logic
+  },
+};
 `;
-  
-  writeTextFile(join(coreDir, `index.${ext}`), content);
+  }
 }
 
+function generateContractsIndex(ext: 'ts' | 'js'): string {
+  if (ext === 'ts') {
+    return `/**
+ * FILE: packages/@rns/core/contracts/index.ts
+ * PURPOSE: Export all CORE contracts
+ * OWNERSHIP: CORE
+ */
+
+export * from './logging';
+export * from './error';
+export * from './network';
+export * from './storage/kv-storage';
+export * from './storage/cache-engine';
+export * from './transport/types';
+export * from './transport/transport';
+export * from './offline/offline-queue';
+export * from './offline/sync-engine';
+`;
+  } else {
+    return `/**
+ * FILE: packages/@rns/core/contracts/index.js
+ * PURPOSE: Export all CORE contracts
+ * OWNERSHIP: CORE
+ */
+
+export * from './logging';
+export * from './error';
+export * from './network';
+export * from './storage/kv-storage';
+export * from './storage/cache-engine';
+export * from './transport/types';
+export * from './transport/transport';
+export * from './offline/offline-queue';
+export * from './offline/sync-engine';
+`;
+  }
+}
