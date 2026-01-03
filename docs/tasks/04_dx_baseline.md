@@ -39,15 +39,15 @@ OWNERSHIP: CORE(packages/@rns) + INIT(host configs)
 - [x] Init attaches any required config/scripts automatically and keeps user code clean.
 
 ## 4.4 Env pipeline (typed access)
-- [ ] `.env.example` exists after init (host root).
-- [ ] Typed env access is implemented in CLI-owned code:
-  - [ ] `packages/@rns/core/config/env.ts` provides typed access pattern.
-- [ ] Expo target:
-  - [ ] Env access is wired through the chosen baseline approach (FULL_AUTO; no manual steps).
-- [ ] Bare target:
-  - [ ] Env access is wired through the chosen baseline approach (FULL_AUTO; no manual steps).
-- [ ] Env access compiles even if `.env` is missing:
-  - [ ] safe defaults OR clear, actionable runtime error message (defined by CORE).
+- [x] `.env.example` exists after init (host root).
+- [x] Typed env access is implemented in CLI-owned code:
+  - [x] `packages/@rns/core/config/env.ts` provides typed access pattern.
+- [x] Expo target:
+  - [x] Env access is wired through the chosen baseline approach (FULL_AUTO; no manual steps). (uses expo-constants with safe fallbacks)
+- [x] Bare target:
+  - [x] Env access is wired through the chosen baseline approach (FULL_AUTO; no manual steps). (uses react-native-config with safe fallbacks)
+- [x] Env access compiles even if `.env` is missing:
+  - [x] safe defaults OR clear, actionable runtime error message (defined by CORE). (safe defaults provided for all env vars)
 
 ## 4.5 Base scripts (developer workflow)
 - [ ] Add baseline scripts into generated app `package.json` (clean/doctor/reset/etc. as defined by CLI).

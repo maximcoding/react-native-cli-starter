@@ -546,3 +546,166 @@ ${config.assets.map((path: string) => `    '${path}',`).join('\n')}
   writeTextFile(reactNativeConfigPath, configContent);
 }
 
+/**
+ * Configures environment variable pipeline (section 4.4)
+ * - Creates .env.example file
+ * - Creates typed env access in @rns/core/config/env.ts
+ */
+export function configureEnvPipeline(
+  appRoot: string,
+  inputs: InitInputs
+): void {
+  // Create .env.example file
+  createEnvExample(appRoot);
+
+  // Create typed env access in CORE
+  const coreConfigDir = join(appRoot, 'packages', '@rns', 'core', 'config');
+  ensureDir(coreConfigDir);
+  createTypedEnvAccess(coreConfigDir, inputs);
+}
+
+/**
+ * Creates .env.example file in host root
+ */
+function createEnvExample(appRoot: string): void {
+  const envExamplePath = join(appRoot, '.env.example');
+  
+  if (!pathExists(envExamplePath)) {
+    const envExampleContent = `# Environment Variables
+# Copy this file to .env and fill in your values
+# DO NOT commit .env to version control
+
+# API Configuration
+API_URL=https://api.example.com
+WS_URL=wss://api.example.com
+
+# Environment
+ENV=development
+
+# Feature Flags
+USE_MOCK_API=0
+
+# Add your environment variables here
+`;
+    writeTextFile(envExamplePath, envExampleContent);
+  }
+}
+
+/**
+ * Creates typed env access in @rns/core/config/env.ts
+ */
+function createTypedEnvAccess(coreConfigDir: string, inputs: InitInputs): void {
+  const ext = inputs.language === 'ts' ? 'ts' : 'js';
+  const envConfigPath = join(coreConfigDir, `env.${ext}`);
+  
+  if (inputs.language === 'ts') {
+    const envConfigContent = `/**
+ * FILE: packages/@rns/core/config/env.ts
+ * PURPOSE: Typed environment variable access with safe defaults
+ * OWNERSHIP: CORE
+ * 
+ * PLUGIN-FREE GUARANTEE:
+ * - Uses expo-constants (Expo) or react-native-config (Bare) if available
+ * - Falls back to safe defaults if packages not installed
+ * - Compiles even if .env is missing
+ */
+
+${inputs.target === 'expo' 
+  ? `import Constants from 'expo-constants';
+  
+/**
+ * Typed environment variable access
+ * Safe defaults ensure compilation even if .env is missing
+ */
+export const env = {
+  API_URL: (Constants.expoConfig?.extra?.env?.API_URL ?? process.env.API_URL ?? '').trim(),
+  WS_URL: (Constants.expoConfig?.extra?.env?.WS_URL ?? process.env.WS_URL ?? '').trim(),
+  ENV: (Constants.expoConfig?.extra?.env?.ENV ?? process.env.ENV ?? (__DEV__ ? 'development' : 'production')).trim(),
+  USE_MOCK_API: (Constants.expoConfig?.extra?.env?.USE_MOCK_API ?? process.env.USE_MOCK_API ?? '0') === '1',
+} as const;
+`
+  : `let Config: any = null;
+
+// Try to load react-native-config if available (Bare target)
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  Config = require('react-native-config').default || require('react-native-config');
+} catch {
+  // react-native-config not installed - use process.env with safe defaults
+  Config = {};
+}
+
+/**
+ * Typed environment variable access
+ * Safe defaults ensure compilation even if .env is missing
+ */
+export const env = {
+  API_URL: (Config.API_URL ?? process.env.API_URL ?? '').trim(),
+  WS_URL: (Config.WS_URL ?? process.env.WS_URL ?? '').trim(),
+  ENV: (Config.ENV ?? process.env.ENV ?? (__DEV__ ? 'development' : 'production')).trim(),
+  USE_MOCK_API: (Config.USE_MOCK_API ?? process.env.USE_MOCK_API ?? '0') === '1',
+} as const;
+`}
+`;
+    writeTextFile(envConfigPath, envConfigContent);
+  } else {
+    const envConfigContent = `/**
+ * FILE: packages/@rns/core/config/env.js
+ * PURPOSE: Typed environment variable access with safe defaults
+ * OWNERSHIP: CORE
+ * 
+ * PLUGIN-FREE GUARANTEE:
+ * - Uses expo-constants (Expo) or react-native-config (Bare) if available
+ * - Falls back to safe defaults if packages not installed
+ * - Compiles even if .env is missing
+ */
+
+${inputs.target === 'expo' 
+  ? `import Constants from 'expo-constants';
+  
+/**
+ * Typed environment variable access
+ * Safe defaults ensure compilation even if .env is missing
+ */
+export const env = {
+  API_URL: (Constants.expoConfig?.extra?.env?.API_URL ?? process.env.API_URL ?? '').trim(),
+  WS_URL: (Constants.expoConfig?.extra?.env?.WS_URL ?? process.env.WS_URL ?? '').trim(),
+  ENV: (Constants.expoConfig?.extra?.env?.ENV ?? process.env.ENV ?? (__DEV__ ? 'development' : 'production')).trim(),
+  USE_MOCK_API: (Constants.expoConfig?.extra?.env?.USE_MOCK_API ?? process.env.USE_MOCK_API ?? '0') === '1',
+};
+`
+  : `let Config = null;
+
+// Try to load react-native-config if available (Bare target)
+try {
+  Config = require('react-native-config').default || require('react-native-config');
+} catch {
+  // react-native-config not installed - use process.env with safe defaults
+  Config = {};
+}
+
+/**
+ * Typed environment variable access
+ * Safe defaults ensure compilation even if .env is missing
+ */
+export const env = {
+  API_URL: (Config.API_URL ?? process.env.API_URL ?? '').trim(),
+  WS_URL: (Config.WS_URL ?? process.env.WS_URL ?? '').trim(),
+  ENV: (Config.ENV ?? process.env.ENV ?? (__DEV__ ? 'development' : 'production')).trim(),
+  USE_MOCK_API: (Config.USE_MOCK_API ?? process.env.USE_MOCK_API ?? '0') === '1',
+};
+`}
+`;
+    writeTextFile(envConfigPath, envConfigContent);
+  }
+
+  // Create index file to export env
+  const indexPath = join(coreConfigDir, `index.${ext}`);
+  const indexContent = inputs.language === 'ts'
+    ? `export * from './env';
+`
+    : `export * from './env';
+`;
+  writeTextFile(indexPath, indexContent);
+}
+
