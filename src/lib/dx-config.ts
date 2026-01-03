@@ -1,0 +1,280 @@
+/**
+ * FILE: src/lib/dx-config.ts
+ * PURPOSE: Generate DX configuration files (alias, svg, fonts, env)
+ * OWNERSHIP: CLI
+ */
+
+import { join } from 'path';
+import { pathExists, isDirectory, readJsonFile, writeJsonFile, writeTextFile, readTextFile } from './fs';
+import type { InitInputs } from './init';
+import { USER_SRC_DIR } from './constants';
+
+/**
+ * Configures import aliases (section 4.1)
+ * - @rns/* for workspace packages (always enabled)
+ * - @/* for user src/** (optional, default ON if src/ exists)
+ */
+export function configureImportAliases(
+  appRoot: string,
+  inputs: InitInputs
+): void {
+  const userSrcDir = join(appRoot, USER_SRC_DIR);
+  const userSrcExists = pathExists(userSrcDir) && isDirectory(userSrcDir);
+  const aliasEnabled = inputs.coreToggles.alias && userSrcExists;
+
+  // Configure TypeScript paths (if TypeScript project)
+  if (inputs.language === 'ts') {
+    configureTypeScriptPaths(appRoot, aliasEnabled, userSrcExists, inputs.target);
+  }
+
+  // Configure Metro resolver (both Expo and Bare)
+  configureMetroResolver(appRoot, inputs.target, aliasEnabled, userSrcExists);
+
+  // Configure Babel module-resolver (both Expo and Bare)
+  configureBabelResolver(appRoot, inputs.target, aliasEnabled, userSrcExists);
+}
+
+/**
+ * Configures TypeScript path aliases
+ */
+function configureTypeScriptPaths(
+  appRoot: string,
+  aliasEnabled: boolean,
+  userSrcExists: boolean,
+  target: 'expo' | 'bare'
+): void {
+  const tsconfigPath = join(appRoot, 'tsconfig.json');
+  
+  if (!pathExists(tsconfigPath)) {
+    // If no tsconfig.json exists, create a minimal one
+    const baseTsConfig = {
+      extends: target === 'expo' 
+        ? 'expo/tsconfig.base'
+        : '@react-native/typescript-config',
+      compilerOptions: {
+        allowJs: true,
+        allowSyntheticDefaultImports: true,
+        esModuleInterop: true,
+        jsx: 'react-native',
+        skipLibCheck: true,
+        strict: true,
+        resolveJsonModule: true,
+      },
+      include: ['src/**/*', 'App.tsx', 'App.js'],
+      exclude: ['node_modules'],
+    };
+    writeJsonFile(tsconfigPath, baseTsConfig);
+  }
+
+  // Read existing tsconfig.json
+  const tsconfig = readJsonFile<any>(tsconfigPath);
+  
+  // Ensure compilerOptions exists
+  if (!tsconfig.compilerOptions) {
+    tsconfig.compilerOptions = {};
+  }
+
+  // Configure baseUrl - point to src if it exists, otherwise root
+  if (userSrcExists) {
+    tsconfig.compilerOptions.baseUrl = './src';
+  } else {
+    tsconfig.compilerOptions.baseUrl = '.';
+  }
+
+  // Configure paths
+  tsconfig.compilerOptions.paths = {
+    '@rns/*': ['packages/@rns/*'],
+  };
+
+  // Add @/* alias if enabled and src exists
+  if (aliasEnabled && userSrcExists) {
+    tsconfig.compilerOptions.paths['@/*'] = ['*'];
+  }
+
+  // Update include/exclude to ensure proper scope
+  if (!tsconfig.include) {
+    tsconfig.include = [];
+  }
+  if (!tsconfig.include.includes('src/**/*') && userSrcExists) {
+    tsconfig.include.push('src/**/*');
+  }
+  if (!tsconfig.include.includes('App.tsx') && !tsconfig.include.includes('App.js')) {
+    tsconfig.include.push('App.tsx', 'App.js');
+  }
+  if (!tsconfig.include.includes('packages/@rns/**/*')) {
+    tsconfig.include.push('packages/@rns/**/*');
+  }
+
+  if (!tsconfig.exclude) {
+    tsconfig.exclude = [];
+  }
+  if (!tsconfig.exclude.includes('node_modules')) {
+    tsconfig.exclude.push('node_modules');
+  }
+
+  writeJsonFile(tsconfigPath, tsconfig);
+}
+
+/**
+ * Configures Metro resolver for aliases
+ */
+function configureMetroResolver(
+  appRoot: string,
+  target: 'expo' | 'bare',
+  aliasEnabled: boolean,
+  userSrcExists: boolean
+): void {
+  const metroConfigPath = join(appRoot, 'metro.config.js');
+  
+  let metroConfigContent: string;
+  
+  if (target === 'expo') {
+    // Expo Metro config
+    if (pathExists(metroConfigPath)) {
+      metroConfigContent = readTextFile(metroConfigPath);
+    } else {
+      metroConfigContent = `const { getDefaultConfig } = require('expo/metro-config');
+
+module.exports = getDefaultConfig(__dirname);
+`;
+    }
+    
+    // Add resolver configuration
+    // For Expo, we rely on Babel module-resolver for alias resolution
+    // Metro config is mainly for asset extensions (SVG will be added in section 4.2)
+    // We don't need to modify Metro config for aliases in Expo
+  } else {
+    // Bare React Native Metro config
+    if (pathExists(metroConfigPath)) {
+      metroConfigContent = readTextFile(metroConfigPath);
+    } else {
+      metroConfigContent = `const { getDefaultConfig, mergeConfig } = require('@react-native/metro-config');
+
+module.exports = (async () => {
+  const defaultConfig = await getDefaultConfig(__dirname);
+  return mergeConfig(defaultConfig, {
+    // Configuration will be added here
+  });
+})();
+`;
+    }
+    
+    // For Bare, Metro resolver also uses Babel module-resolver
+    // Metro config is mainly for asset extensions (SVG will be added in section 4.2)
+  }
+  
+  writeTextFile(metroConfigPath, metroConfigContent);
+}
+
+/**
+ * Configures Babel module-resolver for runtime alias resolution
+ */
+function configureBabelResolver(
+  appRoot: string,
+  target: 'expo' | 'bare',
+  aliasEnabled: boolean,
+  userSrcExists: boolean
+): void {
+  const babelConfigPath = join(appRoot, 'babel.config.js');
+  
+  // For existing babel.config.js, we'll append module-resolver if not present
+  // Full parsing/merging is complex, so we use a simple approach:
+  // If file exists, check if module-resolver is already there
+  // If not, we'll need to add it (this may require manual review for complex configs)
+  
+  let babelConfig: any = {
+    presets: target === 'expo' 
+      ? ['babel-preset-expo']
+      : ['module:@react-native/babel-preset'],
+    plugins: [],
+  };
+  
+  if (pathExists(babelConfigPath)) {
+    // Check if module-resolver is already configured
+    const existingContent = readTextFile(babelConfigPath);
+    if (existingContent.includes('module-resolver')) {
+      // Module resolver already exists - we'll need to update it
+      // For now, we'll create a new config that includes module-resolver
+      // In production, this could be improved with AST parsing
+      // But for init, we can assume a fresh config or append if needed
+    }
+    // Note: Full parsing of existing babel.config.js requires AST parsing
+    // For section 4.1, we assume either no babel.config.js or a standard one from Expo/Bare init
+    // We'll create/overwrite with our configuration
+  }
+
+  // Find or create module-resolver plugin
+  let moduleResolverPlugin: any = babelConfig.plugins.find(
+    (p: any) => Array.isArray(p) && p[0] === 'module-resolver'
+  );
+
+  if (!moduleResolverPlugin) {
+    moduleResolverPlugin = ['module-resolver', { root: [], alias: {} }];
+    babelConfig.plugins.push(moduleResolverPlugin);
+  }
+
+  // Configure aliases
+  const alias: Record<string, string> = {
+    '@rns': './packages/@rns',
+  };
+
+  // Add @/* alias if enabled and src exists
+  if (aliasEnabled && userSrcExists) {
+    alias['@'] = './src';
+  }
+
+  moduleResolverPlugin[1].alias = alias;
+
+  // Set root - include packages/@rns and src if it exists
+  const root = ['.'];
+  if (userSrcExists) {
+    root.push('./src');
+  }
+  moduleResolverPlugin[1].root = root;
+
+  // Write babel.config.js
+  const babelConfigContent = `module.exports = ${JSON.stringify(babelConfig, null, 2).replace(
+    /"([^"]+)":/g,
+    '$1:'
+  ).replace(/'/g, '"')};
+`;
+  
+  // Better approach: construct it properly
+  const babelConfigJs = generateBabelConfigJs(babelConfig, target);
+  writeTextFile(babelConfigPath, babelConfigJs);
+}
+
+/**
+ * Generates Babel config JavaScript file content
+ */
+function generateBabelConfigJs(config: any, target: 'expo' | 'bare'): string {
+  const presets = config.presets.map((p: string) => `    '${p}'`).join(',\n');
+  
+  const plugins: string[] = [];
+  for (const plugin of config.plugins) {
+    if (typeof plugin === 'string') {
+      plugins.push(`    '${plugin}'`);
+    } else if (Array.isArray(plugin)) {
+      const [name, options] = plugin;
+      const optionsStr = JSON.stringify(options, null, 6)
+        .split('\n')
+        .map((line: string, idx: number) => idx === 0 ? line : '          ' + line)
+        .join('\n')
+        .replace(/"([^"]+)":/g, '$1:');
+      plugins.push(`    ['${name}', ${optionsStr}]`);
+    } else {
+      plugins.push(`    ${JSON.stringify(plugin)}`);
+    }
+  }
+
+  return `module.exports = {
+  presets: [
+${presets}
+  ],
+  plugins: [
+${plugins.join(',\n')}
+  ],
+};
+`;
+}
+

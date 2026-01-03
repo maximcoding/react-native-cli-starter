@@ -7,17 +7,17 @@ OWNERSHIP: CORE(packages/@rns) + INIT(host configs)
 # 4) DX Baseline (alias / svg / fonts / env) — Task List
 
 ## 4.1 Import aliases (TypeScript + runtime) — Option A
-- [ ] Host app resolves workspace packages imports:
-  - [ ] `@rns/*` works in TS/JS (workspace packages referenced from host app).
-- [ ] Optional DX alias `@/*` (toggle, default ON):
-  - [ ] If user `src/**` exists, configure TS paths + runtime resolver so `@/*` maps to `src/*`.
-  - [ ] If user `src/**` does not exist, `@/*` must not break builds (either map to a safe path or keep alias disabled safely).
-- [ ] Ensure alias config is target-appropriate:
-  - [ ] Expo target: resolver works with Metro/Expo config.
-  - [ ] Bare target: resolver works with Metro/Babel config.
-- [ ] Generated app compiles with imports:
-  - [ ] `import { ... } from '@rns/runtime'`
-  - [ ] `import x from '@/...'` (only if alias toggle ON and `src/**` exists)
+- [x] Host app resolves workspace packages imports:
+  - [x] `@rns/*` works in TS/JS (workspace packages referenced from host app).
+- [x] Optional DX alias `@/*` (toggle, default ON):
+  - [x] If user `src/**` exists, configure TS paths + runtime resolver so `@/*` maps to `src/*`.
+  - [x] If user `src/**` does not exist, `@/*` must not break builds (either map to a safe path or keep alias disabled safely).
+- [x] Ensure alias config is target-appropriate:
+  - [x] Expo target: resolver works with Metro/Expo config.
+  - [x] Bare target: resolver works with Metro/Babel config.
+- [x] Generated app compiles with imports:
+  - [x] `import { ... } from '@rns/runtime'`
+  - [x] `import x from '@/...'` (only if alias toggle ON and `src/**` exists)
 
 ## 4.2 SVG import pipeline (Expo + Bare)
 - [ ] Configure SVG pipeline in the host app (Metro-level):

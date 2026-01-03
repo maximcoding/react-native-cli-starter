@@ -25,6 +25,7 @@ import { getCliVersion } from './version';
 import { verifyInitResult, verifyCoreBaselineAcceptance } from './init-verification';
 import { generateCoreContracts } from './core-contracts';
 import { generateRuntimeComposition } from './runtime-composition';
+import { configureImportAliases } from './dx-config';
 
 export interface InitOptions {
   projectName?: string;
@@ -450,7 +451,7 @@ export default function App() {
 }
 
 /**
- * Applies CORE DX configs (stub - will be completed in section 04)
+ * Applies CORE DX configs (section 04)
  * 
  * BLUEPRINT REFERENCE RULE (section 2.4):
  * - Reference docs/ReactNativeCLITemplate/ for config patterns (babel.config.js,
@@ -464,9 +465,12 @@ function applyCoreDxConfigs(
 ): void {
   stepRunner.start('Apply CORE DX configs');
   
-  // TODO: Apply configs for alias/svg/fonts/env (section 04)
-  // Reference blueprint config patterns but apply to generated app structure
-  // For now, this is a placeholder
+  // 4.1: Configure import aliases (@rns/* and optional @/*)
+  if (inputs.coreToggles.alias) {
+    configureImportAliases(appRoot, inputs);
+  }
+  
+  // TODO: 4.2-4.4: SVG, fonts, env configs (will be added in subsequent sections)
   
   stepRunner.ok('Apply CORE DX configs');
 }
