@@ -7,7 +7,7 @@
 import { RuntimeContext } from './runtime';
 import { createStepRunner } from './step-runner';
 import { CliError, ExitCode } from './errors';
-import { promptText, promptSelect, promptMultiSelect, promptConfirm } from './prompts';
+import { promptText, promptSelect, promptMultiSelect, promptConfirm, setPromptLogger } from './prompts';
 import { join, resolve, dirname } from 'path';
 import { pathExists, ensureDir, writeJsonFile, readJsonFile, isDirectory, writeTextFile } from './fs';
 import { execCommand, execPackageManager } from './exec';
@@ -27,6 +27,7 @@ import { verifyDxBaselineAcceptance } from './dx-verification';
 import { generateCoreContracts } from './core-contracts';
 import { generateRuntimeComposition } from './runtime-composition';
 import { configureImportAliases, configureSvgPipeline, configureFontsPipeline, configureEnvPipeline, configureBaseScripts } from './dx-config';
+import { resolveLocalDepSpec } from './utils';
 
 export interface InitOptions {
   projectName?: string;
@@ -374,7 +375,10 @@ function installWorkspacePackages(
     main: inputs.language === 'ts' ? 'index.ts' : 'index.js',
     private: true,
     dependencies: {
-      [CORE_PACKAGE_NAME]: 'workspace:*', // Internal workspace package
+      [CORE_PACKAGE_NAME]: resolveLocalDepSpec(inputs.packageManager, {
+        packageName: CORE_PACKAGE_NAME,
+        relativePath: '../core',
+      }),
       'react': '^18.0.0', // React Native core dependency
       'react-native': '^0.74.0', // React Native core dependency
       // No plugin dependencies - plugins integrate via registries/hooks
@@ -449,6 +453,9 @@ export * from './contracts';
   const hostPackageJsonPath = join(appRoot, 'package.json');
   if (pathExists(hostPackageJsonPath)) {
     const hostPackageJson = readJsonFile<any>(hostPackageJsonPath);
+    
+    // Ensure private: true (required for workspace packages)
+    hostPackageJson.private = true;
     
     // Add workspaces configuration
     if (inputs.packageManager === 'pnpm') {
