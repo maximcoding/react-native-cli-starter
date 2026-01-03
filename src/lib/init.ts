@@ -23,6 +23,7 @@ import {
 } from './constants';
 import { getCliVersion } from './version';
 import { verifyInitResult } from './init-verification';
+import { generateCoreContracts } from './core-contracts';
 
 export interface InitOptions {
   projectName?: string;
@@ -394,6 +395,10 @@ export function RnsApp() {
   
   writeTextFile(join(coreDir, `index.${inputs.language === 'ts' ? 'ts' : 'js'}`), coreIndexContent);
   writeTextFile(join(runtimeDir, `index.${inputs.language === 'ts' ? 'ts' : 'js'}`), runtimeIndexContent);
+  
+  // Generate CORE contracts with safe defaults (section 3.3)
+  ensureDir(join(coreDir, 'contracts'));
+  generateCoreContracts(coreDir, inputs);
   
   // Configure workspaces in host app package.json
   const hostPackageJsonPath = join(appRoot, 'package.json');

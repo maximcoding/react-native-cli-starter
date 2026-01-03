@@ -20,12 +20,12 @@ OWNERSHIP: CORE(packages/@rns)
 ## 3.3 CORE contracts + safe defaults (no plugins required)
 All must live under `packages/@rns/core` (or `@rns/shared` when appropriate) and be plugin-free:
 
-- [ ] Logging: stable logger API + default implementation.
-- [ ] Error: normalization contract + safe default normalizer.
-- [ ] Storage: kv + cache engine APIs with memory fallback default.
-- [ ] Network: connectivity API with stub default.
-- [ ] Transport: transport facade + types + noop adapter default.
-- [ ] Offline: offline/outbox/sync contracts with noop defaults (no background work without plugin).
+- [x] Logging: stable logger API + default implementation.
+- [x] Error: normalization contract + safe default normalizer.
+- [x] Storage: kv + cache engine APIs with memory fallback default.
+- [x] Network: connectivity API with stub default.
+- [x] Transport: transport facade + types + noop adapter default.
+- [x] Offline: offline/outbox/sync contracts with noop defaults (no background work without plugin).
 
 ## 3.4 Runtime composition (bootable without plugins)
 All must live under `packages/@rns/runtime`:
