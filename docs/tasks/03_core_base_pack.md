@@ -40,9 +40,9 @@ All must live under `packages/@rns/runtime`:
 - [x] Optional capabilities are accessed only via CORE contracts (noop/memory fallback).
 - [x] Any plugin integration must be additive via runtime registries/hooks (not direct imports inside CORE).
 
-## 3.6 Audit marker for “CORE installed”
-- [ ] Init pipeline drops `.rns/BASE_INSTALLED.txt` (or equivalent) to mark CORE baseline installed.
-- [ ] Marker content includes: CLI version + init timestamp + workspace model = Option A.
+## 3.6 Audit marker for "CORE installed"
+- [x] Init pipeline drops `.rns/BASE_INSTALLED.txt` (or equivalent) to mark CORE baseline installed.
+- [x] Marker content includes: CLI version + init timestamp + workspace model = Option A.
 
 ## 3.7 Acceptance
 - [ ] New app created by init boots with CORE installed and with zero plugins applied.
