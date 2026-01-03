@@ -26,12 +26,12 @@ OWNERSHIP: CLI
 - [x] CORE packs must have a manifest (no implicit packs in Option A). (validated in loadPackManifest - fails if manifest missing)
 
 ## 5.3 Variant convention (deterministic)
-- [ ] Variants must be resolvable deterministically by:
-  - [ ] target (expo/bare)
-  - [ ] language (ts/js)
-  - [ ] pack delivery type (workspace/user-code)
-  - [ ] plugin/module options (only if required and only from a normalized options key)
-- [ ] If no matching variant exists: fail with actionable error (shows expected variant path(s) + inputs used).
+- [x] Variants must be resolvable deterministically by:
+  - [x] target (expo/bare)
+  - [x] language (ts/js)
+  - [x] pack delivery type (workspace/user-code) (determined from manifest.delivery)
+  - [x] plugin/module options (only if required and only from a normalized options key)
+- [x] If no matching variant exists: fail with actionable error (shows expected variant path(s) + inputs used).
 
 ## 5.4 Pack discovery (single source)
 - [ ] Implement a single pack discovery module that:
