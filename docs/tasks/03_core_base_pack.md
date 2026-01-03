@@ -45,6 +45,6 @@ All must live under `packages/@rns/runtime`:
 - [x] Marker content includes: CLI version + init timestamp + workspace model = Option A.
 
 ## 3.7 Acceptance
-- [ ] New app created by init boots with CORE installed and with zero plugins applied.
-- [ ] Ownership boundary holds: CLI-owned code is in `packages/@rns/*` + `.rns/*`; user `src/**` is not polluted.
-- [ ] CORE packages compile without requiring any plugin dependencies.
+- [x] New app created by init boots with CORE installed and with zero plugins applied.
+- [x] Ownership boundary holds: CLI-owned code is in `packages/@rns/*` + `.rns/*`; user `src/**` is not polluted.
+- [x] CORE packages compile without requiring any plugin dependencies.

@@ -22,7 +22,7 @@ import {
   CORE_PACKAGE_NAME,
 } from './constants';
 import { getCliVersion } from './version';
-import { verifyInitResult } from './init-verification';
+import { verifyInitResult, verifyCoreBaselineAcceptance } from './init-verification';
 import { generateCoreContracts } from './core-contracts';
 import { generateRuntimeComposition } from './runtime-composition';
 
@@ -707,6 +707,21 @@ export async function runInit(options: InitOptions): Promise<void> {
     
     // 9. Validate init result
     validateInitResult(appRoot, options.context, stepRunner);
+    
+    // 9.1 Verify CORE baseline acceptance criteria (section 3.7)
+    stepRunner.start('Verify CORE baseline acceptance');
+    const coreAcceptance = verifyCoreBaselineAcceptance(appRoot);
+    if (!coreAcceptance.success) {
+      const errorMessage = `CORE baseline acceptance verification failed:\n${coreAcceptance.errors.map(e => `  - ${e}`).join('\n')}`;
+      if (coreAcceptance.warnings.length > 0) {
+        options.context.logger.info(`Warnings: ${coreAcceptance.warnings.join(', ')}`);
+      }
+      throw new CliError(errorMessage, ExitCode.VALIDATION_STATE_FAILURE);
+    }
+    if (coreAcceptance.warnings.length > 0) {
+      options.context.logger.info(`Acceptance warnings: ${coreAcceptance.warnings.join(', ')}`);
+    }
+    stepRunner.ok('Verify CORE baseline acceptance');
     
     // 10. Run boot sanity checks
     runBootSanityChecks(appRoot, inputs, stepRunner);

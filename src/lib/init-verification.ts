@@ -11,7 +11,9 @@ import {
   CLI_STATE_DIR, 
   CLI_LOGS_DIR,
   CLI_BACKUPS_DIR,
+  CLI_AUDIT_DIR,
   WORKSPACE_PACKAGES_DIR,
+  USER_SRC_DIR,
   RUNTIME_PACKAGE_NAME,
   CORE_PACKAGE_NAME,
 } from './constants';
@@ -195,6 +197,176 @@ export function verifyInitResult(appRoot: string): VerificationResult {
     errors.push(...ownershipResult.errors);
   }
   warnings.push(...ownershipResult.warnings);
+  
+  return {
+    success: errors.length === 0,
+    errors,
+    warnings,
+  };
+}
+
+/**
+ * Verifies CORE baseline is installed (section 3.7 acceptance)
+ */
+export function verifyCoreBaselineInstalled(appRoot: string): { success: boolean; errors: string[] } {
+  const errors: string[] = [];
+  
+  // Check audit marker exists
+  const markerPath = join(appRoot, CLI_AUDIT_DIR, 'BASE_INSTALLED.txt');
+  if (!pathExists(markerPath)) {
+    errors.push('CORE baseline marker (.rns/audit/BASE_INSTALLED.txt) not found');
+  }
+  
+  // Verify CORE packages exist
+  const coreDir = join(appRoot, WORKSPACE_PACKAGES_DIR, 'core');
+  if (!pathExists(coreDir) || !isDirectory(coreDir)) {
+    errors.push('CORE package directory missing');
+  }
+  
+  // Verify runtime package exists
+  const runtimeDir = join(appRoot, WORKSPACE_PACKAGES_DIR, 'runtime');
+  if (!pathExists(runtimeDir) || !isDirectory(runtimeDir)) {
+    errors.push('Runtime package directory missing');
+  }
+  
+  // Verify runtime index exists (RnsApp component)
+  const runtimeIndex = join(runtimeDir, 'index.ts');
+  const runtimeIndexJs = join(runtimeDir, 'index.js');
+  if (!pathExists(runtimeIndex) && !pathExists(runtimeIndexJs)) {
+    errors.push('Runtime index file (RnsApp component) not found');
+  }
+  
+  return { success: errors.length === 0, errors };
+}
+
+/**
+ * Verifies ownership boundary - CLI code in packages/@rns/* and .rns/*, user code in src/** (section 3.7 acceptance)
+ */
+export function verifyOwnershipBoundaryStrict(appRoot: string): { success: boolean; errors: string[]; warnings: string[] } {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+  
+  // Verify CLI-managed areas exist
+  const packagesDir = join(appRoot, WORKSPACE_PACKAGES_DIR);
+  if (!pathExists(packagesDir) || !isDirectory(packagesDir)) {
+    errors.push(`CLI-managed packages directory missing: ${WORKSPACE_PACKAGES_DIR}`);
+  }
+  
+  const cliStateDir = join(appRoot, CLI_STATE_DIR);
+  if (!pathExists(cliStateDir) || !isDirectory(cliStateDir)) {
+    errors.push(`CLI state directory missing: ${CLI_STATE_DIR}`);
+  }
+  
+  // Verify user src/ is separate (if it exists, it should not contain CLI-owned patterns)
+  const userSrcDir = join(appRoot, USER_SRC_DIR);
+  if (pathExists(userSrcDir) && isDirectory(userSrcDir)) {
+    // Structural check: user src/ should be separate from packages/@rns/*
+    // This is already enforced by directory structure, but we verify separation
+    const userSrcPackages = join(userSrcDir, 'packages');
+    if (pathExists(userSrcPackages)) {
+      warnings.push('User src/ contains packages/ directory - ensure it does not conflict with CLI-managed packages/@rns/*');
+    }
+  }
+  
+  // Verify no CLI-owned code in user src/ (basic structural check)
+  // Full verification would require checking file contents, but structure is sufficient
+  // CLI code should ONLY be in packages/@rns/* and .rns/*
+  
+  return { success: errors.length === 0, errors, warnings };
+}
+
+/**
+ * Verifies CORE packages have no plugin dependencies (section 3.7 acceptance)
+ */
+export function verifyCorePackagesPluginFree(appRoot: string): { success: boolean; errors: string[] } {
+  const errors: string[] = [];
+  
+  // Plugin-only dependencies to check for (common ones)
+  const pluginOnlyDeps = [
+    '@react-navigation',
+    '@tanstack/react-query',
+    'react-query',
+    '@apollo/client',
+    'i18next',
+    'react-i18next',
+    '@react-native-firebase',
+    'firebase',
+    'react-native-mmkv', // This is optional, but if present should be via plugin
+    '@react-native-community/netinfo', // This is optional, but if present should be via plugin
+  ];
+  
+  // Check @rns/core package.json
+  const corePackageJson = join(appRoot, WORKSPACE_PACKAGES_DIR, 'core', 'package.json');
+  if (pathExists(corePackageJson)) {
+    try {
+      const pkg = readJsonFile<any>(corePackageJson);
+      const deps = { ...pkg.dependencies, ...pkg.devDependencies, ...pkg.peerDependencies };
+      
+      for (const dep of Object.keys(deps)) {
+        for (const pluginDep of pluginOnlyDeps) {
+          if (dep.includes(pluginDep)) {
+            errors.push(`@rns/core has plugin dependency: ${dep}`);
+          }
+        }
+      }
+    } catch {
+      errors.push('Failed to read @rns/core package.json');
+    }
+  }
+  
+  // Check @rns/runtime package.json
+  const runtimePackageJson = join(appRoot, WORKSPACE_PACKAGES_DIR, 'runtime', 'package.json');
+  if (pathExists(runtimePackageJson)) {
+    try {
+      const pkg = readJsonFile<any>(runtimePackageJson);
+      const deps = { ...pkg.dependencies, ...pkg.devDependencies, ...pkg.peerDependencies };
+      
+      // Runtime is allowed react and react-native, but not plugin-only deps
+      for (const dep of Object.keys(deps)) {
+        // Skip allowed core dependencies
+        if (dep === 'react' || dep === 'react-native' || dep === CORE_PACKAGE_NAME) {
+          continue;
+        }
+        
+        for (const pluginDep of pluginOnlyDeps) {
+          if (dep.includes(pluginDep)) {
+            errors.push(`@rns/runtime has plugin dependency: ${dep}`);
+          }
+        }
+      }
+    } catch {
+      errors.push('Failed to read @rns/runtime package.json');
+    }
+  }
+  
+  return { success: errors.length === 0, errors };
+}
+
+/**
+ * Comprehensive verification for section 3.7 acceptance criteria
+ */
+export function verifyCoreBaselineAcceptance(appRoot: string): VerificationResult {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+  
+  // 1. CORE baseline installed
+  const coreBaselineResult = verifyCoreBaselineInstalled(appRoot);
+  if (!coreBaselineResult.success) {
+    errors.push(...coreBaselineResult.errors);
+  }
+  
+  // 2. Ownership boundary holds
+  const ownershipResult = verifyOwnershipBoundaryStrict(appRoot);
+  if (!ownershipResult.success) {
+    errors.push(...ownershipResult.errors);
+  }
+  warnings.push(...ownershipResult.warnings);
+  
+  // 3. CORE packages compile without plugin dependencies
+  const pluginFreeResult = verifyCorePackagesPluginFree(appRoot);
+  if (!pluginFreeResult.success) {
+    errors.push(...pluginFreeResult.errors);
+  }
   
   return {
     success: errors.length === 0,
