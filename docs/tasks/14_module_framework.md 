@@ -1,0 +1,59 @@
+<!--
+FILE: docs/tasks/14_module_framework.md
+PURPOSE: Business module system contract + registry + generation pipeline, aligned with Option A isolation (modules live in CLI-owned packages; host app stays clean).
+OWNERSHIP: CLI
+-->
+
+# 14) Module Framework — Task List (Option A: Isolated)
+
+## 14.1 Module interface (standard contract)
+- [ ] Define a single module type with:
+  - [ ] `id`, `title`, `description`
+  - [ ] optional `requires` (plugin ids / capabilities)
+  - [ ] optional `supports` (expo|bare) and `languages` (ts|js) if needed
+  - [ ] optional `wizard(ctx)` returning options (selection-first UX)
+  - [ ] `generate(ctx, options)` (idempotent where possible)
+  - [ ] optional `detect(ctx)` (already generated check)
+
+## 14.2 Module registry (single source)
+- [ ] One registry lists all available modules.
+- [ ] IDs are unique, stable, and namespaced (e.g. `module.user-profile`, `module.orders`).
+- [ ] Registry entries must declare:
+  - [ ] `requires` capabilities (plugins)
+  - [ ] what the module will attach (high-level summary for UI)
+- [ ] Registry supports interactive selection UI (checkbox list) when command layer is added.
+
+## 14.3 Module generation pipeline (standard, shared)
+- [ ] Pipeline order is fixed:
+  - [ ] validate `.rn-init.json` (state exists + valid)
+  - [ ] validate marker contract (wiring points exist)
+  - [ ] validate required plugins/capabilities (if module declares `requires`)
+  - [ ] resolve module pack variant (target/language/options)
+  - [ ] attach module pack (code/assets/config as allowed)
+  - [ ] Option A isolation wiring:
+    - [ ] module code is attached into CLI-owned location (workspace package or `.rns/*`)
+    - [ ] host app receives only minimal wiring glue via markers/registry
+  - [ ] register module into host “composition registry” using safe patch ops:
+    - [ ] marker patch (preferred) OR anchored text patch in a single stable registry file
+    - [ ] must be idempotent (no duplicate registration)
+  - [ ] update `.rn-init.json` (module record + options + owned files)
+  - [ ] run post-generate validation (required files present + registry has entry)
+
+## 14.4 Registration contract (stable)
+- [ ] Define a stable “module registration surface” in CORE that modules can hook into without rewriting user code:
+  - [ ] one canonical registry file (or marker region) that the CLI patches
+  - [ ] deterministic ordering rules (alphabetical by id, or insertion order — choose and enforce)
+- [ ] Registration must support both TS and JS variants (or generate target-appropriate file).
+
+## 14.5 Idempotency + conflicts
+- [ ] Re-running the same module generate must:
+  - [ ] detect existing module (via state and/or detect hook)
+  - [ ] default to `skip` with clear message
+  - [ ] never duplicate registry entries or imports
+- [ ] Never overwrite user-owned files silently; conflicts must be actionable (path + reason).
+
+## 14.6 Acceptance
+- [ ] Registry lists modules (even if generation commands come later).
+- [ ] Generating a module attaches files and registers it into the host registry without dumping full code into host `src/`.
+- [ ] State is updated with module record + owned files.
+- [ ] Re-running module generation is idempotent (no duplicate wiring/registration).

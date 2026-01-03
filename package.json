@@ -1,0 +1,26 @@
+{
+  "name": "climobile",
+  "version": "1.0.0",
+  "description": "React Native Starter CLI - Generate and extend RN apps with zero manual setup",
+  "main": "dist/cli.js",
+  "bin": {
+    "rns": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "cli": "ts-node src/cli.ts",
+    "init": "ts-node src/cli.ts init",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "maximcoding",
+  "license": "ISC",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "ts-node": "^10.9.0",
+    "typescript": "^5.0.0"
+  }
+}
