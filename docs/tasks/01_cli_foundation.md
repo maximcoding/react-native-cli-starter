@@ -18,10 +18,10 @@ OWNERSHIP: CLI
   - [x] `.rns/audit/` (optional plugin/module audit records)
 
 ## 1.2 Build output is runnable
-- [ ] `npm run build` produces `dist/`.
-- [ ] One canonical built entry exists (Node runnable).
-- [ ] `package.json` `bin` points to the built entry.
-- [ ] Running built CLI works: `node <built_entry> --help`.
+- [x] `npm run build` produces `dist/`.
+- [x] One canonical built entry exists (Node runnable).
+- [x] `package.json` `bin` points to the built entry.
+- [x] Running built CLI works: `node <built_entry> --help`.
 
 ## 1.3 Dev runner is runnable and equivalent
 - [ ] Add `npm run cli` (dev mode).
