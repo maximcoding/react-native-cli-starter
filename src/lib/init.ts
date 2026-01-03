@@ -23,6 +23,7 @@ import {
 } from './constants';
 import { getCliVersion } from './version';
 import { verifyInitResult, verifyCoreBaselineAcceptance } from './init-verification';
+import { verifyDxBaselineAcceptance } from './dx-verification';
 import { generateCoreContracts } from './core-contracts';
 import { generateRuntimeComposition } from './runtime-composition';
 import { configureImportAliases, configureSvgPipeline, configureFontsPipeline, configureEnvPipeline, configureBaseScripts } from './dx-config';
@@ -742,6 +743,26 @@ export async function runInit(options: InitOptions): Promise<void> {
       options.context.logger.info(`Acceptance warnings: ${coreAcceptance.warnings.join(', ')}`);
     }
     stepRunner.ok('Verify CORE baseline acceptance');
+    
+    // 9.2 Verify DX baseline acceptance criteria (section 4.6)
+    stepRunner.start('Verify DX baseline acceptance');
+    const dxAcceptance = verifyDxBaselineAcceptance(
+      appRoot,
+      inputs.target,
+      inputs.language,
+      inputs.coreToggles.alias
+    );
+    if (!dxAcceptance.success) {
+      const errorMessage = `DX baseline acceptance verification failed:\n${dxAcceptance.errors.map((e: string) => `  - ${e}`).join('\n')}`;
+      if (dxAcceptance.warnings.length > 0) {
+        options.context.logger.info(`Warnings: ${dxAcceptance.warnings.join(', ')}`);
+      }
+      throw new CliError(errorMessage, ExitCode.VALIDATION_STATE_FAILURE);
+    }
+    if (dxAcceptance.warnings.length > 0) {
+      options.context.logger.info(`DX acceptance warnings: ${dxAcceptance.warnings.join(', ')}`);
+    }
+    stepRunner.ok('Verify DX baseline acceptance');
     
     // 10. Run boot sanity checks
     runBootSanityChecks(appRoot, inputs, stepRunner);

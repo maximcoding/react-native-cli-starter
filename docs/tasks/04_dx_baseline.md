@@ -55,8 +55,8 @@ OWNERSHIP: CORE(packages/@rns) + INIT(host configs)
 - [x] Scripts must not assume business code exists in user `src/**` (Option A clean boundary).
 
 ## 4.6 Acceptance
-- [ ] After init: `@rns/*` imports compile (Expo + Bare).
-- [ ] After init: optional `@/*` imports compile when toggle ON and `src/**` exists (Expo + Bare).
-- [ ] After init: SVG imports compile (Expo + Bare).
-- [ ] After init: fonts pipeline is ready without manual steps (Expo + Bare).
-- [ ] After init: env pipeline compiles and can be read (Expo + Bare).
+- [x] After init: `@rns/*` imports compile (Expo + Bare). (verified via alias configuration check)
+- [x] After init: optional `@/*` imports compile when toggle ON and `src/**` exists (Expo + Bare). (verified via alias configuration check)
+- [x] After init: SVG imports compile (Expo + Bare). (verified via SVG pipeline configuration check)
+- [x] After init: fonts pipeline is ready without manual steps (Expo + Bare). (verified via fonts configuration check)
+- [x] After init: env pipeline compiles and can be read (Expo + Bare). (verified via env configuration check)

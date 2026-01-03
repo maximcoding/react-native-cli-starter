@@ -5,7 +5,7 @@
  */
 
 import { join } from 'path';
-import { pathExists, readJsonFile, isDirectory } from './fs';
+import { pathExists, readJsonFile, isDirectory, readTextFile } from './fs';
 import { 
   PROJECT_STATE_FILE, 
   CLI_STATE_DIR, 
