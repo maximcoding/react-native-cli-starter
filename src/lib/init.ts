@@ -196,6 +196,12 @@ function preflightCheck(destination: string): void {
 
 /**
  * Creates the host app (Expo or Bare)
+ * 
+ * BLUEPRINT REFERENCE RULE (section 2.4):
+ * - Creates host app skeleton using Expo/RN official CLI tools
+ * - This is the ONLY part that copies structure from external sources
+ * - Blueprint at docs/ReactNativeCLITemplate/ is used as REFERENCE only
+ *   for understanding patterns, not for direct copying
  */
 async function createHostApp(
   inputs: InitInputs,
@@ -206,7 +212,7 @@ async function createHostApp(
   stepRunner.start('Create host app');
   
   if (inputs.target === 'expo') {
-    // Create Expo app
+    // Create Expo app using official Expo CLI
     const template = inputs.language === 'ts' ? 'blank-typescript' : 'blank';
     const command = `npx create-expo-app@latest ${inputs.projectName} --template ${template} --no-install`;
     
@@ -219,7 +225,7 @@ async function createHostApp(
       stdio: verbose ? 'inherit' : 'pipe',
     });
   } else {
-    // Create Bare React Native app
+    // Create Bare React Native app using official RN CLI
     const versionFlag = inputs.reactNativeVersion && inputs.reactNativeVersion !== 'latest'
       ? `--version ${inputs.reactNativeVersion}`
       : '';
@@ -250,6 +256,12 @@ function initializeCliFolders(appRoot: string): void {
 
 /**
  * Installs Option A Workspace Packages model (stub - will be completed in section 03)
+ * 
+ * BLUEPRINT REFERENCE RULE (section 2.4):
+ * - Use docs/ReactNativeCLITemplate/* as reference for shapes/config patterns
+ * - Do NOT copy the entire blueprint folder into generated app
+ * - Only use: host app skeleton (created by Expo/RN), CLI-owned workspace packages,
+ *   and optional plugin packs
  */
 function installWorkspacePackages(
   appRoot: string,
@@ -259,11 +271,14 @@ function installWorkspacePackages(
   stepRunner.start('Install workspace packages');
   
   // Create workspace packages directory structure
+  // Reference: docs/ReactNativeCLITemplate/ for patterns, but don't copy directly
   ensureDir(join(appRoot, WORKSPACE_PACKAGES_DIR));
   ensureDir(join(appRoot, WORKSPACE_PACKAGES_DIR, 'runtime'));
   ensureDir(join(appRoot, WORKSPACE_PACKAGES_DIR, 'core'));
   
   // TODO: Copy CORE base pack from templates (section 03)
+  // This will reference blueprint patterns but create packages/@rns/* structure,
+  // not copy blueprint's src/ structure into generated app
   // For now, create minimal package.json files
   const runtimePackageJson = {
     name: RUNTIME_PACKAGE_NAME,
@@ -308,6 +323,11 @@ function installWorkspacePackages(
 
 /**
  * Applies CORE DX configs (stub - will be completed in section 04)
+ * 
+ * BLUEPRINT REFERENCE RULE (section 2.4):
+ * - Reference docs/ReactNativeCLITemplate/ for config patterns (babel.config.js,
+ *   tsconfig.json, metro.config.js, etc.)
+ * - Apply patterns to generated app's config files, but don't copy blueprint files directly
  */
 function applyCoreDxConfigs(
   appRoot: string,
@@ -317,6 +337,7 @@ function applyCoreDxConfigs(
   stepRunner.start('Apply CORE DX configs');
   
   // TODO: Apply configs for alias/svg/fonts/env (section 04)
+  // Reference blueprint config patterns but apply to generated app structure
   // For now, this is a placeholder
   
   stepRunner.ok('Apply CORE DX configs');

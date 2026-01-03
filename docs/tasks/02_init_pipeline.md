@@ -50,11 +50,11 @@ OWNERSHIP: CLI
 - [x] On failure: print failed step + log path.
 
 ## 2.4 Blueprint reference rule
-- [ ] Use `docs/ReactNativeCLITemplate/*` as reference for shapes/config patterns.
-- [ ] Do not copy the entire blueprint folder into generated app; only:
-  - [ ] host app skeleton (created by Expo/RN)
-  - [ ] CLI-owned workspace packages under `packages/@rns/*`
-  - [ ] optional plugin packs selected by user
+- [x] Use `docs/ReactNativeCLITemplate/*` as reference for shapes/config patterns.
+- [x] Do not copy the entire blueprint folder into generated app; only:
+  - [x] host app skeleton (created by Expo/RN)
+  - [x] CLI-owned workspace packages under `packages/@rns/*`
+  - [x] optional plugin packs selected by user
 
 ## 2.5 Acceptance
 - [ ] Expo init → generated app boots without manual edits AND Option A workspace packages are present.
