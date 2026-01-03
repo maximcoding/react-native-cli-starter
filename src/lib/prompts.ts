@@ -106,6 +106,10 @@ export async function promptSelect<T>(
   // Calculate how many lines we need to move up to redraw
   // Total: choices + blank line + instruction line
   const totalLines = choices.length + 2;
+  
+  // Track the starting line number for the prompt area (for cursor positioning)
+  // We'll save the cursor position before drawing choices
+  const promptStartLine = process.stdout.rows ? process.stdout.rows - 1 : undefined;
 
   // Display choices with arrow indicator (initial render)
   choices.forEach((choice, index) => {
@@ -116,34 +120,47 @@ export async function promptSelect<T>(
   });
   process.stdout.write('\n');
   process.stdout.write('(Use ↑/↓ to navigate, Enter to select)');
-  // After initial render, cursor is at end of instruction line (position after last character)
+  // After initial render, cursor is at end of instruction line (NO trailing newline)
 
   return new Promise((resolve) => {
     enableRawMode();
     let buffer = '';
 
     const updateDisplay = () => {
-      // Cursor is currently at end of instruction line
-      // Move cursor up to first choice line (totalLines lines up)
-      cursorUp(totalLines);
+      // Save current cursor position - we're at end of instruction line
+      // Move cursor up exactly totalLines to get back to first choice line
+      // We need to move up: instruction (1) + blank (1) + choices (N) = N+2
+      for (let i = 0; i < totalLines; i++) {
+        cursorUp(1);
+      }
       
-      // Now cursor is at start of first choice line
-      // Clear and redraw each line individually (don't clear screen, only our lines)
+      // Now cursor should be at start of first choice line
+      // Redraw each choice line exactly where it was
       for (let i = 0; i < choices.length; i++) {
-        clearLine(); // Clear current line only
+        process.stdout.write('\r'); // Ensure at start of line
+        process.stdout.write('\x1b[K'); // Clear from cursor to end of line only
         const marker = i === selectedIndex ? '→ ' : '  ';
         const selected = i === selectedIndex ? '\x1b[36m' : '';
         const reset = '\x1b[0m';
-        process.stdout.write(`${marker}${selected}${choices[i].label}${reset}\n`);
+        process.stdout.write(`${marker}${selected}${choices[i].label}${reset}`);
+        // Move to next line ONLY if not the last choice
+        if (i < choices.length - 1) {
+          process.stdout.write('\n');
+        }
       }
-      // Clear and redraw blank line
-      clearLine();
+      
+      // Move to blank line (after last choice)
       process.stdout.write('\n');
-      // Clear and redraw instruction line
-      clearLine();
+      process.stdout.write('\r'); // Start of blank line
+      process.stdout.write('\x1b[K'); // Clear blank line
+      process.stdout.write('\n'); // Write blank line content (empty)
+      
+      // Move to instruction line (last line)
+      process.stdout.write('\r'); // Start of instruction line
+      process.stdout.write('\x1b[K'); // Clear instruction line completely
       process.stdout.write('(Use ↑/↓ to navigate, Enter to select)');
-      // Cursor is now at end of instruction line (no trailing \n)
-      // Don't clear anything below - preserve terminal output
+      // NO trailing newline - cursor stays at end of instruction line
+      // This is critical - prevents scrolling and creating new lines
     };
 
     const onData = (data: Buffer) => {
