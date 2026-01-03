@@ -8,7 +8,20 @@ import { RuntimeContext } from './runtime';
 import { createStepRunner } from './step-runner';
 import { CliError, ExitCode } from './errors';
 import { promptText, promptSelect, promptMultiSelect, promptConfirm } from './prompts';
-import { join } from 'path';
+import { join, resolve, dirname } from 'path';
+import { pathExists, ensureDir, writeJsonFile, readJsonFile, isDirectory } from './fs';
+import { execCommand, execPackageManager } from './exec';
+import { 
+  PROJECT_STATE_FILE, 
+  CLI_STATE_DIR, 
+  CLI_LOGS_DIR, 
+  CLI_BACKUPS_DIR, 
+  CLI_AUDIT_DIR,
+  WORKSPACE_PACKAGES_DIR,
+  RUNTIME_PACKAGE_NAME,
+  CORE_PACKAGE_NAME,
+} from './constants';
+import { getCliVersion } from './version';
 
 export interface InitOptions {
   projectName?: string;
@@ -157,6 +170,308 @@ export async function collectInitInputs(options: InitOptions): Promise<InitInput
   };
 }
 
+/**
+ * Resolves absolute destination path
+ */
+function resolveDestination(context: RuntimeContext, destination: string): string {
+  if (resolve(destination) === destination) {
+    // Already absolute
+    return destination;
+  }
+  // Relative to context root
+  return resolve(context.resolvedRoot, destination);
+}
+
+/**
+ * Preflight check: fails if destination exists
+ */
+function preflightCheck(destination: string): void {
+  if (pathExists(destination)) {
+    throw new CliError(
+      `Destination already exists: ${destination}\nPlease remove it or choose a different location.`,
+      ExitCode.VALIDATION_STATE_FAILURE
+    );
+  }
+}
+
+/**
+ * Creates the host app (Expo or Bare)
+ */
+async function createHostApp(
+  inputs: InitInputs,
+  destination: string,
+  verbose: boolean,
+  stepRunner: ReturnType<typeof createStepRunner>
+): Promise<void> {
+  stepRunner.start('Create host app');
+  
+  if (inputs.target === 'expo') {
+    // Create Expo app
+    const template = inputs.language === 'ts' ? 'blank-typescript' : 'blank';
+    const command = `npx create-expo-app@latest ${inputs.projectName} --template ${template} --no-install`;
+    
+    // Run from parent directory
+    const parentDir = dirname(destination);
+    ensureDir(parentDir);
+    
+    execCommand(command, {
+      cwd: parentDir,
+      stdio: verbose ? 'inherit' : 'pipe',
+    });
+  } else {
+    // Create Bare React Native app
+    const versionFlag = inputs.reactNativeVersion && inputs.reactNativeVersion !== 'latest'
+      ? `--version ${inputs.reactNativeVersion}`
+      : '';
+    const template = inputs.language === 'ts' ? 'react-native-template-typescript' : '';
+    const command = `npx @react-native-community/cli@latest init ${inputs.projectName} ${versionFlag} ${template ? `--template ${template}` : ''} --skip-install`.trim();
+    
+    const parentDir = dirname(destination);
+    ensureDir(parentDir);
+    
+    execCommand(command, {
+      cwd: parentDir,
+      stdio: verbose ? 'inherit' : 'pipe',
+    });
+  }
+  
+  stepRunner.ok('Create host app');
+}
+
+/**
+ * Initializes CLI-managed folders in the host app
+ */
+function initializeCliFolders(appRoot: string): void {
+  ensureDir(join(appRoot, CLI_STATE_DIR));
+  ensureDir(join(appRoot, CLI_LOGS_DIR));
+  ensureDir(join(appRoot, CLI_BACKUPS_DIR));
+  ensureDir(join(appRoot, CLI_AUDIT_DIR));
+}
+
+/**
+ * Installs Option A Workspace Packages model (stub - will be completed in section 03)
+ */
+function installWorkspacePackages(
+  appRoot: string,
+  inputs: InitInputs,
+  stepRunner: ReturnType<typeof createStepRunner>
+): void {
+  stepRunner.start('Install workspace packages');
+  
+  // Create workspace packages directory structure
+  ensureDir(join(appRoot, WORKSPACE_PACKAGES_DIR));
+  ensureDir(join(appRoot, WORKSPACE_PACKAGES_DIR, 'runtime'));
+  ensureDir(join(appRoot, WORKSPACE_PACKAGES_DIR, 'core'));
+  
+  // TODO: Copy CORE base pack from templates (section 03)
+  // For now, create minimal package.json files
+  const runtimePackageJson = {
+    name: RUNTIME_PACKAGE_NAME,
+    version: '0.1.0',
+    main: 'index.ts',
+    private: true,
+  };
+  
+  const corePackageJson = {
+    name: CORE_PACKAGE_NAME,
+    version: '0.1.0',
+    main: 'index.ts',
+    private: true,
+  };
+  
+  writeJsonFile(join(appRoot, WORKSPACE_PACKAGES_DIR, 'runtime', 'package.json'), runtimePackageJson);
+  writeJsonFile(join(appRoot, WORKSPACE_PACKAGES_DIR, 'core', 'package.json'), corePackageJson);
+  
+  // Configure workspaces in host app package.json
+  const hostPackageJsonPath = join(appRoot, 'package.json');
+  if (pathExists(hostPackageJsonPath)) {
+    const hostPackageJson = readJsonFile<any>(hostPackageJsonPath);
+    
+    // Add workspaces configuration
+    if (inputs.packageManager === 'pnpm') {
+      hostPackageJson.pnpm = {
+        ...hostPackageJson.pnpm,
+        workspaces: ['packages/*', 'packages/@rns/*'],
+      };
+    } else if (inputs.packageManager === 'yarn') {
+      hostPackageJson.workspaces = ['packages/*', 'packages/@rns/*'];
+    } else {
+      // npm
+      hostPackageJson.workspaces = ['packages/*', 'packages/@rns/*'];
+    }
+    
+    writeJsonFile(hostPackageJsonPath, hostPackageJson);
+  }
+  
+  stepRunner.ok('Install workspace packages');
+}
+
+/**
+ * Applies CORE DX configs (stub - will be completed in section 04)
+ */
+function applyCoreDxConfigs(
+  appRoot: string,
+  inputs: InitInputs,
+  stepRunner: ReturnType<typeof createStepRunner>
+): void {
+  stepRunner.start('Apply CORE DX configs');
+  
+  // TODO: Apply configs for alias/svg/fonts/env (section 04)
+  // For now, this is a placeholder
+  
+  stepRunner.ok('Apply CORE DX configs');
+}
+
+/**
+ * Installs CORE dependencies (stub - will be completed in section 11)
+ */
+function installCoreDependencies(
+  appRoot: string,
+  inputs: InitInputs,
+  verbose: boolean,
+  stepRunner: ReturnType<typeof createStepRunner>
+): void {
+  stepRunner.start('Install CORE dependencies');
+  
+  // TODO: Install dependencies via dependency layer (section 11)
+  // For now, just install workspace packages
+  execPackageManager(inputs.packageManager, ['install'], {
+    cwd: appRoot,
+    stdio: verbose ? 'inherit' : 'pipe',
+  });
+  
+  stepRunner.ok('Install CORE dependencies');
+}
+
+/**
+ * Writes .rn-init.json state file
+ */
+function writeProjectStateFile(
+  appRoot: string,
+  inputs: InitInputs
+): void {
+  const stateFile = {
+    cliVersion: getCliVersion(),
+    workspaceModel: 'Option A',
+    projectName: inputs.projectName,
+    target: inputs.target,
+    language: inputs.language,
+    packageManager: inputs.packageManager,
+    reactNativeVersion: inputs.reactNativeVersion,
+    coreToggles: inputs.coreToggles,
+    plugins: inputs.plugins,
+    createdAt: new Date().toISOString(),
+  };
+  
+  writeJsonFile(join(appRoot, PROJECT_STATE_FILE), stateFile);
+}
+
+/**
+ * Validates init result
+ */
+function validateInitResult(
+  appRoot: string,
+  stepRunner: ReturnType<typeof createStepRunner>
+): void {
+  stepRunner.start('Validate init result');
+  
+  // Check .rn-init.json exists
+  const stateFilePath = join(appRoot, PROJECT_STATE_FILE);
+  if (!pathExists(stateFilePath)) {
+    throw new CliError('.rn-init.json state file not found', ExitCode.VALIDATION_STATE_FAILURE);
+  }
+  
+  // Validate JSON
+  try {
+    readJsonFile(stateFilePath);
+  } catch {
+    throw new CliError('.rn-init.json is not valid JSON', ExitCode.VALIDATION_STATE_FAILURE);
+  }
+  
+  // Check .rns/ exists
+  if (!pathExists(join(appRoot, CLI_STATE_DIR))) {
+    throw new CliError('.rns/ directory not found', ExitCode.VALIDATION_STATE_FAILURE);
+  }
+  
+  // Check workspace packages exist
+  if (!pathExists(join(appRoot, WORKSPACE_PACKAGES_DIR, 'runtime'))) {
+    throw new CliError('packages/@rns/runtime not found', ExitCode.VALIDATION_STATE_FAILURE);
+  }
+  
+  if (!pathExists(join(appRoot, WORKSPACE_PACKAGES_DIR, 'core'))) {
+    throw new CliError('packages/@rns/core not found', ExitCode.VALIDATION_STATE_FAILURE);
+  }
+  
+  stepRunner.ok('Validate init result');
+}
+
+/**
+ * Runs boot sanity checks
+ */
+function runBootSanityChecks(
+  appRoot: string,
+  inputs: InitInputs,
+  stepRunner: ReturnType<typeof createStepRunner>
+): void {
+  stepRunner.start('Run boot sanity checks');
+  
+  // Check required files present
+  const requiredFiles = ['package.json'];
+  if (inputs.target === 'expo') {
+    requiredFiles.push('app.json');
+  }
+  
+  for (const file of requiredFiles) {
+    if (!pathExists(join(appRoot, file))) {
+      throw new CliError(`Required file not found: ${file}`, ExitCode.VALIDATION_STATE_FAILURE);
+    }
+  }
+  
+  // TODO: Check workspace packages are resolvable (requires dependency install)
+  
+  stepRunner.ok('Run boot sanity checks');
+}
+
+/**
+ * Applies plugins if selected (stub - will be completed in section 13)
+ */
+async function applyPlugins(
+  appRoot: string,
+  plugins: string[],
+  inputs: InitInputs,
+  context: RuntimeContext,
+  stepRunner: ReturnType<typeof createStepRunner>
+): Promise<void> {
+  if (plugins.length === 0) {
+    return;
+  }
+  
+  stepRunner.start('Apply plugins');
+  
+  // TODO: Apply plugins using standard plugin apply pipeline (section 13)
+  
+  stepRunner.ok('Apply plugins');
+}
+
+/**
+ * Prints next steps for the user
+ */
+function printNextSteps(
+  appRoot: string,
+  inputs: InitInputs
+): void {
+  const cdCommand = `cd ${appRoot}`;
+  const startCommand = inputs.target === 'expo' 
+    ? `${inputs.packageManager} run start`
+    : `${inputs.packageManager} run android`; // or ios
+  
+  console.log('\n✓ Project initialized successfully!\n');
+  console.log('Next steps:');
+  console.log(`  1. ${cdCommand}`);
+  console.log(`  2. ${startCommand}`);
+  console.log('\n');
+}
+
 export async function runInit(options: InitOptions): Promise<void> {
   const stepRunner = createStepRunner(options.context);
   
@@ -164,7 +479,6 @@ export async function runInit(options: InitOptions): Promise<void> {
     stepRunner.start('Collect init inputs');
     
     // For testing error handling - create a test scenario
-    // This will be replaced with real implementation in task 02
     if (options.projectName === 'test-error') {
       const result = stepRunner.fail('Collect init inputs', new Error('Test error for acceptance verification'));
       throw new CliError(
@@ -184,13 +498,49 @@ export async function runInit(options: InitOptions): Promise<void> {
       options.context.logger.debug('Init inputs:', JSON.stringify(inputs, null, 2));
     }
     
-    // TODO: Rest of init pipeline will be implemented in section 2.2
-    // For now, just confirm inputs were collected
-    options.context.logger.info(`Project: ${inputs.projectName}`);
-    options.context.logger.info(`Destination: ${inputs.destination}`);
-    options.context.logger.info(`Target: ${inputs.target}`);
-    options.context.logger.info(`Language: ${inputs.language}`);
-    options.context.logger.info(`Package manager: ${inputs.packageManager}`);
+    // Section 2.2: Init pipeline steps
+    // 1. Resolve destination (absolute path)
+    const absoluteDestination = resolveDestination(options.context, inputs.destination);
+    
+    // 2. Preflight: fail if destination exists
+    stepRunner.start('Preflight check');
+    preflightCheck(absoluteDestination);
+    stepRunner.ok('Preflight check');
+    
+    // 3. Create the host app (Expo or Bare)
+    await createHostApp(inputs, absoluteDestination, options.context.flags.verbose, stepRunner);
+    const appRoot = absoluteDestination;
+    
+    // 4. Initialize CLI-managed folders
+    stepRunner.start('Initialize CLI folders');
+    initializeCliFolders(appRoot);
+    stepRunner.ok('Initialize CLI folders');
+    
+    // 5. Install Option A Workspace Packages model
+    installWorkspacePackages(appRoot, inputs, stepRunner);
+    
+    // 6. Apply CORE DX configs
+    applyCoreDxConfigs(appRoot, inputs, stepRunner);
+    
+    // 7. Install CORE dependencies
+    installCoreDependencies(appRoot, inputs, options.context.flags.verbose, stepRunner);
+    
+    // 8. Write .rn-init.json
+    stepRunner.start('Write project state');
+    writeProjectStateFile(appRoot, inputs);
+    stepRunner.ok('Write project state');
+    
+    // 9. Validate init result
+    validateInitResult(appRoot, stepRunner);
+    
+    // 10. Run boot sanity checks
+    runBootSanityChecks(appRoot, inputs, stepRunner);
+    
+    // 11. Apply plugins if selected
+    await applyPlugins(appRoot, inputs.plugins, inputs, options.context, stepRunner);
+    
+    // 12. Print next steps
+    printNextSteps(appRoot, inputs);
     
     stepRunner.complete();
   } catch (error) {
