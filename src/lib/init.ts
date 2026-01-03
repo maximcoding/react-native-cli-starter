@@ -14,14 +14,15 @@ import { execCommand, execPackageManager } from './exec';
 import { 
   PROJECT_STATE_FILE, 
   CLI_STATE_DIR, 
-  CLI_LOGS_DIR, 
-  CLI_BACKUPS_DIR, 
+  CLI_LOGS_DIR,
+  CLI_BACKUPS_DIR,
   CLI_AUDIT_DIR,
   WORKSPACE_PACKAGES_DIR,
   RUNTIME_PACKAGE_NAME,
   CORE_PACKAGE_NAME,
 } from './constants';
 import { getCliVersion } from './version';
+import { verifyInitResult } from './init-verification';
 
 export interface InitOptions {
   projectName?: string;
@@ -388,39 +389,27 @@ function writeProjectStateFile(
 }
 
 /**
- * Validates init result
+ * Validates init result (section 2.5 acceptance criteria)
  */
 function validateInitResult(
   appRoot: string,
+  context: RuntimeContext,
   stepRunner: ReturnType<typeof createStepRunner>
 ): void {
   stepRunner.start('Validate init result');
   
-  // Check .rn-init.json exists
-  const stateFilePath = join(appRoot, PROJECT_STATE_FILE);
-  if (!pathExists(stateFilePath)) {
-    throw new CliError('.rn-init.json state file not found', ExitCode.VALIDATION_STATE_FAILURE);
+  const verification = verifyInitResult(appRoot);
+  
+  if (!verification.success) {
+    const errorMessage = `Init validation failed:\n${verification.errors.map(e => `  - ${e}`).join('\n')}`;
+    if (verification.warnings.length > 0) {
+      context.logger.info(`Warnings: ${verification.warnings.join(', ')}`);
+    }
+    throw new CliError(errorMessage, ExitCode.VALIDATION_STATE_FAILURE);
   }
   
-  // Validate JSON
-  try {
-    readJsonFile(stateFilePath);
-  } catch {
-    throw new CliError('.rn-init.json is not valid JSON', ExitCode.VALIDATION_STATE_FAILURE);
-  }
-  
-  // Check .rns/ exists
-  if (!pathExists(join(appRoot, CLI_STATE_DIR))) {
-    throw new CliError('.rns/ directory not found', ExitCode.VALIDATION_STATE_FAILURE);
-  }
-  
-  // Check workspace packages exist
-  if (!pathExists(join(appRoot, WORKSPACE_PACKAGES_DIR, 'runtime'))) {
-    throw new CliError('packages/@rns/runtime not found', ExitCode.VALIDATION_STATE_FAILURE);
-  }
-  
-  if (!pathExists(join(appRoot, WORKSPACE_PACKAGES_DIR, 'core'))) {
-    throw new CliError('packages/@rns/core not found', ExitCode.VALIDATION_STATE_FAILURE);
+  if (verification.warnings.length > 0) {
+    context.logger.info(`Validation warnings: ${verification.warnings.join(', ')}`);
   }
   
   stepRunner.ok('Validate init result');
@@ -552,7 +541,7 @@ export async function runInit(options: InitOptions): Promise<void> {
     stepRunner.ok('Write project state');
     
     // 9. Validate init result
-    validateInitResult(appRoot, stepRunner);
+    validateInitResult(appRoot, options.context, stepRunner);
     
     // 10. Run boot sanity checks
     runBootSanityChecks(appRoot, inputs, stepRunner);

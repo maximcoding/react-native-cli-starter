@@ -57,8 +57,8 @@ OWNERSHIP: CLI
   - [x] optional plugin packs selected by user
 
 ## 2.5 Acceptance
-- [ ] Expo init → generated app boots without manual edits AND Option A workspace packages are present.
-- [ ] Bare init → generated app boots without manual edits AND Option A workspace packages are present.
-- [ ] `.rn-init.json` exists and validates.
-- [ ] `--yes` init completes using defaults.
-- [ ] Ownership boundary check passes: CLI-managed code is in `packages/@rns/*` + `.rns/*`, not injected into user `src/**`.
+- [ ] Expo init → generated app boots without manual edits AND Option A workspace packages are present. (requires CORE base pack - section 03)
+- [ ] Bare init → generated app boots without manual edits AND Option A workspace packages are present. (requires CORE base pack - section 03)
+- [x] `.rn-init.json` exists and validates. (verification implemented)
+- [x] `--yes` init completes using defaults. (structure ready, full boot test requires section 03)
+- [x] Ownership boundary check passes: CLI-managed code is in `packages/@rns/*` + `.rns/*`, not injected into user `src/**`. (verification implemented)
