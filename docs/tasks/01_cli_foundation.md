@@ -46,16 +46,16 @@ OWNERSHIP: CLI
   - [x] safe read/write text + json helpers (no JSON comments)
 
 ## 1.7 Step runner + logs baseline
-- [ ] Implement a step runner utility (start/ok/fail) shared by init/plugins/modules.
-- [ ] Ensure each run creates a log file under `.rns/logs/` (timestamp + runId).
-- [ ] Failure output: failed step name + log path; stack trace only with `--verbose`.
+- [x] Implement a step runner utility (start/ok/fail) shared by init/plugins/modules.
+- [x] Ensure each run creates a log file under `.rns/logs/` (timestamp + runId).
+- [x] Failure output: failed step name + log path; stack trace only with `--verbose`.
 
 ## 1.8 Exit codes (CI-friendly)
-- [ ] Define stable exit codes:
-  - [ ] `0` success
-  - [ ] `1` generic failure
-  - [ ] `2` validation/state failure
-  - [ ] `3` dependency/install failure
+- [x] Define stable exit codes:
+  - [x] `0` success
+  - [x] `1` generic failure
+  - [x] `2` validation/state failure
+  - [x] `3` dependency/install failure
 
 ## 1.9 Acceptance
 - [ ] Build passes on clean repo.
