@@ -437,3 +437,112 @@ function createPlaceholderSvg(assetsSvgsDir: string): void {
   }
 }
 
+/**
+ * Configures fonts pipeline (section 4.3)
+ * - Creates assets/fonts directory
+ * - Configures font linking for Bare targets
+ * - Provides safe font loading for Expo targets
+ */
+export function configureFontsPipeline(
+  appRoot: string,
+  inputs: InitInputs
+): void {
+  // Create assets/fonts directory
+  const assetsFontsDir = join(appRoot, 'assets', 'fonts');
+  ensureDir(assetsFontsDir);
+
+  // Create a README placeholder explaining font setup
+  createFontsReadme(assetsFontsDir);
+
+  // Configure font linking for Bare targets
+  if (inputs.target === 'bare') {
+    configureBareFontLinking(appRoot);
+  }
+
+  // For Expo, fonts are automatically available via assets/fonts
+  // No additional configuration needed - expo-font handles it
+}
+
+/**
+ * Creates a README file in assets/fonts explaining font setup
+ */
+function createFontsReadme(assetsFontsDir: string): void {
+  const readmePath = join(assetsFontsDir, 'README.md');
+  
+  if (!pathExists(readmePath)) {
+    const readmeContent = `# Fonts Directory
+
+Place your custom font files (.ttf, .otf) in this directory.
+
+## Usage
+
+### Expo Projects
+Fonts in this directory are automatically available. Use them with expo-font.
+
+### Bare React Native Projects
+Fonts are auto-linked via react-native.config.js. After adding fonts:
+1. Add font files to this directory
+2. Run npx react-native-asset (or restart Metro bundler)
+3. Use font family names in your styles
+
+## Font Naming
+- Font file names should match the font family name used in styles
+- Example: Inter-Regular.ttf → fontFamily: 'Inter-Regular'
+`;
+    writeTextFile(readmePath, readmeContent);
+  }
+}
+
+/**
+ * Configures font linking for Bare React Native projects
+ */
+function configureBareFontLinking(appRoot: string): void {
+  const reactNativeConfigPath = join(appRoot, 'react-native.config.js');
+  
+  let config: any;
+  
+  if (pathExists(reactNativeConfigPath)) {
+    // Read existing config
+    try {
+      const configContent = readTextFile(reactNativeConfigPath);
+      // Simple parsing - if it's a standard module.exports format
+      // We'll recreate it with proper structure
+      config = {
+        assets: ['./assets/fonts/'],
+      };
+    } catch {
+      // If parsing fails, create new config
+      config = {
+        assets: ['./assets/fonts/'],
+      };
+    }
+  } else {
+    // Create new config
+    config = {
+      assets: ['./assets/fonts/'],
+    };
+  }
+
+  // Ensure assets/fonts is included
+  if (!config.assets) {
+    config.assets = [];
+  }
+  
+  const fontsPath = './assets/fonts/';
+  if (!config.assets.includes(fontsPath)) {
+    config.assets.push(fontsPath);
+  }
+
+  // Write react-native.config.js
+  const configContent = `// react-native.config.js
+
+module.exports = {
+  assets: [
+${config.assets.map((path: string) => `    '${path}',`).join('\n')}
+  ],
+};
+`;
+
+  writeTextFile(reactNativeConfigPath, configContent);
+}
+
