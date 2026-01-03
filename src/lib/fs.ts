@@ -121,12 +121,90 @@ export function writeTextFile(filePath: string, content: string): void {
 }
 
 /**
- * Reads a JSON file safely (no comments support - pure JSON)
+ * Strips JSON comments (single-line // and multi-line comments) from a JSON string
+ * This allows parsing JSON files that contain comments (like tsconfig.json)
+ */
+function stripJsonComments(jsonString: string): string {
+  let result = '';
+  let inString = false;
+  let escapeNext = false;
+  let inSingleComment = false;
+  let inMultiComment = false;
+  let i = 0;
+
+  while (i < jsonString.length) {
+    const char = jsonString[i];
+    const nextChar = i + 1 < jsonString.length ? jsonString[i + 1] : '';
+
+    if (escapeNext) {
+      result += char;
+      escapeNext = false;
+      i++;
+      continue;
+    }
+
+    if (char === '\\' && inString) {
+      escapeNext = true;
+      result += char;
+      i++;
+      continue;
+    }
+
+    if (char === '"' && !inSingleComment && !inMultiComment) {
+      inString = !inString;
+      result += char;
+      i++;
+      continue;
+    }
+
+    if (!inString) {
+      if (char === '/' && nextChar === '/' && !inSingleComment && !inMultiComment) {
+        inSingleComment = true;
+        i += 2;
+        continue;
+      }
+
+      if (char === '/' && nextChar === '*' && !inSingleComment && !inMultiComment) {
+        inMultiComment = true;
+        i += 2;
+        continue;
+      }
+
+      if (char === '\n' && inSingleComment) {
+        inSingleComment = false;
+        result += char;
+        i++;
+        continue;
+      }
+
+      if (char === '*' && nextChar === '/' && inMultiComment) {
+        inMultiComment = false;
+        i += 2;
+        continue;
+      }
+
+      if (inSingleComment || inMultiComment) {
+        i++;
+        continue;
+      }
+    }
+
+    result += char;
+    i++;
+  }
+
+  return result;
+}
+
+/**
+ * Reads a JSON file safely (supports comments like tsconfig.json)
  */
 export function readJsonFile<T = unknown>(filePath: string): T {
   const content = readTextFile(filePath);
   try {
-    return JSON.parse(content) as T;
+    // Strip comments before parsing (tsconfig.json and other JSON files may contain comments)
+    const cleanedContent = stripJsonComments(content);
+    return JSON.parse(cleanedContent) as T;
   } catch (error) {
     throw new Error(`Failed to parse JSON file ${filePath}: ${error instanceof Error ? error.message : String(error)}`);
   }
