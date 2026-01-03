@@ -24,18 +24,18 @@ OWNERSHIP: CLI
 - [x] Running built CLI works: `node <built_entry> --help`.
 
 ## 1.3 Dev runner is runnable and equivalent
-- [ ] Add `npm run cli` (dev mode).
-- [ ] Support args: `npm run cli -- --help`.
-- [ ] Add `npm run init` dev shortcut (must be equivalent to `rns init`).
-- [ ] Ensure dev runner matches built CLI behavior and command surface.
+- [x] Add `npm run cli` (dev mode).
+- [x] Support args: `npm run cli -- --help`.
+- [x] Add `npm run init` dev shortcut (must be equivalent to `rns init`).
+- [x] Ensure dev runner matches built CLI behavior and command surface.
 
 ## 1.4 Version + identity (debuggable)
-- [ ] `rns --version` prints CLI version.
-- [ ] Provide a single `getCliVersion()` helper used everywhere (init/plugins/modules/log headers).
+- [x] `rns --version` prints CLI version.
+- [x] Provide a single `getCliVersion()` helper used everywhere (init/plugins/modules/log headers).
 
 ## 1.5 Global flags are wired through runtime context
-- [ ] Support: `--cwd`, `--yes`, `--verbose`, `--dry-run`.
-- [ ] Ensure every command receives a single runtime context object (resolvedRoot + flags + logger + runId).
+- [x] Support: `--cwd`, `--yes`, `--verbose`, `--dry-run`.
+- [x] Ensure every command receives a single runtime context object (resolvedRoot + flags + logger + runId).
 
 ## 1.6 Standard filesystem layer (single source)
 - [ ] Implement one FS utility module used everywhere:
