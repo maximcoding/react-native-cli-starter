@@ -32,6 +32,11 @@ function generateCoreInit(ext: 'ts' | 'js'): string {
  * FILE: packages/@rns/runtime/core-init.ts
  * PURPOSE: Initialize CORE contracts (called once at app startup)
  * OWNERSHIP: CORE
+ * 
+ * PLUGIN-FREE GUARANTEE:
+ * - Only imports from @rns/core (no plugin dependencies)
+ * - initNetInfoBridge() is a stub (no NetInfo required)
+ * - Plugins can extend initialization via runtime hooks, NOT modify this file
  */
 
 import { logger } from '${corePackageName}';
@@ -98,6 +103,17 @@ function generateRuntimeIndex(ext: 'ts' | 'js'): string {
  * FILE: packages/@rns/runtime/index.ts
  * PURPOSE: Runtime composition layer that wires CORE into the app
  * OWNERSHIP: CORE
+ * 
+ * PLUGIN-FREE GUARANTEE:
+ * - Only imports React Native core (react, react-native)
+ * - No navigation, i18n, query, auth dependencies
+ * - MinimalUI renders without any plugins
+ * - Plugins integrate via RootProvider composition/extensions, NOT direct modification
+ * 
+ * PLUGIN INTEGRATION PATTERN:
+ * - Plugins should extend RootProvider via HOC/wrapper components
+ * - Plugins register via runtime registries (not direct imports in CORE)
+ * - Plugins can replace MinimalUI but must maintain RnsApp export contract
  */
 
 import React, { useEffect, useState } from 'react';

@@ -282,27 +282,33 @@ function installWorkspacePackages(
   ensureDir(coreDir);
   
   // Create @rns/core package (section 3.2)
-  // Create @rns/core package (section 3.2)
+  // Create @rns/core package (section 3.2, 3.5)
+  // PLUGIN-FREE GUARANTEE: No dependencies - pure contracts + safe defaults only
   const corePackageJson = {
     name: CORE_PACKAGE_NAME,
     version: '0.1.0',
     main: inputs.language === 'ts' ? 'index.ts' : 'index.js',
     types: inputs.language === 'ts' ? 'index.ts' : undefined,
     private: true,
+    // No dependencies - uses only built-in JS/TS APIs
+    // Plugins integrate by implementing contracts, not by adding deps here
   };
   
   writeJsonFile(join(coreDir, 'package.json'), corePackageJson);
   
-  // Create @rns/runtime package (section 3.2)
+  // Create @rns/runtime package (section 3.2, 3.5)
+  // PLUGIN-FREE GUARANTEE: Only React/React Native core dependencies
+  // No navigation, i18n, query, auth, or other plugin dependencies
   const runtimePackageJson: any = {
     name: RUNTIME_PACKAGE_NAME,
     version: '0.1.0',
     main: inputs.language === 'ts' ? 'index.ts' : 'index.js',
     private: true,
     dependencies: {
-      [CORE_PACKAGE_NAME]: 'workspace:*',
-      'react': '^18.0.0',
-      'react-native': '^0.74.0',
+      [CORE_PACKAGE_NAME]: 'workspace:*', // Internal workspace package
+      'react': '^18.0.0', // React Native core dependency
+      'react-native': '^0.74.0', // React Native core dependency
+      // No plugin dependencies - plugins integrate via registries/hooks
     },
   };
   
@@ -347,6 +353,11 @@ function installWorkspacePackages(
  * FILE: packages/@rns/core/index.ts
  * PURPOSE: CORE contracts and safe defaults (plugin-free)
  * OWNERSHIP: CORE
+ * 
+ * PLUGIN-FREE GUARANTEE:
+ * - Zero dependencies (no package.json deps)
+ * - Pure contracts + safe defaults (noop/memory fallbacks)
+ * - Plugins integrate by implementing contracts, NOT by modifying CORE
  */
 
 export * from './contracts';

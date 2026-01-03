@@ -64,6 +64,11 @@ function generateLoggingContract(ext: 'ts' | 'js'): string {
  * FILE: packages/@rns/core/contracts/logging.ts
  * PURPOSE: Stable logger API + default console implementation
  * OWNERSHIP: CORE
+ * 
+ * PLUGIN-FREE GUARANTEE:
+ * - Uses only built-in console APIs (no external dependencies)
+ * - Can be replaced via plugins by swapping the logger instance
+ * - Plugins must NOT modify this file directly
  */
 
 export interface Logger {
@@ -142,6 +147,11 @@ function generateErrorContract(ext: 'ts' | 'js'): string {
  * FILE: packages/@rns/core/contracts/error.ts
  * PURPOSE: Error normalization contract + safe default normalizer
  * OWNERSHIP: CORE
+ * 
+ * PLUGIN-FREE GUARANTEE:
+ * - Pure TypeScript/JavaScript (no external dependencies)
+ * - Works with any error shape from any source
+ * - Plugins can extend via wrapper functions, NOT by modifying this file
  */
 
 export interface NormalizedError {
@@ -375,6 +385,11 @@ function generateKvStorageContract(ext: 'ts' | 'js'): string {
  * FILE: packages/@rns/core/contracts/storage/kv-storage.ts
  * PURPOSE: Key-value storage API with memory fallback default
  * OWNERSHIP: CORE
+ * 
+ * PLUGIN-FREE GUARANTEE:
+ * - Uses only built-in Map (no external storage libraries)
+ * - Memory fallback ensures bootability without MMKV/Keychain/etc.
+ * - Plugins can replace kvStorage instance, NOT modify this contract
  */
 
 export interface KeyValueStorage {
@@ -456,6 +471,11 @@ function generateCacheEngineContract(ext: 'ts' | 'js'): string {
  * FILE: packages/@rns/core/contracts/storage/cache-engine.ts
  * PURPOSE: Cache engine API with memory fallback default
  * OWNERSHIP: CORE
+ * 
+ * PLUGIN-FREE GUARANTEE:
+ * - Uses only built-in Map (no React Query, Apollo, etc.)
+ * - Memory-based for offline-first patterns
+ * - Plugins can extend via wrapper, NOT modify this contract
  */
 
 type CacheValue = unknown;
@@ -516,6 +536,11 @@ function generateNetworkContract(ext: 'ts' | 'js'): string {
  * FILE: packages/@rns/core/contracts/network.ts
  * PURPOSE: Network connectivity API with stub default
  * OWNERSHIP: CORE
+ * 
+ * PLUGIN-FREE GUARANTEE:
+ * - Stub implementation (no @react-native-community/netinfo dependency)
+ * - initNetInfoBridge() is a no-op by default
+ * - Plugins can wire NetInfo via setTransport/onNetworkChange, NOT by modifying this file
  */
 
 type NetworkListener = (offline: boolean) => void;
@@ -610,6 +635,11 @@ function generateTransportTypesContract(ext: 'ts' | 'js'): string {
  * FILE: packages/@rns/core/contracts/transport/types.ts
  * PURPOSE: Transport facade types
  * OWNERSHIP: CORE
+ * 
+ * PLUGIN-FREE GUARANTEE:
+ * - Pure TypeScript types/interfaces (no runtime dependencies)
+ * - Protocol-agnostic (works with REST, GraphQL, Firebase, etc.)
+ * - Plugins implement Transport interface, NOT modify these types
  */
 
 export type Operation = string;
@@ -662,6 +692,11 @@ function generateTransportContract(ext: 'ts' | 'js'): string {
  * FILE: packages/@rns/core/contracts/transport/transport.ts
  * PURPOSE: Transport facade with noop adapter default
  * OWNERSHIP: CORE
+ * 
+ * PLUGIN-FREE GUARANTEE:
+ * - Noop adapter throws errors (no Axios, fetch, Apollo, etc.)
+ * - Uses only CORE contracts (network, offline)
+ * - Plugins register adapters via setTransport(), NOT modify this file
  */
 
 import type { Transport, Operation, TransportRequestMeta } from './types';
@@ -875,6 +910,11 @@ function generateOfflineQueueContract(ext: 'ts' | 'js'): string {
  * FILE: packages/@rns/core/contracts/offline/offline-queue.ts
  * PURPOSE: Offline queue contract with noop defaults
  * OWNERSHIP: CORE
+ * 
+ * PLUGIN-FREE GUARANTEE:
+ * - In-memory array (no SQLite, MMKV persistence)
+ * - No background sync work
+ * - Plugins can replace with persistent storage, NOT modify this contract
  */
 
 export type Operation = string;
@@ -968,6 +1008,11 @@ function generateSyncEngineContract(ext: 'ts' | 'js'): string {
  * FILE: packages/@rns/core/contracts/offline/sync-engine.ts
  * PURPOSE: Sync engine contract with noop defaults (no background work)
  * OWNERSHIP: CORE
+ * 
+ * PLUGIN-FREE GUARANTEE:
+ * - All methods are no-ops (no background sync)
+ * - No React Query, Apollo, or other query library dependencies
+ * - Plugins can implement replay logic via wrapper, NOT modify this contract
  */
 
 import { offlineQueue } from './offline-queue';
