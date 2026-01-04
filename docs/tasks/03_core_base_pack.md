@@ -20,12 +20,14 @@ OWNERSHIP: CORE(packages/@rns)
 ## 3.3 CORE contracts + safe defaults (no plugins required)
 All must live under `packages/@rns/core` (or `@rns/shared` when appropriate) and be plugin-free:
 
-- [x] Logging: stable logger API + default implementation.
-- [x] Error: normalization contract + safe default normalizer.
-- [x] Storage: kv + cache engine APIs with memory fallback default.
-- [x] Network: connectivity API with stub default.
-- [x] Transport: transport facade + types + noop adapter default.
-- [x] Offline: offline/outbox/sync contracts with noop defaults (no background work without plugin).
+- [x] Logging: stable logger API + default implementation. (implemented in template)
+- [x] Error: normalization contract + safe default normalizer. (implemented in template - fixed 2026-01-04)
+- [x] Storage: kv + cache engine APIs with memory fallback default. (implemented in template - fixed 2026-01-04)
+- [x] Network: connectivity API with stub default. (implemented in template)
+- [x] Transport: transport facade + types + noop adapter default. (implemented in template - fixed 2026-01-04)
+- [x] Offline: offline/outbox/sync contracts with noop defaults (no background work without plugin). (implemented in template - fixed 2026-01-04)
+
+**Note:** Initially marked complete based on CLI code, but template files were missing 4 contracts. Fixed by adding missing contracts to `templates/base/packages/@rns/core/contracts/`.
 
 ## 3.4 Runtime composition (bootable without plugins)
 All must live under `packages/@rns/runtime`:
