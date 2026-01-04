@@ -54,6 +54,7 @@ export interface InitInputs {
     env: boolean;
   };
   plugins: string[]; // Plugin IDs to apply after init
+  installCoreDependencies: boolean; // Whether to install CORE dependencies during init
 }
 
 const DEFAULT_TARGET = 'expo';
@@ -80,7 +81,7 @@ export async function collectInitInputs(options: InitOptions): Promise<InitInput
     if (isNonInteractive) {
       throw new CliError('Project name is required', ExitCode.VALIDATION_STATE_FAILURE);
     }
-    projectName = await promptText('Project name');
+    projectName = await promptText('Project name (required)');
     if (!projectName.trim()) {
       throw new CliError('Project name cannot be empty', ExitCode.VALIDATION_STATE_FAILURE);
     }
@@ -93,7 +94,7 @@ export async function collectInitInputs(options: InitOptions): Promise<InitInput
     if (isNonInteractive) {
       destination = defaultDestination;
     } else {
-      const answer = await promptText('Destination path', defaultDestination);
+      const answer = await promptText(`Destination path (default: ${defaultDestination})`, defaultDestination);
       destination = answer || defaultDestination;
     }
   }
@@ -102,25 +103,25 @@ export async function collectInitInputs(options: InitOptions): Promise<InitInput
   const target = isNonInteractive
     ? DEFAULT_TARGET
     : await promptSelect('Select target', [
-        { label: 'Expo', value: 'expo' as const },
-        { label: 'Bare React Native', value: 'bare' as const },
+        { label: String(DEFAULT_TARGET) === 'expo' ? 'Expo (default)' : 'Expo', value: 'expo' as const },
+        { label: String(DEFAULT_TARGET) === 'bare' ? 'Bare React Native (default)' : 'Bare React Native', value: 'bare' as const },
       ], DEFAULT_TARGET);
 
   // 4. Language: TS or JS
   const language = isNonInteractive
     ? DEFAULT_LANGUAGE
     : await promptSelect('Select language', [
-        { label: 'TypeScript', value: 'ts' as const },
-        { label: 'JavaScript', value: 'js' as const },
+        { label: String(DEFAULT_LANGUAGE) === 'ts' ? 'TypeScript (default)' : 'TypeScript', value: 'ts' as const },
+        { label: String(DEFAULT_LANGUAGE) === 'js' ? 'JavaScript (default)' : 'JavaScript', value: 'js' as const },
       ], DEFAULT_LANGUAGE);
 
   // 5. Package manager
   const packageManager = isNonInteractive
     ? DEFAULT_PACKAGE_MANAGER
     : await promptSelect('Select package manager', [
-        { label: 'npm', value: 'npm' as const },
-        { label: 'pnpm', value: 'pnpm' as const },
-        { label: 'yarn', value: 'yarn' as const },
+        { label: String(DEFAULT_PACKAGE_MANAGER) === 'npm' ? 'npm (default)' : 'npm', value: 'npm' as const },
+        { label: String(DEFAULT_PACKAGE_MANAGER) === 'pnpm' ? 'pnpm (default)' : 'pnpm', value: 'pnpm' as const },
+        { label: String(DEFAULT_PACKAGE_MANAGER) === 'yarn' ? 'yarn (default)' : 'yarn', value: 'yarn' as const },
       ], DEFAULT_PACKAGE_MANAGER);
 
   // 6. RN version (only for Bare)
@@ -129,33 +130,16 @@ export async function collectInitInputs(options: InitOptions): Promise<InitInput
     reactNativeVersion = isNonInteractive
       ? DEFAULT_RN_VERSION
       : await promptSelect('Select React Native version', [
-          { label: 'Latest stable', value: 'latest' },
-          { label: '0.74.x', value: '0.74' },
-          { label: '0.73.x', value: '0.73' },
-          { label: '0.72.x', value: '0.72' },
+          { label: String(DEFAULT_RN_VERSION) === 'latest' ? 'Latest stable (default)' : 'Latest stable', value: 'latest' },
+          { label: String(DEFAULT_RN_VERSION) === '0.74' ? '0.74.x (default)' : '0.74.x', value: '0.74' },
+          { label: String(DEFAULT_RN_VERSION) === '0.73' ? '0.73.x (default)' : '0.73.x', value: '0.73' },
+          { label: String(DEFAULT_RN_VERSION) === '0.72' ? '0.72.x (default)' : '0.72.x', value: '0.72' },
         ], DEFAULT_RN_VERSION);
   }
 
-  // 7. CORE toggles (defaults ON)
-  let coreToggles = DEFAULT_CORE_TOGGLES;
-  if (!isNonInteractive) {
-    const selectedToggles = await promptMultiSelect(
-      'Select CORE features (all enabled by default)',
-      [
-        { label: 'Path alias (@/)', value: 'alias' as const, default: true },
-        { label: 'SVG imports', value: 'svg' as const, default: true },
-        { label: 'Fonts pipeline', value: 'fonts' as const, default: true },
-        { label: 'Environment variables', value: 'env' as const, default: true },
-      ]
-    );
-    
-    coreToggles = {
-      alias: selectedToggles.includes('alias'),
-      svg: selectedToggles.includes('svg'),
-      fonts: selectedToggles.includes('fonts'),
-      env: selectedToggles.includes('env'),
-    };
-  }
+  // 7. CORE toggles (always enabled - non-negotiable)
+  // All CORE features are always enabled: alias, svg, fonts, env
+  const coreToggles = DEFAULT_CORE_TOGGLES;
 
   // 8. Optional plugins (checkbox list from registry)
   // For now, plugins registry is not yet implemented, so we'll skip this
@@ -163,11 +147,16 @@ export async function collectInitInputs(options: InitOptions): Promise<InitInput
   const plugins: string[] = [];
   if (!isNonInteractive) {
     const applyPlugins = await promptConfirm(
-      'Apply plugins after init? (plugin system not yet implemented)',
-      false
+      'Apply plugins after init? (plugin system not yet implemented) (default: yes)',
+      true
     );
     // TODO: Show plugin list when plugin registry is available
   }
+
+  // 9. Install CORE dependencies (default: yes)
+  const installCoreDependencies = isNonInteractive
+    ? true
+    : await promptConfirm('Install CORE dependencies? (default: yes)', true);
 
   return {
     projectName,
@@ -178,6 +167,7 @@ export async function collectInitInputs(options: InitOptions): Promise<InitInput
     reactNativeVersion,
     coreToggles,
     plugins,
+    installCoreDependencies,
   };
 }
 
@@ -522,6 +512,31 @@ export default function App() {
 }
 
 /**
+ * Generates icons.ts file by running gen:icons script (if SVG is enabled)
+ */
+function generateIconsTs(
+  appRoot: string,
+  inputs: InitInputs,
+  stepRunner: ReturnType<typeof createStepRunner>
+): void {
+  stepRunner.start('Generate icons.ts');
+  
+  try {
+    // Run the gen:icons script that was added by configureBaseScripts
+    const command = `${inputs.packageManager} run gen:icons`;
+    execCommand(command, {
+      cwd: appRoot,
+      stdio: 'pipe', // Suppress output unless verbose
+    });
+    stepRunner.ok('Generate icons.ts');
+  } catch (error) {
+    // If gen:icons fails (e.g., no SVG files yet), log warning but don't fail init
+    stepRunner.ok('Generate icons.ts (skipped - no SVG files found or script failed)');
+    // User can run it manually later when they add SVG files
+  }
+}
+
+/**
  * Applies CORE DX configs (section 04)
  * 
  * BLUEPRINT REFERENCE RULE (section 2.4):
@@ -558,6 +573,11 @@ function applyCoreDxConfigs(
   
   // 4.5: Configure base scripts (developer workflow)
   configureBaseScripts(appRoot, inputs);
+  
+  // 4.6: Generate icons.ts if SVG is enabled (after scripts are configured)
+  if (inputs.coreToggles.svg) {
+    generateIconsTs(appRoot, inputs, stepRunner);
+  }
   
   stepRunner.ok('Apply CORE DX configs');
 }
@@ -858,8 +878,13 @@ export async function runInit(options: InitOptions): Promise<void> {
     // 6. Apply CORE DX configs
     applyCoreDxConfigs(appRoot, inputs, stepRunner);
     
-    // 7. Install CORE dependencies
-    installCoreDependencies(appRoot, inputs, options.context.flags.verbose, stepRunner);
+    // 7. Install CORE dependencies (if user requested)
+    if (inputs.installCoreDependencies) {
+      installCoreDependencies(appRoot, inputs, options.context.flags.verbose, stepRunner);
+    } else {
+      stepRunner.start('Install CORE dependencies');
+      stepRunner.ok('Install CORE dependencies (skipped by user)');
+    }
     
     // 7.1 Write CORE baseline audit marker (section 3.6)
     stepRunner.start('Write CORE baseline marker');

@@ -8,7 +8,7 @@ import { join, relative, dirname } from 'path';
 import { pathExists, isDirectory, isFile, copyDir, ensureDir, readTextFile, writeTextFile, readJsonFile } from './fs';
 import { CliError, ExitCode } from './errors';
 import type { PackManifest } from './pack-manifest';
-import { resolvePackDestinationPath, type PackType } from './pack-locations';
+import { resolvePackDestinationPath, resolvePackSourcePath, type PackType } from './pack-locations';
 
 /**
  * Attachment mode
@@ -105,14 +105,41 @@ export function attachPack(opts: AttachmentOptions): AttachmentReport {
     ownedFilesCandidate: [],
   };
 
+  // Get the root pack path (for merging root files with variant files)
+  const rootPackPath = resolvePackSourcePath(packManifest.type, packManifest.id);
+  
   // Copy pack content (section 6.4)
-  copyPackContent(
-    resolvedPackPath,
-    destinationRoot,
-    packManifest,
-    report,
-    dryRun
-  );
+  // If resolvedPackPath is a variant, we need to merge it with root pack files
+  // Variant files override root files, but root-only files (like packages/) are still copied
+  if (resolvedPackPath !== rootPackPath && resolvedPackPath.startsWith(rootPackPath)) {
+    // Variant path found - copy root pack first, then overlay variant files
+    copyPackContent(
+      rootPackPath,
+      destinationRoot,
+      packManifest,
+      report,
+      dryRun,
+      resolvedPackPath // Pass variant path to skip variant directory when copying root
+    );
+    
+    // Then overlay variant files (variant files override root files)
+    copyPackContent(
+      resolvedPackPath,
+      destinationRoot,
+      packManifest,
+      report,
+      dryRun
+    );
+  } else {
+    // No variant or variant is root - just copy normally
+    copyPackContent(
+      resolvedPackPath,
+      destinationRoot,
+      packManifest,
+      report,
+      dryRun
+    );
+  }
 
   return report;
 }
@@ -135,16 +162,20 @@ function resolveDestinationRoot(
  * 
  * Files are processed in sorted order for reproducibility.
  * Ownership rules are enforced (section 6.3, 6.5).
+ * 
+ * @param variantPath Optional variant path to exclude from root copy (when merging root + variant)
  */
 function copyPackContent(
   sourcePath: string,
   destPath: string,
   manifest: PackManifest,
   report: AttachmentReport,
-  dryRun: boolean
+  dryRun: boolean,
+  variantPath?: string
 ): void {
   // Get all files to copy (excluding ignore patterns)
-  const filesToCopy = collectFilesToCopy(sourcePath, sourcePath);
+  // If variantPath is provided and we're copying from root, exclude the variants directory
+  const filesToCopy = collectFilesToCopy(sourcePath, sourcePath, variantPath);
 
   for (const sourceFile of filesToCopy) {
     const relativePath = relative(sourcePath, sourceFile);
@@ -198,8 +229,10 @@ function copyPackContent(
 /**
  * Collects all files to copy from source directory
  * Returns files in sorted order for deterministic processing
+ * 
+ * @param variantPath Optional variant path to exclude (when copying root pack, exclude variants dir)
  */
-function collectFilesToCopy(sourceDir: string, baseDir: string): string[] {
+function collectFilesToCopy(sourceDir: string, baseDir: string, variantPath?: string): string[] {
   const files: string[] = [];
   const { readdirSync } = require('fs');
 
@@ -213,6 +246,11 @@ function collectFilesToCopy(sourceDir: string, baseDir: string): string[] {
     for (const entry of entries) {
       const fullPath = join(dir, entry.name);
       const relativePath = relative(baseDir, fullPath);
+      
+      // Skip variants directory when copying from root pack (if variantPath is provided)
+      if (variantPath && entry.isDirectory() && entry.name === 'variants') {
+        continue;
+      }
 
       // Skip ignore patterns
       if (shouldIgnoreFile(relativePath)) {

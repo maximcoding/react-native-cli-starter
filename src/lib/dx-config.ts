@@ -15,8 +15,8 @@ import { USER_SRC_DIR } from './constants';
  * - @/* for user src/** (optional, default ON if src/ exists)
  * 
  * NOTE: Config files (babel.config.js, metro.config.js, tsconfig.json) are provided
- * by templates/base via attachment engine. This function only does minimal post-processing
- * if needed (e.g., adjusting aliases if src doesn't exist or aliases are disabled).
+ * by templates/base via attachment engine. This function ensures @rns/* is always
+ * configured and does minimal post-processing if needed (e.g., adjusting aliases if src doesn't exist or aliases are disabled).
  */
 export function configureImportAliases(
   appRoot: string,
@@ -25,6 +25,12 @@ export function configureImportAliases(
   const userSrcDir = join(appRoot, USER_SRC_DIR);
   const userSrcExists = pathExists(userSrcDir) && isDirectory(userSrcDir);
   const aliasEnabled = inputs.coreToggles.alias && userSrcExists;
+
+  // Always ensure @rns/* is configured (required for workspace packages)
+  // This is critical even if alias toggle is disabled
+  if (inputs.language === 'ts') {
+    ensureRnsAliasInTsConfig(appRoot, userSrcExists);
+  }
 
   // Config files are provided by templates/base via attachment engine
   // Only do minimal post-processing if src doesn't exist or aliases are disabled
@@ -37,6 +43,39 @@ export function configureImportAliases(
       adjustTsConfigForNoSrc(appRoot, userSrcExists, aliasEnabled);
     }
   }
+}
+
+/**
+ * Ensures @rns/* alias is always present in tsconfig.json (required for workspace packages)
+ */
+function ensureRnsAliasInTsConfig(appRoot: string, userSrcExists: boolean): void {
+  const tsconfigPath = join(appRoot, 'tsconfig.json');
+  if (!pathExists(tsconfigPath)) {
+    return; // Should exist from templates, but if not, skip
+  }
+
+  const tsconfig = readJsonFile<any>(tsconfigPath);
+  
+  // Ensure compilerOptions exists
+  if (!tsconfig.compilerOptions) {
+    tsconfig.compilerOptions = {};
+  }
+  
+  // Ensure paths exists
+  if (!tsconfig.compilerOptions.paths) {
+    tsconfig.compilerOptions.paths = {};
+  }
+  
+  // Always ensure @rns/* is present (required for workspace packages)
+  // Path is relative to baseUrl
+  const baseUrl = tsconfig.compilerOptions.baseUrl || (userSrcExists ? './src' : '.');
+  const rnsPath = baseUrl === './src' 
+    ? ['../packages/@rns/*']
+    : ['packages/@rns/*'];
+  
+  tsconfig.compilerOptions.paths['@rns/*'] = rnsPath;
+  
+  writeJsonFile(tsconfigPath, tsconfig);
 }
 
 /**
@@ -92,11 +131,24 @@ function adjustTsConfigForNoSrc(
     if (tsconfig.compilerOptions) {
       tsconfig.compilerOptions.baseUrl = '.';
       if (tsconfig.compilerOptions.paths) {
-        // Keep only @rns/* path, remove @/* and @assets/*
+        // Keep @rns/* path (always required), remove @/* and @assets/*
+        tsconfig.compilerOptions.paths = {
+          '@rns/*': ['packages/@rns/*'],
+        };
+      } else {
+        // Ensure paths exists with @rns/*
         tsconfig.compilerOptions.paths = {
           '@rns/*': ['packages/@rns/*'],
         };
       }
+    } else {
+      // Ensure compilerOptions exists
+      tsconfig.compilerOptions = {
+        baseUrl: '.',
+        paths: {
+          '@rns/*': ['packages/@rns/*'],
+        },
+      };
     }
     
     writeJsonFile(tsconfigPath, tsconfig);

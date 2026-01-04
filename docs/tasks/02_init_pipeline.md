@@ -13,7 +13,8 @@ OWNERSHIP: CLI
 - [x] Language: TS or JS (select).
 - [x] Package manager: npm / pnpm / yarn (select).
 - [x] Bare-only: RN version (select) if needed by creation step.
-- [x] CORE toggles (checkbox, defaults ON): alias / svg / fonts / env.
+- [x] CORE features (always enabled, non-negotiable): alias / svg / fonts / env - configured automatically without prompting.
+- [x] Install CORE dependencies (confirm, default: Yes) - prompts user whether to install dependencies during init.
 - [x] Optional: apply plugins right after init (checkbox list from registry).
 - [x] Support non-interactive mode: `--yes` selects defaults and skips prompts.
 
@@ -33,7 +34,10 @@ OWNERSHIP: CLI
 - [x] Apply CORE DX configs for selected toggles (alias/svg/fonts/env) in the **correct place**:
   - [x] host-level config files (babel/tsconfig/metro/expo config) when required (structure ready, full implementation in section 04)
   - [x] shared runtime/core code inside `packages/@rns/*` when it belongs to CLI-owned code (structure ready, full implementation in section 03)
-- [x] Install CORE dependencies (via dependency layer) required for selected toggles + baseline runtime/core (structure ready, full implementation in section 11).
+  - [x] When SVG toggle is enabled, automatically run `gen:icons` script to generate `assets/icons.ts` from SVG files in `assets/svgs/`
+- [x] Install CORE dependencies (via dependency layer) required for selected toggles + baseline runtime/core (structure ready, full implementation in section 11):
+  - [x] Only installs if user confirms during init prompt (default: No).
+  - [x] If skipped, step is logged as skipped and user can install manually later.
 - [x] Write `.rn-init.json` (includes CLI version + init choices + workspace model = Option A).
 - [x] Validate init result (ownership + structure):
   - [x] `.rn-init.json` exists and is valid JSON

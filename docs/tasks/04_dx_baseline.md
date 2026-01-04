@@ -27,6 +27,9 @@ OWNERSHIP: CORE(packages/@rns) + INIT(host configs)
   - [x] Place typings in a host-safe location (e.g. `types/svg.d.ts` or `global.d.ts`), not inside user business code.
 - [x] Ensure `assets/svgs` exists and an example SVG import compiles:
   - [x] Example may live in `packages/@rns/runtime` demo screen or minimal UI. (placeholder SVG created; compilation verified in section 4.6)
+- [x] Automatically generate `assets/icons.ts` during init when SVG is enabled:
+  - [x] Run `npm run gen:icons` (or equivalent for selected package manager) after scripts are configured.
+  - [x] If no SVG files exist yet, step completes without error (user can run manually later when SVGs are added).
 
 ## 4.3 Fonts pipeline (no manual linking steps)
 - [x] Ensure `assets/fonts` exists and include a placeholder font file (or documented placeholder) to validate pipeline.
