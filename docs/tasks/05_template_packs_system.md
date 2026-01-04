@@ -34,12 +34,12 @@ OWNERSHIP: CLI
 - [x] If no matching variant exists: fail with actionable error (shows expected variant path(s) + inputs used).
 
 ## 5.4 Pack discovery (single source)
-- [ ] Implement a single pack discovery module that:
-  - [ ] lists CORE/plugin/module packs
-  - [ ] loads manifests
-  - [ ] validates uniqueness of ids per type (core/plugin/module)
-  - [ ] resolves a pack path by id + target + language (+ normalized options key when required)
-  - [ ] returns delivery + destination mapping for the attachment engine
+- [x] Implement a single pack discovery module that:
+  - [x] lists CORE/plugin/module packs
+  - [x] loads manifests
+  - [x] validates uniqueness of ids per type (core/plugin/module)
+  - [x] resolves a pack path by id + target + language (+ normalized options key when required)
+  - [x] returns delivery + destination mapping for the attachment engine
 
 ## 5.5 Pack content rules (what packs may include)
 - [ ] Packs may include: source code, assets, config fragments, CI workflow files.
@@ -50,6 +50,6 @@ OWNERSHIP: CLI
 - [ ] Packs must not include secrets (tokens/keys).
 
 ## 5.6 Acceptance
-- [ ] Discovery can list all available CORE/plugin/module packs with their delivery type.
-- [ ] Resolving a pack by id + target + language returns exactly one deterministic path and a delivery/destination plan.
-- [ ] Missing/invalid manifest fails early with actionable output.
+- [x] Discovery can list all available CORE/plugin/module packs with their delivery type. (verified via discoverAllPacks() and listPacks())
+- [x] Resolving a pack by id + target + language returns exactly one deterministic path and a delivery/destination plan. (verified via resolvePack())
+- [x] Missing/invalid manifest fails early with actionable output. (verified via loadPackManifest() error handling)

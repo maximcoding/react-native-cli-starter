@@ -24,7 +24,7 @@ OWNERSHIP: CORE(packages/@rns) + INIT(host configs)
   - [x] Install required deps via dependency layer. (dependency installation handled in section 11)
   - [x] Apply Metro config changes safely (patch ops + backups). (config is generated/updated during init)
 - [x] Provide SVG typings for TS without breaking JS apps:
-  - [x] Place typings in a host-safe location (e.g. `types/svg.d.ts` or `global.d.ts`), not inside user business code.
+  - [x] Place typings in a host-safe location (e.g. `types/svg.d.ts`, `declarations.d.ts` at root, or `global.d.ts`), not inside user business code. (both `types/svg.d.ts` and `declarations.d.ts` created to match blueprint pattern - fixed 2026-01-04)
 - [x] Ensure `assets/svgs` exists and an example SVG import compiles:
   - [x] Example may live in `packages/@rns/runtime` demo screen or minimal UI. (placeholder SVG created; compilation verified in section 4.6)
 - [x] Automatically generate `assets/icons.ts` during init when SVG is enabled:
@@ -45,6 +45,11 @@ OWNERSHIP: CORE(packages/@rns) + INIT(host configs)
 - [x] `.env.example` exists after init (host root).
 - [x] Typed env access is implemented in CLI-owned code:
   - [x] `packages/@rns/core/config/env.ts` provides typed access pattern.
+- [x] Constants and feature flags are extensible via registry pattern:
+  - [x] `packages/@rns/core/config/constants.ts` provides base constants (VALUES ONLY: numbers, strings, storage keys) + `constantsRegistry` for plugin extensions.
+  - [x] `packages/@rns/core/config/feature-flags.ts` provides base feature flags (BOOLEANS ONLY: all feature toggles including USE_MOCK) + `featureFlagsRegistry` for plugin extensions.
+  - [x] Clear separation: constants = values, featureFlags = booleans. All booleans consolidated in feature-flags.ts (no split between "flags" and "featureFlags").
+  - [x] Plugins can register their constants/flags without modifying CORE files.
 - [x] Expo target:
   - [x] Env access is wired through the chosen baseline approach (FULL_AUTO; no manual steps). (uses expo-constants with safe fallbacks)
 - [x] Bare target:

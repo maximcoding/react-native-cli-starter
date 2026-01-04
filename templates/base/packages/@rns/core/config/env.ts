@@ -8,26 +8,41 @@
  * - Falls back to safe defaults if packages not installed
  * - Compiles even if .env is missing
  * 
+ * WHY DIFFERENT TARGETS:
+ * - Expo: Uses expo-constants (built into Expo runtime)
+ * - Bare: Uses react-native-config (requires native linking)
+ * - Fallback: process.env (for Node.js environments or when packages missing)
+ * 
  * NOTE: This is a base version. Target-specific variants may override this.
  */
 
-let Config: any = null;
-
-// Try to load expo-constants first (Expo target)
-try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const Constants = require('expo-constants');
-  Config = Constants.expoConfig?.extra?.env || {};
-} catch {
-  // Not Expo, try react-native-config (Bare target)
+/**
+ * Load config from available sources (Expo, Bare, or fallback)
+ * 
+ * WHY THIS HELPER:
+ * - Reduces duplication (same logic used in constants.ts)
+ * - Handles different targets gracefully
+ * - Always returns an object (never null/undefined) for safe property access
+ */
+function loadConfig(): Record<string, string> {
+  // Try to load expo-constants first (Expo target)
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    Config = require('react-native-config').default || require('react-native-config');
+    const Constants = require('expo-constants');
+    return Constants.expoConfig?.extra?.env || {};
   } catch {
-    // Neither available - use process.env with safe defaults
-    Config = {};
+    // Not Expo, try react-native-config (Bare target)
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      return require('react-native-config').default || require('react-native-config') || {};
+    } catch {
+      // Neither available - use empty object (safe fallback)
+      return {};
+    }
   }
 }
+
+const Config = loadConfig();
 
 /**
  * Typed environment variable access

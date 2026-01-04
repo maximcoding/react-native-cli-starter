@@ -6,4 +6,8 @@
 
 export * from './logging';
 export * from './network';
+export * from './error';
+export * from './storage';
+export * from './transport';
+export * from './offline';
 
