@@ -1,80 +1,190 @@
 /**
  * FILE: packages/@rns/core/contracts/error.ts
- * PURPOSE: Error normalization contract + safe default normalizer
+ * LAYER: CORE contracts
  * OWNERSHIP: CORE
+ * ---------------------------------------------------------------------
+ * PURPOSE:
+ *   Convert ANY error shape (Axios, GraphQL, Firebase, Zod, JS Error,
+ *   network offline, or custom code) into a unified NormalizedError.
+ *
+ * WHY:
+ *   - UI and services must never guess error structure.
+ *   - Prevent "cannot read property 'message'" crashes.
+ *   - Provide stable error.code, error.message, error.status for all layers.
+ *
+ * RESPONSIBILITIES:
+ *   - Map unknown → NormalizedError.
+ *   - Extract best-possible message for user-facing errors.
+ *   - Preserve raw for logging/analytics.
+ *
+ * SUPPORTED SOURCES:
+ *   - AxiosError
+ *   - GraphQL error arrays
+ *   - FirebaseError
+ *   - ZodError
+ *   - Network offline errors
+ *   - Native JS Error
+ *
+ * EXTENSION:
+ *   - Add backend/business-level mapping: map code → domain codes.
+ *   - Add translations: map code → localized messages.
+ *   - Add telemetry hooks: log normalized errors to Sentry/Datadog.
  * 
- * PLUGIN-FREE GUARANTEE:
- * - Pure TypeScript types and utilities (no external dependencies)
- * - Safe default normalizer that handles any error type
- * - Plugins can extend error handling but must NOT modify this file
+ * BLUEPRINT REFERENCE: docs/ReactNativeCLITemplate/src/infra/error/normalize-error.ts
+ * ---------------------------------------------------------------------
  */
 
+export type NormalizedError = {
+  code: string | null; // machine code (e.g. "AUTH_INVALID", "NETWORK_OFFLINE")
+  message: string; // human-readable message
+  status?: number; // HTTP code (if present)
+  raw: unknown; // original error for debugging/logging
+};
+
 /**
- * Normalized error shape (stable contract)
+ * Guard: check if a value already matches the NormalizedError shape.
+ * This makes normalizeError() idempotent (safe to call multiple times).
  */
-export interface NormalizedError {
-  message: string;
-  code?: string;
-  statusCode?: number;
-  stack?: string;
-  cause?: unknown;
-  metadata?: Record<string, unknown>;
+function isNormalizedError(x: any): x is NormalizedError {
+  return (
+    x &&
+    typeof x === 'object' &&
+    typeof x.message === 'string' &&
+    'raw' in x &&
+    'code' in x
+  );
 }
 
 /**
- * Normalizes any error into a stable shape
- * Safe default implementation that handles all error types
+ * Extract human-readable message from different possible shapes.
+ */
+function extractMessage(e: any): string {
+  // GraphQL
+  if (Array.isArray(e?.graphQLErrors) && e.graphQLErrors.length > 0) {
+    return e.graphQLErrors[0].message ?? 'GraphQL error';
+  }
+
+  // Axios
+  if (e?.response?.data?.message) return e.response.data.message;
+  if (e?.response?.data?.error) return e.response.data.error;
+
+  // Zod
+  if (e?.errors && Array.isArray(e.errors)) {
+    return e.errors.map((z: any) => z.message).join(', ');
+  }
+
+  // Firebase / JS Error
+  if (e?.message && typeof e.message === 'string') return e.message;
+
+  // Fallback
+  return e?.message ?? 'Unknown error';
+}
+
+/**
+ * Extract machine-readable error code if available.
+ */
+function extractCode(e: any): string | null {
+  return (
+    e?.code ??
+    e?.response?.data?.code ??
+    e?.graphQLErrors?.[0]?.extensions?.code ??
+    null
+  );
+}
+
+/**
+ * Extract HTTP status code when applicable.
+ */
+function extractStatus(e: any): number | undefined {
+  return e?.response?.status;
+}
+
+/**
+ * Detect offline / no-internet type errors across different sources.
+ * This is intentionally conservative and can be expanded later.
+ */
+function isOfflineErrorLike(e: any): boolean {
+  const code = e?.code;
+  const msg = typeof e?.message === 'string' ? e.message : '';
+
+  // Our own explicit code
+  if (code === 'NETWORK_OFFLINE') return true;
+
+  // Transport offline error message (your transport throws this)
+  if (msg.startsWith('Offline:')) return true;
+
+  // Common network messages (axios/fetch)
+  if (msg === 'Network Error' || msg === 'Failed to fetch') return true;
+
+  // Axios: no response usually means network-level failure
+  if (e?.isAxiosError && !e?.response) return true;
+
+  return false;
+}
+
+/**
+ * Normalize ANY error shape to consistent NormalizedError.
+ * 
+ * This is the default error normalizer (plugin-free guarantee).
+ * Plugins can provide enhanced normalizers but must use this as base.
  */
 export function normalizeError(error: unknown): NormalizedError {
-  if (error instanceof Error) {
-    return {
-      message: error.message,
-      stack: error.stack,
-      cause: error.cause,
-    };
-  }
+  // ✅ Idempotent: if already normalized, keep as-is
+  if (isNormalizedError(error)) return error;
 
+  // string thrown
   if (typeof error === 'string') {
+    const offline = error.startsWith('Offline:') || error === 'Offline';
     return {
-      message: error,
+      code: offline ? 'NETWORK_OFFLINE' : null,
+      message: offline ? 'No internet connection' : error,
+      raw: error,
     };
   }
 
-  if (error && typeof error === 'object') {
-    const err = error as Record<string, unknown>;
+  // Native JS Error (also covers many library errors)
+  if (error instanceof Error) {
+    const e: any = error;
+
+    // OFFLINE detection has priority
+    if (isOfflineErrorLike(e)) {
+      return {
+        code: 'NETWORK_OFFLINE',
+        message: 'No internet connection',
+        raw: error,
+      };
+    }
+
     return {
-      message: String(err.message || err.error || 'Unknown error'),
-      code: err.code ? String(err.code) : undefined,
-      statusCode: typeof err.statusCode === 'number' ? err.statusCode : undefined,
-      stack: err.stack ? String(err.stack) : undefined,
-      cause: err.cause,
-      metadata: err.metadata as Record<string, unknown> | undefined,
+      code: extractCode(e),
+      message: extractMessage(e),
+      status: extractStatus(e),
+      raw: error,
+    };
+  }
+
+  // Unknown object (common in axios + graphql errors)
+  const e: any = error ?? {};
+
+  // OFFLINE detection for non-Error shapes
+  if (isOfflineErrorLike(e)) {
+    return {
+      code: 'NETWORK_OFFLINE',
+      message: 'No internet connection',
+      raw: error,
     };
   }
 
   return {
-    message: 'Unknown error occurred',
+    code: extractCode(e),
+    message: extractMessage(e),
+    status: extractStatus(e),
+    raw: error,
   };
 }
 
 /**
- * Checks if an error is a network error (by status code)
+ * Default error normalizer (safe default, plugin-free)
+ * Exported for convenience - same as normalizeError()
  */
-export function isNetworkError(error: NormalizedError): boolean {
-  return error.statusCode !== undefined && error.statusCode >= 400 && error.statusCode < 600;
-}
-
-/**
- * Checks if an error is a client error (4xx)
- */
-export function isClientError(error: NormalizedError): boolean {
-  return error.statusCode !== undefined && error.statusCode >= 400 && error.statusCode < 500;
-}
-
-/**
- * Checks if an error is a server error (5xx)
- */
-export function isServerError(error: NormalizedError): boolean {
-  return error.statusCode !== undefined && error.statusCode >= 500 && error.statusCode < 600;
-}
-
+export const defaultErrorNormalizer = normalizeError;

@@ -1,119 +1,199 @@
 /**
  * FILE: packages/@rns/core/contracts/storage.ts
- * PURPOSE: Storage (kv + cache engine) APIs with memory fallback default
+ * LAYER: CORE contracts
  * OWNERSHIP: CORE
+ * ---------------------------------------------------------------------
+ * PURPOSE:
+ *   Abstract key-value storage and cache engine contracts used as the
+ *   single storage layer for the entire app (tokens, session, preferences, caches).
+ *
+ *   This is the CORE contract - plugin-free with in-memory default implementations.
+ *   Plugins provide real storage backends (MMKV/SQLite/Keychain/etc.).
+ *
+ * RESPONSIBILITIES:
+ *   - Provide minimal and universal key-value API.
+ *   - Provide lightweight snapshot cache API.
+ *   - Ensure consistent method signatures across all environments.
+ *   - Hide implementation details from services and stores.
+ *
+ * DATA-FLOW:
+ *   AuthService.login()
+ *      → kvStorage.setString('token', ...)
+ *
+ *   transport.authInterceptor()
+ *      → kvStorage.getString('token')
+ *
+ *   logout()
+ *      → kvStorage.clearAll()
+ *
+ *   ONLINE:
+ *     transport.query()
+ *        → cacheEngine.setSnapshot()
+ *        → UI reads via cacheEngine.getSnapshot()
+ *
+ *   OFFLINE:
+ *     transport.query() throws offline
+ *        → UI falls back to cacheEngine.getSnapshot()
+ *
+ * EXTENSION GUIDELINES:
+ *   - Replace in-memory Map with:
+ *       - react-native-mmkv for key-value storage
+ *       - MMKV/SQLite for cache persistence
+ *   - Preserve the interfaces EXACTLY.
+ *   - If using encrypted MMKV, pass encryptionKey during MMKV init.
+ *   - Do NOT store sensitive data in plain strings (only encrypted storage).
+ *   - Implement namespace separation if needed:
+ *       auth.*, session.*, cache.*, prefs.*
+ *
+ * SECURITY:
+ *   - Storage should be encrypted on production builds.
+ *   - On logout: ALWAYS clear tokens and sensitive keys.
+ *
+ * THREAD SAFETY:
+ *   - In-memory Map is safe for RN JS thread (single-threaded).
+ *   - When migrating to native storage, ensure atomic writes.
  * 
- * PLUGIN-FREE GUARANTEE:
- * - Pure TypeScript interfaces and memory-based implementations
- * - No external storage dependencies (MMKV, AsyncStorage, etc.)
- * - Plugins can replace implementations but must NOT modify this file
+ * BLUEPRINT REFERENCE:
+ *   - docs/ReactNativeCLITemplate/src/infra/storage/mmkv.ts
+ *   - docs/ReactNativeCLITemplate/src/infra/storage/cache-engine.ts
+ * ---------------------------------------------------------------------
  */
 
 /**
  * Key-value storage interface
+ * Used for tokens, session, preferences, etc.
  */
 export interface KeyValueStorage {
-  get<T = unknown>(key: string): Promise<T | null>;
-  set<T = unknown>(key: string, value: T): Promise<void>;
-  remove(key: string): Promise<void>;
-  clear(): Promise<void>;
-  getAllKeys(): Promise<string[]>;
+  /**
+   * Read a string value from storage.
+   */
+  getString(key: string): string | null;
+
+  /**
+   * Store a string value.
+   */
+  setString(key: string, value: string): void;
+
+  /**
+   * Remove a specific key.
+   */
+  delete(key: string): void;
+
+  /**
+   * Clear all storage (logout, hard reset).
+   */
+  clearAll(): void;
 }
 
 /**
  * Cache engine interface
+ * Used for offline-first snapshot cache (NOT persistent by default)
  */
 export interface CacheEngine {
-  get<T = unknown>(key: string): Promise<T | null>;
-  set<T = unknown>(key: string, value: T, ttl?: number): Promise<void>;
-  remove(key: string): Promise<void>;
-  clear(): Promise<void>;
-  has(key: string): Promise<boolean>;
+  /**
+   * Save snapshot under the provided key.
+   * Keys SHOULD be namespaced (e.g., "user.profile", "feed.home", etc.)
+   */
+  setSnapshot(key: string, value: unknown): void;
+
+  /**
+   * Retrieve previously cached snapshot.
+   * Returns undefined if nothing is cached.
+   */
+  getSnapshot<T>(key: string): T | undefined;
+
+  /**
+   * Remove specific snapshot entry.
+   */
+  removeSnapshot(key: string): void;
+
+  /**
+   * Clear entire snapshot cache.
+   * Called typically on logout or environment reset.
+   */
+  clear(): void;
 }
 
 /**
- * Memory-based key-value storage (safe default)
- * Data is lost on app restart
+ * In-memory key-value storage (safe default, plugin-free)
+ * 
+ * DESIGN NOTES:
+ *   - In-memory Map used only for development/CORE baseline.
+ *   - Replace with react-native-mmkv or secure storage backend in production.
+ *   - Preserves the KeyValueStorage interface EXACTLY.
+ * 
+ * EXTENSION:
+ *   - Replace `memory` Map with:
+ *       import { MMKV } from 'react-native-mmkv';
+ *       const mmkv = new MMKV({ id: 'app-storage' });
+ *   - If using encrypted MMKV, pass encryptionKey during MMKV init.
  */
-class MemoryKeyValueStorage implements KeyValueStorage {
-  private storage = new Map<string, unknown>();
+class InMemoryKeyValueStorage implements KeyValueStorage {
+  private memory = new Map<string, string>();
 
-  async get<T = unknown>(key: string): Promise<T | null> {
-    const value = this.storage.get(key);
-    return (value as T) ?? null;
+  getString(key: string): string | null {
+    return this.memory.has(key) ? this.memory.get(key)! : null;
   }
 
-  async set<T = unknown>(key: string, value: T): Promise<void> {
-    this.storage.set(key, value);
+  setString(key: string, value: string): void {
+    this.memory.set(key, value);
   }
 
-  async remove(key: string): Promise<void> {
-    this.storage.delete(key);
+  delete(key: string): void {
+    this.memory.delete(key);
   }
 
-  async clear(): Promise<void> {
-    this.storage.clear();
-  }
-
-  async getAllKeys(): Promise<string[]> {
-    return Array.from(this.storage.keys());
-  }
-}
-
-/**
- * Memory-based cache engine (safe default)
- * Data is lost on app restart, TTL is not enforced
- */
-class MemoryCacheEngine implements CacheEngine {
-  private cache = new Map<string, { value: unknown; expires?: number }>();
-
-  async get<T = unknown>(key: string): Promise<T | null> {
-    const entry = this.cache.get(key);
-    if (!entry) {
-      return null;
-    }
-
-    // Check TTL if set
-    if (entry.expires && Date.now() > entry.expires) {
-      this.cache.delete(key);
-      return null;
-    }
-
-    return (entry.value as T) ?? null;
-  }
-
-  async set<T = unknown>(key: string, value: T, ttl?: number): Promise<void> {
-    const expires = ttl ? Date.now() + ttl * 1000 : undefined;
-    this.cache.set(key, { value, expires });
-  }
-
-  async remove(key: string): Promise<void> {
-    this.cache.delete(key);
-  }
-
-  async clear(): Promise<void> {
-    this.cache.clear();
-  }
-
-  async has(key: string): Promise<boolean> {
-    const entry = this.cache.get(key);
-    if (!entry) {
-      return false;
-    }
-
-    // Check TTL if set
-    if (entry.expires && Date.now() > entry.expires) {
-      this.cache.delete(key);
-      return false;
-    }
-
-    return true;
+  clearAll(): void {
+    this.memory.clear();
   }
 }
 
 /**
- * Default storage instances (memory-based, can be replaced via plugins)
+ * In-memory cache engine (safe default, plugin-free)
+ * 
+ * DESIGN NOTES:
+ *   - Lightweight offline-first snapshot cache. NOT persistent.
+ *   - Used by services and query layers as a minimal data cache before
+ *     integrating MMKV/SQLite-based persistence.
+ *   - Designed to support:
+ *       - stale-while-revalidate patterns
+ *       - offline fallback
+ *       - domain-level prefetching
+ *       - high-level services using transport.query()
+ * 
+ * EXTENSION GUIDELINES:
+ *   - Replace Map with MMKV/SQLite for persistence.
+ *   - Add TTL per entry: { data, cachedAt, ttlMs }
+ *   - Add versioning per domain: { version: schemaVersion, data }
+ *   - Add "listeners" (pub/sub): cacheEngine.subscribe(key, callback)
+ *   - Keep API stable — do NOT change public signatures.
  */
-export const kvStorage: KeyValueStorage = new MemoryKeyValueStorage();
-export const cacheEngine: CacheEngine = new MemoryCacheEngine();
+class InMemoryCacheEngine implements CacheEngine {
+  private memory = new Map<string, unknown>();
 
+  setSnapshot(key: string, value: unknown): void {
+    this.memory.set(key, value);
+  }
+
+  getSnapshot<T>(key: string): T | undefined {
+    return this.memory.get(key) as T | undefined;
+  }
+
+  removeSnapshot(key: string): void {
+    this.memory.delete(key);
+  }
+
+  clear(): void {
+    this.memory.clear();
+  }
+}
+
+/**
+ * Default key-value storage (in-memory, can be replaced via plugins)
+ */
+export const kvStorage: KeyValueStorage = new InMemoryKeyValueStorage();
+
+/**
+ * Default cache engine (in-memory, can be replaced via plugins)
+ */
+export const cacheEngine: CacheEngine = new InMemoryCacheEngine();

@@ -1,121 +1,180 @@
 /**
  * FILE: packages/@rns/core/contracts/offline.ts
- * PURPOSE: Offline/outbox/sync contracts with noop defaults (no background work without plugin)
+ * LAYER: CORE contracts
  * OWNERSHIP: CORE
+ * ---------------------------------------------------------------------
+ * PURPOSE:
+ *   Queue write operations (mutations / uploads) attempted while the app
+ *   is offline. When the device reconnects, sync-engine replays queued
+ *   operations in FIFO order.
+ *
+ *   This is the CORE contract - plugin-free with noop default implementations.
+ *   Plugins provide real offline queue and sync engine implementations.
+ *
+ * RESPONSIBILITIES:
+ *   - push(operation, variables, tags?) → store new offline task.
+ *   - getAll()                         → return snapshot for replay/inspection.
+ *   - remove(id)                       → remove successfully replayed mutation.
+ *   - clear()                          → wipe queue on logout or environment reset.
+ *   - replayOfflineMutations()         → replay queued operations when online.
+ *   - onConnected()                    → main entry point when connectivity restored.
+ *
+ * DATA-FLOW:
+ *   service.mutate()
+ *      → transport.mutate()
+ *         → offline? → offlineQueue.push(operation, variables, tags?)
+ *
+ *   connectivity restored (NetInfo)
+ *      → syncEngine.onConnected()
+ *         → replayOfflineMutations()
+ *            → transport.mutate()
+ *            → (optional) invalidate by tags
+ *            → offlineQueue.remove(id)
+ *
+ * DESIGN NOTES:
+ *   - In-memory array used only for development/CORE baseline.
+ *   - Replace with MMKV/SQLite for persistence (recommended via plugins).
+ *
+ * EXTENSION GUIDELINES:
+ *   - Add retry metadata: { retryCount, lastAttempt, lastError }.
+ *   - Add conflict-resolution strategies:
+ *       optimistic merge, server-wins, client-wins, CRDT.
+ *   - Add deduplication based on operation + payload hash.
+ *   - Add TTL ("discard after X hours offline").
+ *   - Add encryption if persistent storage contains sensitive data.
+ *
+ * THREAD SAFETY:
+ *   - JS thread is single-threaded → array operations are safe.
+ *   - When using SQLite/MMKV ensure atomic writes.
  * 
- * PLUGIN-FREE GUARANTEE:
- * - Pure TypeScript interfaces and noop implementations
- * - No background sync, no queue processing
- * - Plugins can provide real implementations but must NOT modify this file
+ * BLUEPRINT REFERENCE:
+ *   - docs/ReactNativeCLITemplate/src/infra/offline/offline-queue.ts
+ *   - docs/ReactNativeCLITemplate/src/infra/offline/sync-engine.ts
+ * ---------------------------------------------------------------------
  */
 
+import type { Operation } from './transport';
+
+// Re-export Operation type for convenience
+export type { Operation };
+
 /**
- * Outbox entry (queued mutation)
+ * Offline mutation entry
  */
-export interface OutboxEntry {
+export interface OfflineMutation {
   id: string;
-  operation: string;
-  payload: unknown;
-  timestamp: number;
-  retries: number;
-  maxRetries?: number;
+  operation: Operation;
+  variables: unknown;
+  createdAt: number;
+  tags?: string[]; // Query invalidation tags (stored as mutable copy)
 }
 
 /**
- * Sync status
+ * Offline queue interface
  */
-export interface SyncStatus {
-  isSyncing: boolean;
-  lastSyncAt?: number;
-  pendingCount: number;
-  failedCount: number;
-}
+export interface OfflineOutbox {
+  /**
+   * Push a new offline mutation into the FIFO queue.
+   * Backward-compatible: `tags` is optional.
+   */
+  push(operation: Operation, variables: unknown, tags?: readonly string[]): void;
 
-/**
- * Outbox interface (queue for offline mutations)
- */
-export interface Outbox {
-  enqueue(operation: string, payload: unknown): Promise<string>;
-  dequeue(): Promise<OutboxEntry | null>;
-  remove(id: string): Promise<void>;
-  getAll(): Promise<OutboxEntry[]>;
-  clear(): Promise<void>;
-  getStatus(): Promise<SyncStatus>;
+  /**
+   * Get all queued mutations (snapshot for replay/inspection).
+   */
+  getAll(): OfflineMutation[];
+
+  /**
+   * Remove successfully replayed mutation.
+   */
+  remove(id: string): void;
+
+  /**
+   * Clear entire queue (logout, environment reset).
+   */
+  clear(): void;
 }
 
 /**
  * Sync engine interface
  */
 export interface SyncEngine {
-  sync(): Promise<void>;
-  start(): Promise<void>;
-  stop(): Promise<void>;
-  getStatus(): Promise<SyncStatus>;
+  /**
+   * Replay all queued offline mutations in FIFO order.
+   * Stops on first failure to avoid destructive cascading errors.
+   */
+  replayOfflineMutations(): Promise<void>;
+
+  /**
+   * Main entry point when connectivity is restored.
+   * Replays all queued mutations.
+   */
+  onConnected(): Promise<void>;
 }
 
 /**
- * Noop outbox implementation (safe default)
- * No actual queuing, all operations are no-ops
+ * In-memory offline queue (safe default, plugin-free)
+ * 
+ * DESIGN NOTES:
+ *   - In-memory array used only for development/CORE baseline.
+ *   - Replace with MMKV/SQLite for persistence (recommended via plugins).
  */
-class NoopOutbox implements Outbox {
-  async enqueue(_operation: string, _payload: unknown): Promise<string> {
-    return 'noop-id';
+class InMemoryOfflineQueue implements OfflineOutbox {
+  private queue: OfflineMutation[] = [];
+
+  push(operation: Operation, variables: unknown, tags?: readonly string[]): void {
+    this.queue.push({
+      id: Math.random().toString(36).slice(2),
+      operation,
+      variables,
+      createdAt: Date.now(),
+      tags: tags ? [...tags] : undefined, // ✅ copy readonly -> mutable
+    });
   }
 
-  async dequeue(): Promise<OutboxEntry | null> {
-    return null;
+  getAll(): OfflineMutation[] {
+    return [...this.queue];
   }
 
-  async remove(_id: string): Promise<void> {
-    // No-op
+  remove(id: string): void {
+    const index = this.queue.findIndex(q => q.id === id);
+    if (index !== -1) this.queue.splice(index, 1);
   }
 
-  async getAll(): Promise<OutboxEntry[]> {
-    return [];
-  }
-
-  async clear(): Promise<void> {
-    // No-op
-  }
-
-  async getStatus(): Promise<SyncStatus> {
-    return {
-      isSyncing: false,
-      pendingCount: 0,
-      failedCount: 0,
-    };
+  clear(): void {
+    this.queue.length = 0;
   }
 }
 
 /**
- * Noop sync engine implementation (safe default)
- * No background sync, no processing
+ * Noop sync engine (safe default, plugin-free)
+ * 
+ * DESIGN NOTES:
+ *   - Noop implementation - does nothing (plugin-free guarantee).
+ *   - Plugins provide real sync engine that replays mutations.
+ *   - Real sync engine should:
+ *       - Read queued mutations from offlineQueue
+ *       - Re-run them (FIFO) using transport.mutate()
+ *       - Remove successfully replayed entries
+ *       - Stop on first failure
+ *       - Invalidate React Query caches by tags (if wired)
  */
 class NoopSyncEngine implements SyncEngine {
-  async sync(): Promise<void> {
-    // No-op
+  async replayOfflineMutations(): Promise<void> {
+    // No-op: plugins provide real implementation
   }
 
-  async start(): Promise<void> {
-    // No-op
-  }
-
-  async stop(): Promise<void> {
-    // No-op
-  }
-
-  async getStatus(): Promise<SyncStatus> {
-    return {
-      isSyncing: false,
-      pendingCount: 0,
-      failedCount: 0,
-    };
+  async onConnected(): Promise<void> {
+    // No-op: plugins provide real implementation
   }
 }
 
 /**
- * Default offline instances (noop, can be replaced via plugins)
+ * Default offline queue (in-memory, can be replaced via plugins)
  */
-export const outbox: Outbox = new NoopOutbox();
-export const syncEngine: SyncEngine = new NoopSyncEngine();
+export const offlineQueue: OfflineOutbox = new InMemoryOfflineQueue();
 
+/**
+ * Default sync engine (noop, can be replaced via plugins)
+ */
+export const syncEngine: SyncEngine = new NoopSyncEngine();
