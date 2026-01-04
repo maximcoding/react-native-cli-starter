@@ -50,6 +50,6 @@ OWNERSHIP: CLI
 - [ ] Packs must not include secrets (tokens/keys).
 
 ## 5.6 Acceptance
-- [ ] Discovery can list all available CORE/plugin/module packs with their delivery type.
-- [ ] Resolving a pack by id + target + language returns exactly one deterministic path and a delivery/destination plan.
-- [ ] Missing/invalid manifest fails early with actionable output.
+- [x] Discovery can list all available CORE/plugin/module packs with their delivery type. (verified via discoverAllPacks() and listPacks())
+- [x] Resolving a pack by id + target + language returns exactly one deterministic path and a delivery/destination plan. (verified via resolvePack())
+- [x] Missing/invalid manifest fails early with actionable output. (verified via loadPackManifest() error handling)
