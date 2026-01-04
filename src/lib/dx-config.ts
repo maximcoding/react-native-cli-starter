@@ -543,7 +543,24 @@ declare module '*.svg' {
 
   writeTextFile(svgTypesPath, svgTypesContent);
 
-  // Ensure types directory is included in tsconfig.json
+  // Also create declarations.d.ts at root to match blueprint pattern
+  const declarationsPath = join(appRoot, 'declarations.d.ts');
+  const declarationsContent = `/**
+ * FILE: declarations.d.ts
+ * PURPOSE: Global type declarations for the app
+ * OWNERSHIP: CLI
+ */
+
+declare module "*.svg" {
+  import React from "react";
+  import { SvgProps } from "react-native-svg";
+  const content: React.FC<SvgProps>;
+  export default content;
+}
+`;
+  writeTextFile(declarationsPath, declarationsContent);
+
+  // Ensure types directory and declarations.d.ts are included in tsconfig.json
   const tsconfigPath = join(appRoot, 'tsconfig.json');
   if (pathExists(tsconfigPath)) {
     const tsconfig = readJsonFile<any>(tsconfigPath);
@@ -552,6 +569,10 @@ declare module '*.svg' {
     }
     if (!tsconfig.include.includes('types/**/*')) {
       tsconfig.include.push('types/**/*');
+    }
+    // Ensure declarations.d.ts is included (usually auto-included, but explicit is better)
+    if (!tsconfig.include.includes('declarations.d.ts')) {
+      tsconfig.include.push('declarations.d.ts');
     }
     writeJsonFile(tsconfigPath, tsconfig);
   }
