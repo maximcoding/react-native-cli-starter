@@ -11,7 +11,7 @@ logging/error format (step-based execution, clean failures, no default stack spa
 
 ## [ ] 2) INIT Pipeline (`npm run init` / `rns init`)
 
-Implement a full init flow that creates a new Expo or Bare RN app and finishes in a “ready-to-run” state with zero
+Implement a full init flow that creates a new Expo Framework or Bare React Native app and finishes in a "ready-to-run" state with zero
 manual edits. Init must collect inputs (wizard/flags), create the project, attach the CORE base pack, install required
 dependencies, apply needed configs/scripts, create/validate markers, write `.rn-init.json`, run final integrity checks,
 and print clear next steps. The acceptance bar is simple: the app boots immediately after init.
@@ -19,7 +19,7 @@ and print clear next steps. The acceptance bar is simple: the app boots immediat
 ## [ ] 3) CORE Base Pack (`templates/base`)
 
 Lock and maintain a single CORE base template pack that is always attached by init. CORE is not a demo app; it is the
-baseline architecture and infrastructure foundation for any app style (online/offline, multiple transport adapters,
+baseline architecture and infrastructure foundation for any app style (online/offline, multiple network adapters,
 multiple storage backends, multiple auth providers, observability, etc.). CORE must include the app shell,
 `app/core/infra/features` layering, assets structure, canonical markers, infrastructure contracts (interfaces/facades),
 and safe defaults (noop/memory/stubs) so the project compiles and runs even with zero capability plugins installed.
@@ -35,7 +35,7 @@ configs to get these basics working.
 
 Define the template-pack system as the core mechanism for “dynamic attachment” into the generated app. The CLI must
 support CORE packs, plugin packs, and module packs with a consistent structure, clear ownership rules, and target
-variants (Expo/Bare, TS/JS) without turning the repo into duplication chaos. This is how capabilities scale without
+variants (Expo Framework/Bare React Native, TS/JS) without turning the repo into duplication chaos. This is how capabilities scale without
 rewriting CORE.
 
 ## [ ] 6) Dynamic Template Attachment Engine

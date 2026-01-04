@@ -13,13 +13,13 @@ OWNERSHIP: CORE(packages/@rns) + INIT(host configs)
   - [x] If user `src/**` exists, configure TS paths + runtime resolver so `@/*` maps to `src/*`.
   - [x] If user `src/**` does not exist, `@/*` must not break builds (either map to a safe path or keep alias disabled safely).
 - [x] Ensure alias config is target-appropriate:
-  - [x] Expo target: resolver works with Metro/Expo config.
-  - [x] Bare target: resolver works with Metro/Babel config.
+  - [x] Expo Framework target: resolver works with Metro/Expo config.
+  - [x] Bare React Native target: resolver works with Metro/Babel config.
 - [x] Generated app compiles with imports:
   - [x] `import { ... } from '@rns/runtime'`
   - [x] `import x from '@/...'` (only if alias toggle ON and `src/**` exists)
 
-## 4.2 SVG import pipeline (Expo + Bare)
+## 4.2 SVG import pipeline (Expo Framework + Bare React Native)
 - [x] Configure SVG pipeline in the host app (Metro-level):
   - [x] Install required deps via dependency layer. (dependency installation handled in section 11)
   - [x] Apply Metro config changes safely (patch ops + backups). (config is generated/updated during init)
@@ -33,10 +33,10 @@ OWNERSHIP: CORE(packages/@rns) + INIT(host configs)
 
 ## 4.3 Fonts pipeline (no manual linking steps)
 - [x] Ensure `assets/fonts` exists and include a placeholder font file (or documented placeholder) to validate pipeline.
-- [x] Expo target:
+- [x] Expo Framework target:
   - [x] Fonts are loadable via the chosen baseline approach (FULL_AUTO; no manual steps). (expo-font handles fonts automatically from assets/fonts)
   - [x] If runtime uses font loading, it must not crash when fonts are absent (safe fallback). (CORE runtime doesn't require fonts; safe defaults)
-- [x] Bare target:
+- [x] Bare React Native target:
   - [x] Fonts are linkable via the chosen baseline approach (FULL_AUTO; no manual steps). (react-native.config.js auto-links fonts)
   - [x] Any linking configuration is applied automatically by init (patch ops + scripts as needed). (react-native.config.js created during init)
 - [x] Init attaches any required config/scripts automatically and keeps user code clean.
@@ -50,21 +50,21 @@ OWNERSHIP: CORE(packages/@rns) + INIT(host configs)
   - [x] `packages/@rns/core/config/feature-flags.ts` provides base feature flags (BOOLEANS ONLY: all feature toggles including USE_MOCK) + `featureFlagsRegistry` for plugin extensions.
   - [x] Clear separation: constants = values, featureFlags = booleans. All booleans consolidated in feature-flags.ts (no split between "flags" and "featureFlags").
   - [x] Plugins can register their constants/flags without modifying CORE files.
-- [x] Expo target:
+- [x] Expo Framework target:
   - [x] Env access is wired through the chosen baseline approach (FULL_AUTO; no manual steps). (uses expo-constants with safe fallbacks)
-- [x] Bare target:
+- [x] Bare React Native target:
   - [x] Env access is wired through the chosen baseline approach (FULL_AUTO; no manual steps). (uses react-native-config with safe fallbacks)
 - [x] Env access compiles even if `.env` is missing:
   - [x] safe defaults OR clear, actionable runtime error message (defined by CORE). (safe defaults provided for all env vars)
 
 ## 4.5 Base scripts (developer workflow)
 - [x] Add baseline scripts into generated app `package.json` (clean/doctor/reset/etc. as defined by CLI).
-- [x] Scripts are target-safe (Expo/Bare) and do not require user edits.
+- [x] Scripts are target-safe (Expo Framework/Bare React Native) and do not require user edits.
 - [x] Scripts must not assume business code exists in user `src/**` (Option A clean boundary).
 
 ## 4.6 Acceptance
-- [x] After init: `@rns/*` imports compile (Expo + Bare). (verified via alias configuration check)
-- [x] After init: optional `@/*` imports compile when toggle ON and `src/**` exists (Expo + Bare). (verified via alias configuration check)
-- [x] After init: SVG imports compile (Expo + Bare). (verified via SVG pipeline configuration check)
-- [x] After init: fonts pipeline is ready without manual steps (Expo + Bare). (verified via fonts configuration check)
-- [x] After init: env pipeline compiles and can be read (Expo + Bare). (verified via env configuration check)
+- [x] After init: `@rns/*` imports compile (Expo Framework + Bare React Native). (verified via alias configuration check)
+- [x] After init: optional `@/*` imports compile when toggle ON and `src/**` exists (Expo Framework + Bare React Native). (verified via alias configuration check)
+- [x] After init: SVG imports compile (Expo Framework + Bare React Native). (verified via SVG pipeline configuration check)
+- [x] After init: fonts pipeline is ready without manual steps (Expo Framework + Bare React Native). (verified via fonts configuration check)
+- [x] After init: env pipeline compiles and can be read (Expo Framework + Bare React Native). (verified via env configuration check)
