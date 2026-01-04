@@ -872,8 +872,12 @@ export async function runInit(options: InitOptions): Promise<void> {
     // 5. Install Option A Workspace Packages model (includes App.tsx from templates/base)
     installWorkspacePackages(appRoot, inputs, stepRunner, options.context);
     
-    // Note: App.tsx is now provided by templates/base via attachment engine
-    // No need for separate ensureMinimalAppEntrypoint call
+    // 5.1. Ensure minimal App.tsx entrypoint (safety net - ensures App.tsx is always correct)
+    // This is called after attachment to guarantee App.tsx imports @rns/runtime
+    // even if attachment engine has issues or template structure changes
+    stepRunner.start('Ensure minimal app entrypoint');
+    ensureMinimalAppEntrypoint(appRoot, inputs);
+    stepRunner.ok('Ensure minimal app entrypoint');
     
     // 6. Apply CORE DX configs
     applyCoreDxConfigs(appRoot, inputs, stepRunner);
