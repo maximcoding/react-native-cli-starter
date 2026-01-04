@@ -30,18 +30,25 @@ export type FeatureFlagsExtension = Record<string, boolean | unknown>;
 /**
  * Feature flags registry - allows plugins to extend base flags
  * 
- * USAGE:
- *   // In plugin init:
- *   import { featureFlagsRegistry } from '@rns/core/config/feature-flags';
- *   featureFlagsRegistry.register('plugin-id', {
- *     enableAuth: true,
- *     enablePushNotifications: false,
- *     // ... plugin flags
- *   });
+ * WHY THIS PATTERN:
+ * - Plugins need to add their own feature flags (e.g., enableAuth, enablePushNotifications)
+ * - We can't modify CORE files (plugin-free guarantee)
+ * - Registry pattern lets plugins register without touching CORE
+ * - App code gets merged values via getAll() - simple and predictable
+ * - Separate from constants registry because flags are boolean/feature toggles, not string keys
  * 
- *   // In app code:
+ * USAGE:
+ *   // Plugin registers during init:
+ *   import { featureFlagsRegistry } from '@rns/core/config/feature-flags';
+ *   featureFlagsRegistry.register('auth-core', {
+ *     enableAuth: true,
+ *     enableMFA: false,
+ *   });
+ *   
+ *   // App uses merged values:
  *   import { featureFlagsRegistry } from '@rns/core/config/feature-flags';
  *   const allFlags = featureFlagsRegistry.getAll();
+ *   // allFlags now includes: enableOffline, enableAuth, enableMFA, etc.
  */
 export const featureFlagsRegistry = {
   core: featureFlags,

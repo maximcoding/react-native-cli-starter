@@ -171,10 +171,54 @@ class NoopSyncEngine implements SyncEngine {
 
 /**
  * Default offline queue (in-memory, can be replaced via plugins)
+ * 
+ * WHY: Plugins need to replace this with persistent storage (MMKV/SQLite)
+ * Same pattern as transport.setTransport() for consistency
  */
-export const offlineQueue: OfflineOutbox = new InMemoryOfflineQueue();
+let activeOfflineQueue: OfflineOutbox = new InMemoryOfflineQueue();
 
 /**
  * Default sync engine (noop, can be replaced via plugins)
  */
-export const syncEngine: SyncEngine = new NoopSyncEngine();
+let activeSyncEngine: SyncEngine = new NoopSyncEngine();
+
+/**
+ * Get the active offline queue
+ * Uses Proxy to allow runtime replacement by plugins (same pattern as transport)
+ */
+export const offlineQueue: OfflineOutbox = new Proxy({} as OfflineOutbox, {
+  get(_target, prop) {
+    return (activeOfflineQueue as any)[prop];
+  },
+});
+
+/**
+ * Get the active sync engine
+ * Uses Proxy to allow runtime replacement by plugins
+ */
+export const syncEngine: SyncEngine = new Proxy({} as SyncEngine, {
+  get(_target, prop) {
+    return (activeSyncEngine as any)[prop];
+  },
+});
+
+/**
+ * Set the active offline queue (called by plugins)
+ * Plugins can replace the default in-memory queue with persistent implementations
+ * 
+ * WHY THIS PATTERN:
+ * - Consistent with transport.setTransport() - same approach everywhere
+ * - Plugins need to swap implementations without modifying CORE
+ * - Proxy pattern allows runtime replacement while keeping type safety
+ */
+export function setOfflineQueue(queue: OfflineOutbox): void {
+  activeOfflineQueue = queue;
+}
+
+/**
+ * Set the active sync engine (called by plugins)
+ * Plugins can replace the default noop sync engine with real implementations
+ */
+export function setSyncEngine(engine: SyncEngine): void {
+  activeSyncEngine = engine;
+}

@@ -190,10 +190,54 @@ class InMemoryCacheEngine implements CacheEngine {
 
 /**
  * Default key-value storage (in-memory, can be replaced via plugins)
+ * 
+ * WHY: Plugins need to replace this with real storage (MMKV, etc.)
+ * Same pattern as transport.setTransport() for consistency
  */
-export const kvStorage: KeyValueStorage = new InMemoryKeyValueStorage();
+let activeKvStorage: KeyValueStorage = new InMemoryKeyValueStorage();
 
 /**
  * Default cache engine (in-memory, can be replaced via plugins)
  */
-export const cacheEngine: CacheEngine = new InMemoryCacheEngine();
+let activeCacheEngine: CacheEngine = new InMemoryCacheEngine();
+
+/**
+ * Get the active key-value storage
+ * Uses Proxy to allow runtime replacement by plugins (same pattern as transport)
+ */
+export const kvStorage: KeyValueStorage = new Proxy({} as KeyValueStorage, {
+  get(_target, prop) {
+    return (activeKvStorage as any)[prop];
+  },
+});
+
+/**
+ * Get the active cache engine
+ * Uses Proxy to allow runtime replacement by plugins
+ */
+export const cacheEngine: CacheEngine = new Proxy({} as CacheEngine, {
+  get(_target, prop) {
+    return (activeCacheEngine as any)[prop];
+  },
+});
+
+/**
+ * Set the active key-value storage (called by plugins)
+ * Plugins can replace the default in-memory storage with real implementations (MMKV, etc.)
+ * 
+ * WHY THIS PATTERN:
+ * - Consistent with transport.setTransport() - same approach everywhere
+ * - Plugins need to swap implementations without modifying CORE
+ * - Proxy pattern allows runtime replacement while keeping type safety
+ */
+export function setKeyValueStorage(storage: KeyValueStorage): void {
+  activeKvStorage = storage;
+}
+
+/**
+ * Set the active cache engine (called by plugins)
+ * Plugins can replace the default in-memory cache with persistent implementations
+ */
+export function setCacheEngine(engine: CacheEngine): void {
+  activeCacheEngine = engine;
+}

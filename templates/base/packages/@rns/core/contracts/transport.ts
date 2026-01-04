@@ -156,6 +156,12 @@ export const transport: Transport = new Proxy({} as Transport, {
  * Set the active transport adapter (called by plugins)
  * Plugins can replace the default noop adapter with their implementation
  * 
+ * WHY THIS PATTERN:
+ * - Plugins need to swap noop adapter with real implementations (REST/GraphQL/WebSocket)
+ * - Proxy pattern allows runtime replacement while keeping type safety
+ * - Consistent pattern - same approach used for storage/offline contracts
+ * - No complex abstractions - just swap the implementation
+ * 
  * BLUEPRINT REFERENCE: docs/ReactNativeCLITemplate/src/infra/transport/transport.ts
  */
 export function setTransport(adapter: Transport): void {

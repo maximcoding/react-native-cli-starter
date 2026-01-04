@@ -12,15 +12,33 @@
  * ---------------------------------------------------------------------
  */
 
-// Try to load react-native-config if available (Bare target)
-let Config: any = null;
-try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  Config = require('react-native-config').default || require('react-native-config');
-} catch {
-  // Not available - use safe defaults
-  Config = {};
+/**
+ * Load config from available sources (Expo, Bare, or fallback)
+ * 
+ * WHY THIS HELPER:
+ * - Same logic as env.ts - keeps config loading consistent
+ * - Handles different targets gracefully
+ * - Always returns an object (never null/undefined) for safe property access
+ */
+function loadConfig(): Record<string, string> {
+  // Try expo-constants first (Expo target)
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const Constants = require('expo-constants');
+    return Constants.expoConfig?.extra?.env || {};
+  } catch {
+    // Try react-native-config (Bare target)
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      return require('react-native-config').default || require('react-native-config') || {};
+    } catch {
+      // Fallback: empty object (safe default)
+      return {};
+    }
+  }
 }
+
+const Config = loadConfig();
 
 /**
  * Base constants (CORE only)
@@ -52,17 +70,25 @@ export type ConstantsExtension = Record<string, unknown>;
 /**
  * Constants registry - allows plugins to extend base constants
  * 
- * USAGE:
- *   // In plugin init:
- *   import { constantsRegistry } from '@rns/core/config/constants';
- *   constantsRegistry.register('plugin-id', {
- *     AUTH_TOKEN: 'auth.token',
- *     // ... plugin constants
- *   });
+ * WHY THIS PATTERN:
+ * - Plugins need to add their own constants (e.g., AUTH_TOKEN, OFFLINE_QUEUE_KEY)
+ * - We can't modify CORE files (plugin-free guarantee)
+ * - Registry pattern lets plugins register without touching CORE
+ * - App code gets merged values via getAll() - simple and predictable
+ * - No complex abstractions - just a simple object with register/getAll methods
  * 
- *   // In app code:
+ * USAGE:
+ *   // Plugin registers during init:
+ *   import { constantsRegistry } from '@rns/core/config/constants';
+ *   constantsRegistry.register('auth-core', {
+ *     AUTH_TOKEN: 'auth.token',
+ *     REFRESH_TOKEN: 'auth.refreshToken',
+ *   });
+ *   
+ *   // App uses merged values:
  *   import { constantsRegistry } from '@rns/core/config/constants';
  *   const allConstants = constantsRegistry.getAll();
+ *   // allConstants now includes: MAX_UPLOAD_SIZE, AUTH_TOKEN, REFRESH_TOKEN, etc.
  */
 export const constantsRegistry = {
   core: constants,
