@@ -5,86 +5,135 @@
  * 
  * PLUGIN-FREE GUARANTEE:
  * - Pure TypeScript interfaces and noop implementations
- * - No HTTP/WebSocket dependencies (fetch, axios, etc.)
+ * - No HTTP/WebSocket/GraphQL dependencies (fetch, axios, etc.)
  * - Plugins can provide real implementations but must NOT modify this file
+ * 
+ * BLUEPRINT REFERENCE:
+ * - Matches blueprint pattern: operation-based transport (query/mutate/subscribe/upload)
+ * - Not HTTP-method-based - uses operations (string identifiers)
+ * - Plugins implement concrete adapters (REST/GraphQL/WebSocket/etc.)
  */
 
 /**
- * HTTP method types
+ * Transport operation identifier (string constant)
+ * Plugins define operation constants (e.g., 'auth.login', 'user.profile')
  */
-export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS';
+export type Operation = string;
 
 /**
- * Request configuration
+ * Transport request metadata
  */
-export interface TransportRequest {
-  url: string;
-  method?: HttpMethod;
-  headers?: Record<string, string>;
-  body?: unknown;
-  timeout?: number;
-  signal?: AbortSignal;
-}
+export type TransportRequestMeta = {
+  offline?: boolean;
+  retry?: boolean;
+  tags?: string | readonly string[]; // Query invalidation tags
+};
 
 /**
- * Response shape
+ * Transport interface (matches blueprint pattern)
+ * Operation-based, not HTTP-method-based
+ * Supports query/mutate/subscribe/upload operations
  */
-export interface TransportResponse<T = unknown> {
-  data: T;
-  status: number;
-  statusText: string;
-  headers: Record<string, string>;
-}
+export interface Transport {
+  /**
+   * Execute a query operation (read-only, cacheable)
+   */
+  query<TResponse = unknown, TVariables = unknown>(
+    operation: Operation,
+    variables?: TVariables,
+    meta?: TransportRequestMeta,
+  ): Promise<TResponse>;
 
-/**
- * Transport adapter interface
- */
-export interface TransportAdapter {
-  request<T = unknown>(config: TransportRequest): Promise<TransportResponse<T>>;
+  /**
+   * Execute a mutation operation (write, not cacheable)
+   */
+  mutate<TResponse = unknown, TVariables = unknown>(
+    operation: Operation,
+    variables?: TVariables,
+    meta?: TransportRequestMeta,
+  ): Promise<TResponse>;
+
+  /**
+   * Subscribe to a channel (real-time updates)
+   * Returns unsubscribe function
+   */
+  subscribe<TData = unknown>(
+    channel: string,
+    handler: (data: TData) => void,
+    meta?: TransportRequestMeta,
+  ): () => void;
+
+  /**
+   * Upload a file
+   */
+  upload<TResponse = unknown>(
+    operation: Operation,
+    payload: { file: unknown; extra?: Record<string, unknown> },
+    meta?: TransportRequestMeta,
+  ): Promise<TResponse>;
 }
 
 /**
  * Noop transport adapter (safe default)
- * All requests return empty responses
+ * All operations return empty/null responses
+ * No actual network calls, no offline queue integration
  */
-class NoopTransportAdapter implements TransportAdapter {
-  async request<T = unknown>(_config: TransportRequest): Promise<TransportResponse<T>> {
-    return {
-      data: null as T,
-      status: 200,
-      statusText: 'OK',
-      headers: {},
+class NoopTransportAdapter implements Transport {
+  async query<TResponse = unknown, _TVariables = unknown>(
+    _operation: Operation,
+    _variables?: unknown,
+    _meta?: TransportRequestMeta,
+  ): Promise<TResponse> {
+    return null as TResponse;
+  }
+
+  async mutate<TResponse = unknown, _TVariables = unknown>(
+    _operation: Operation,
+    _variables?: unknown,
+    _meta?: TransportRequestMeta,
+  ): Promise<TResponse> {
+    return null as TResponse;
+  }
+
+  subscribe<TData = unknown>(
+    _channel: string,
+    _handler: (data: TData) => void,
+    _meta?: TransportRequestMeta,
+  ): () => void {
+    // Return no-op unsubscribe function
+    return () => {
+      // No-op
     };
+  }
+
+  async upload<TResponse = unknown>(
+    _operation: Operation,
+    _payload: { file: unknown; extra?: Record<string, unknown> },
+    _meta?: TransportRequestMeta,
+  ): Promise<TResponse> {
+    return null as TResponse;
   }
 }
 
 /**
  * Default transport adapter (noop, can be replaced via plugins)
+ * Plugins should replace this instance with their adapter implementation
  */
-export const transport: TransportAdapter = new NoopTransportAdapter();
+let activeTransport: Transport = new NoopTransportAdapter();
 
 /**
- * Convenience methods for common HTTP operations
+ * Get the active transport adapter
  */
-export const transportHelpers = {
-  get<T = unknown>(url: string, config?: Omit<TransportRequest, 'url' | 'method'>): Promise<TransportResponse<T>> {
-    return transport.request<T>({ ...config, url, method: 'GET' });
+export const transport: Transport = new Proxy({} as Transport, {
+  get(_target, prop) {
+    return (activeTransport as any)[prop];
   },
+});
 
-  post<T = unknown>(url: string, body?: unknown, config?: Omit<TransportRequest, 'url' | 'method' | 'body'>): Promise<TransportResponse<T>> {
-    return transport.request<T>({ ...config, url, method: 'POST', body });
-  },
-
-  put<T = unknown>(url: string, body?: unknown, config?: Omit<TransportRequest, 'url' | 'method' | 'body'>): Promise<TransportResponse<T>> {
-    return transport.request<T>({ ...config, url, method: 'PUT', body });
-  },
-
-  patch<T = unknown>(url: string, body?: unknown, config?: Omit<TransportRequest, 'url' | 'method' | 'body'>): Promise<TransportResponse<T>> {
-    return transport.request<T>({ ...config, url, method: 'PATCH', body });
-  },
-
-  delete<T = unknown>(url: string, config?: Omit<TransportRequest, 'url' | 'method'>): Promise<TransportResponse<T>> {
-    return transport.request<T>({ ...config, url, method: 'DELETE' });
-  },
-};
-
+/**
+ * Set the active transport adapter (called by plugins)
+ * Plugins can replace the default noop adapter with their implementation
+ */
+export function setTransport(adapter: Transport): void {
+  activeTransport = adapter;
+}
