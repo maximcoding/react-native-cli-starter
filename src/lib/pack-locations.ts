@@ -16,10 +16,9 @@ export type PackDelivery = 'workspace' | 'user-code';
  * Standard pack locations (section 5.1)
  * All paths are relative to CLI project root (where the CLI package.json lives)
  */
-export const PACK_TEMPLATES_DIR = 'templates/packs';
-export const CORE_PACKS_DIR = join(PACK_TEMPLATES_DIR, 'core');
-export const PLUGIN_PACKS_DIR = join(PACK_TEMPLATES_DIR, 'plugins');
-export const MODULE_PACKS_DIR = join(PACK_TEMPLATES_DIR, 'modules');
+export const CORE_BASE_DIR = 'templates/base';
+export const PLUGIN_PACKS_DIR = 'templates/plugins';
+export const MODULE_PACKS_DIR = 'templates/modules';
 
 /**
  * Standard attachment destinations in generated apps
@@ -63,7 +62,8 @@ export function resolvePackSourcePath(packType: PackType, packId: string): strin
   
   switch (packType) {
     case 'core':
-      return join(cliRoot, CORE_PACKS_DIR, packId);
+      // CORE base pack is at templates/base (no packId subdirectory)
+      return join(cliRoot, CORE_BASE_DIR);
     case 'plugin':
       return join(cliRoot, PLUGIN_PACKS_DIR, packId);
     case 'module':
@@ -131,8 +131,10 @@ export function validatePackLocationStructure(cliRoot: string): {
 } {
   const errors: string[] = [];
   
-  // Check that templates/packs directory exists
-  const packsDir = join(cliRoot, PACK_TEMPLATES_DIR);
+  // Check that templates directories exist
+  const baseDir = join(cliRoot, CORE_BASE_DIR);
+  const pluginsDir = join(cliRoot, PLUGIN_PACKS_DIR);
+  const modulesDir = join(cliRoot, MODULE_PACKS_DIR);
   
   // We don't require all directories to exist yet (they'll be created as packs are added)
   // This is just for documentation/structure definition

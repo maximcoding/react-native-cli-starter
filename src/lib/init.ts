@@ -22,12 +22,17 @@ import {
   CORE_PACKAGE_NAME,
 } from './constants';
 import { getCliVersion } from './version';
-import { verifyInitResult, verifyCoreBaselineAcceptance } from './init-verification';
+import { verifyInitResult, verifyCoreBaselineAcceptance, verifyGeneratedProjectStructure } from './init-verification';
 import { verifyDxBaselineAcceptance } from './dx-verification';
 import { generateCoreContracts } from './core-contracts';
 import { generateRuntimeComposition } from './runtime-composition';
 import { configureImportAliases, configureSvgPipeline, configureFontsPipeline, configureEnvPipeline, configureBaseScripts } from './dx-config';
 import { resolveLocalDepSpec } from './utils';
+import { extractBlueprintDependencies } from './blueprint-deps';
+import { attachPack } from './attachment-engine';
+import { loadPackManifest } from './pack-manifest';
+import { resolvePackVariant, normalizeOptionsKey } from './pack-variants';
+import { resolvePackSourcePath } from './pack-locations';
 
 export interface InitOptions {
   projectName?: string;
@@ -328,157 +333,150 @@ function initializeCliFolders(appRoot: string): void {
 }
 
 /**
- * Installs Option A Workspace Packages model (stub - will be completed in section 03)
+ * Installs Option A Workspace Packages model using attachment engine (section 05, 06)
  * 
  * BLUEPRINT REFERENCE RULE (section 2.4):
  * - Use docs/ReactNativeCLITemplate/* as reference for shapes/config patterns
  * - Do NOT copy the entire blueprint folder into generated app
  * - Only use: host app skeleton (created by Expo/RN), CLI-owned workspace packages,
  *   and optional plugin packs
+ * 
+ * TEMPLATES REQUIRED (section 05):
+ * - Must use templates/base via attachment engine
+ * - Do NOT generate packages directly - use attachPack() instead
  */
 function installWorkspacePackages(
   appRoot: string,
   inputs: InitInputs,
-  stepRunner: ReturnType<typeof createStepRunner>
+  stepRunner: ReturnType<typeof createStepRunner>,
+  context: RuntimeContext
 ): void {
-  stepRunner.start('Install workspace packages');
+  stepRunner.start('Install workspace packages via attachment engine');
   
-  // Create workspace packages directory structure (section 3.2)
-  // Reference: docs/ReactNativeCLITemplate/ for patterns, but don't copy directly
-  ensureDir(join(appRoot, WORKSPACE_PACKAGES_DIR));
-  const runtimeDir = join(appRoot, WORKSPACE_PACKAGES_DIR, 'runtime');
-  const coreDir = join(appRoot, WORKSPACE_PACKAGES_DIR, 'core');
-  ensureDir(runtimeDir);
-  ensureDir(coreDir);
-  
-  // Create @rns/core package (section 3.2)
-  // Create @rns/core package (section 3.2, 3.5)
-  // PLUGIN-FREE GUARANTEE: No dependencies - pure contracts + safe defaults only
-  const corePackageJson = {
-    name: CORE_PACKAGE_NAME,
-    version: '0.1.0',
-    main: inputs.language === 'ts' ? 'index.ts' : 'index.js',
-    types: inputs.language === 'ts' ? 'index.ts' : undefined,
-    private: true,
-    // No dependencies - uses only built-in JS/TS APIs
-    // Plugins integrate by implementing contracts, not by adding deps here
-  };
-  
-  writeJsonFile(join(coreDir, 'package.json'), corePackageJson);
-  
-  // Create @rns/runtime package (section 3.2, 3.5)
-  // PLUGIN-FREE GUARANTEE: Only React/React Native core dependencies
-  // No navigation, i18n, query, auth, or other plugin dependencies
-  const runtimePackageJson: any = {
-    name: RUNTIME_PACKAGE_NAME,
-    version: '0.1.0',
-    main: inputs.language === 'ts' ? 'index.ts' : 'index.js',
-    private: true,
-    dependencies: {
-      [CORE_PACKAGE_NAME]: resolveLocalDepSpec(inputs.packageManager, {
-        packageName: CORE_PACKAGE_NAME,
-        relativePath: '../core',
-      }),
-      'react': '^18.0.0', // React Native core dependency
-      'react-native': '^0.74.0', // React Native core dependency
-      // No plugin dependencies - plugins integrate via registries/hooks
-    },
-  };
-  
-  if (inputs.language === 'ts') {
-    runtimePackageJson.types = 'index.ts';
-  }
-  
-  writeJsonFile(join(runtimeDir, 'package.json'), runtimePackageJson);
-  
-  // Create TypeScript config for packages (if TypeScript project)
-  if (inputs.language === 'ts') {
-    const coreTsConfig = {
-      extends: '../../tsconfig.json',
-      compilerOptions: {
-        outDir: './dist',
-        rootDir: '.',
-      },
-      include: ['**/*.ts', '**/*.tsx'],
-      exclude: ['node_modules', 'dist'],
-    };
+  try {
+    // Load base pack manifest (section 5.2)
+    const basePackPath = resolvePackSourcePath('core', 'base');
+    const manifest = loadPackManifest(basePackPath);
     
-    const runtimeTsConfig = {
-      extends: '../../tsconfig.json',
-      compilerOptions: {
-        outDir: './dist',
-        rootDir: '.',
-      },
-      include: ['**/*.ts', '**/*.tsx'],
-      exclude: ['node_modules', 'dist'],
-    };
+    // Resolve pack variant (section 5.3)
+    const variantPath = resolvePackVariant('base', 'core', manifest, {
+      target: inputs.target,
+      language: inputs.language,
+      packType: 'core',
+      normalizedOptionsKey: normalizeOptionsKey(inputs.coreToggles),
+    });
     
-    writeJsonFile(join(coreDir, 'tsconfig.json'), coreTsConfig);
-    writeJsonFile(join(runtimeDir, 'tsconfig.json'), runtimeTsConfig);
-  }
-  
-  // Generate CORE contracts first (section 3.3)
-  generateCoreContracts(coreDir, inputs);
-  
-  // Create main index entry point that exports all contracts
-  const coreIndexContent = inputs.language === 'ts'
-    ? `/**
- * FILE: packages/@rns/core/index.ts
- * PURPOSE: CORE contracts and safe defaults (plugin-free)
- * OWNERSHIP: CORE
- * 
- * PLUGIN-FREE GUARANTEE:
- * - Zero dependencies (no package.json deps)
- * - Pure contracts + safe defaults (noop/memory fallbacks)
- * - Plugins integrate by implementing contracts, NOT by modifying CORE
- */
-
-export * from './contracts';
-`
-    : `/**
- * FILE: packages/@rns/core/index.js
- * PURPOSE: CORE contracts and safe defaults (plugin-free)
- * OWNERSHIP: CORE
- */
-
-export * from './contracts';
-`;
-  
-  // Generate runtime files (section 3.4)
-  generateRuntimeComposition(runtimeDir, inputs);
-  
-  writeTextFile(join(coreDir, `index.${inputs.language === 'ts' ? 'ts' : 'js'}`), coreIndexContent);
-  
-  // Configure workspaces in host app package.json
-  const hostPackageJsonPath = join(appRoot, 'package.json');
-  if (pathExists(hostPackageJsonPath)) {
-    const hostPackageJson = readJsonFile<any>(hostPackageJsonPath);
+    // Attach base pack using attachment engine (section 6.1)
+    const attachmentReport = attachPack({
+      projectRoot: appRoot,
+      packManifest: manifest,
+      resolvedPackPath: variantPath,
+      target: inputs.target,
+      language: inputs.language,
+      mode: 'CORE',
+      options: inputs.coreToggles,
+      dryRun: false,
+    });
     
-    // Ensure private: true (required for workspace packages)
-    hostPackageJson.private = true;
-    
-    // Add workspaces configuration
-    if (inputs.packageManager === 'pnpm') {
-      hostPackageJson.pnpm = {
-        ...hostPackageJson.pnpm,
-        workspaces: ['packages/*', 'packages/@rns/*'],
-      };
-    } else if (inputs.packageManager === 'yarn') {
-      hostPackageJson.workspaces = ['packages/*', 'packages/@rns/*'];
-    } else {
-      // npm
-      hostPackageJson.workspaces = ['packages/*', 'packages/@rns/*'];
+    // Log attachment report using context logger
+    if (attachmentReport.created.length > 0) {
+      context.logger.debug(`Created ${attachmentReport.created.length} files`);
+    }
+    if (attachmentReport.updated.length > 0) {
+      context.logger.debug(`Updated ${attachmentReport.updated.length} files`);
+    }
+    if (attachmentReport.conflicts.length > 0) {
+      throw new CliError(
+        `Attachment conflicts detected:\n${attachmentReport.conflicts.map(f => `  - ${f}`).join('\n')}\n` +
+        `These files are user-owned and cannot be overwritten.`,
+        ExitCode.VALIDATION_STATE_FAILURE
+      );
     }
     
-    writeJsonFile(hostPackageJsonPath, hostPackageJson);
+    // Post-process: Update package.json files to use file: protocol for npm (fix workspace:* issue)
+    updatePackageJsonDepsForNpm(appRoot, inputs);
+    
+    // Configure workspaces in host app package.json
+    configureWorkspacesInHostPackageJson(appRoot, inputs);
+    
+    stepRunner.ok('Install workspace packages via attachment engine');
+  } catch (error) {
+    if (error instanceof CliError) {
+      throw error;
+    }
+    throw new CliError(
+      `Failed to install workspace packages: ${error instanceof Error ? error.message : String(error)}`,
+      ExitCode.GENERIC_FAILURE
+    );
+  }
+}
+
+/**
+ * Updates package.json files in workspace packages to use file: protocol for npm
+ * This fixes the workspace:* issue where npm doesn't support workspace protocol
+ */
+function updatePackageJsonDepsForNpm(
+  appRoot: string,
+  inputs: InitInputs
+): void {
+  // Only need to update if using npm
+  if (inputs.packageManager !== 'npm') {
+    return;
   }
   
-  stepRunner.ok('Install workspace packages');
+  // Update runtime package.json to use file: for @rns/core
+  const runtimePackageJsonPath = join(appRoot, 'packages', '@rns', 'runtime', 'package.json');
+  if (pathExists(runtimePackageJsonPath)) {
+    const runtimePackageJson = readJsonFile<any>(runtimePackageJsonPath);
+    
+    // Replace workspace:* with file:../core for npm
+    if (runtimePackageJson.dependencies && runtimePackageJson.dependencies[CORE_PACKAGE_NAME]) {
+      const currentDep = runtimePackageJson.dependencies[CORE_PACKAGE_NAME];
+      if (currentDep === 'workspace:*' || currentDep.startsWith('workspace:')) {
+        runtimePackageJson.dependencies[CORE_PACKAGE_NAME] = 'file:../core';
+        writeJsonFile(runtimePackageJsonPath, runtimePackageJson);
+      }
+    }
+  }
+}
+
+/**
+ * Configures workspaces in host app package.json
+ */
+function configureWorkspacesInHostPackageJson(
+  appRoot: string,
+  inputs: InitInputs
+): void {
+  const hostPackageJsonPath = join(appRoot, 'package.json');
+  if (!pathExists(hostPackageJsonPath)) {
+    return;
+  }
+  
+  const hostPackageJson = readJsonFile<any>(hostPackageJsonPath);
+  
+  // Ensure private: true (required for workspace packages)
+  hostPackageJson.private = true;
+  
+  // Add workspaces configuration
+  if (inputs.packageManager === 'pnpm') {
+    hostPackageJson.pnpm = {
+      ...hostPackageJson.pnpm,
+      workspaces: ['packages/*', 'packages/@rns/*'],
+    };
+  } else if (inputs.packageManager === 'yarn') {
+    hostPackageJson.workspaces = ['packages/*', 'packages/@rns/*'];
+  } else {
+    // npm
+    hostPackageJson.workspaces = ['packages/*', 'packages/@rns/*'];
+  }
+  
+  writeJsonFile(hostPackageJsonPath, hostPackageJson);
 }
 
 /**
  * Ensures host App.tsx is minimal and only imports @rns/runtime (section 3.1)
  * This keeps developer code isolated and stable across plugins/modules
+ * ALWAYS creates App.tsx/App.js if it doesn't exist (required for Option A)
  */
 function ensureMinimalAppEntrypoint(
   appRoot: string,
@@ -488,10 +486,8 @@ function ensureMinimalAppEntrypoint(
     ? join(appRoot, 'App.tsx')
     : join(appRoot, 'App.js');
   
-  // Only update if App.tsx/App.js exists (created by Expo/RN)
-  if (!pathExists(appEntryPath)) {
-    return; // May not exist in some templates
-  }
+  // ALWAYS create App.tsx/App.js (required for Option A - minimal entrypoint)
+  // This ensures the app can boot with @rns/runtime
   
   // Create minimal App.tsx that imports and renders @rns/runtime
   // This ensures no heavy glue code in user-owned src/**
@@ -521,7 +517,7 @@ export default function App() {
 }
 `;
   
-  // Write the minimal App.tsx (this replaces the generated one)
+  // Write the minimal App.tsx (create or replace)
   writeTextFile(appEntryPath, minimalAppContent);
 }
 
@@ -567,7 +563,7 @@ function applyCoreDxConfigs(
 }
 
 /**
- * Installs CORE dependencies (stub - will be completed in section 11)
+ * Installs CORE dependencies based on enabled toggles (blueprint-based)
  */
 function installCoreDependencies(
   appRoot: string,
@@ -577,8 +573,48 @@ function installCoreDependencies(
 ): void {
   stepRunner.start('Install CORE dependencies');
   
-  // TODO: Install dependencies via dependency layer (section 11)
-  // For now, just install workspace packages
+  // Extract dependencies from blueprint based on enabled toggles
+  const toggleDeps = extractBlueprintDependencies(inputs.coreToggles, inputs.target);
+  
+  // Install dependencies if any are required
+  const depsToInstall: string[] = [];
+  const devDepsToInstall: string[] = [];
+  
+  // Collect dependency specs
+  for (const [name, version] of Object.entries(toggleDeps.dependencies)) {
+    depsToInstall.push(`${name}@${version}`);
+  }
+  
+  for (const [name, version] of Object.entries(toggleDeps.devDependencies)) {
+    devDepsToInstall.push(`${name}@${version}`);
+  }
+  
+  // Install dependencies via package manager
+  if (depsToInstall.length > 0) {
+    const installArgs = inputs.packageManager === 'yarn' 
+      ? ['add', ...depsToInstall]
+      : ['install', ...depsToInstall];
+    
+    execPackageManager(inputs.packageManager, installArgs, {
+      cwd: appRoot,
+      stdio: verbose ? 'inherit' : 'pipe',
+    });
+  }
+  
+  if (devDepsToInstall.length > 0) {
+    const installArgs = inputs.packageManager === 'yarn'
+      ? ['add', '--dev', ...devDepsToInstall]
+      : inputs.packageManager === 'pnpm'
+      ? ['add', '--save-dev', ...devDepsToInstall]
+      : ['install', '--save-dev', ...devDepsToInstall];
+    
+    execPackageManager(inputs.packageManager, installArgs, {
+      cwd: appRoot,
+      stdio: verbose ? 'inherit' : 'pipe',
+    });
+  }
+  
+  // Install workspace packages (this links packages/@rns/*)
   execPackageManager(inputs.packageManager, ['install'], {
     cwd: appRoot,
     stdio: verbose ? 'inherit' : 'pipe',
@@ -663,6 +699,43 @@ function validateInitResult(
   }
   
   stepRunner.ok('Validate init result');
+}
+
+/**
+ * Verifies metro.config.js loads without errors
+ */
+function verifyMetroConfigLoads(
+  appRoot: string,
+  target: 'expo' | 'bare'
+): void {
+  const metroConfigPath = join(appRoot, 'metro.config.js');
+  
+  if (!pathExists(metroConfigPath)) {
+    // Metro config may not exist for Bare RN (uses default)
+    // But if we created one (e.g., for SVG), it must load
+    return;
+  }
+  
+  try {
+    // Try to require the metro config to verify it loads
+    // This will fail if dependencies are missing (e.g., react-native-svg-transformer)
+    // Use absolute path and escape it properly for shell
+    const absolutePath = resolve(metroConfigPath);
+    const escapedPath = absolutePath.replace(/\\/g, '/').replace(/'/g, "\\'");
+    execCommand(`node -e "require('${escapedPath}')"`, {
+      cwd: appRoot,
+      stdio: 'pipe',
+    });
+  } catch (error: any) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    throw new CliError(
+      `metro.config.js failed to load:\n${errorMessage}\n` +
+      `This usually means a required dependency is missing.\n` +
+      `Check that all dependencies referenced in metro.config.js are installed.\n` +
+      `For SVG support, ensure react-native-svg and react-native-svg-transformer are installed.`,
+      ExitCode.VALIDATION_STATE_FAILURE
+    );
+  }
 }
 
 /**
@@ -776,13 +849,11 @@ export async function runInit(options: InitOptions): Promise<void> {
     initializeCliFolders(appRoot);
     stepRunner.ok('Initialize CLI folders');
     
-    // 5. Install Option A Workspace Packages model
-    installWorkspacePackages(appRoot, inputs, stepRunner);
+    // 5. Install Option A Workspace Packages model (includes App.tsx from templates/base)
+    installWorkspacePackages(appRoot, inputs, stepRunner, options.context);
     
-    // 5.1 Ensure minimal App.tsx entrypoint (section 3.1)
-    stepRunner.start('Ensure minimal App entrypoint');
-    ensureMinimalAppEntrypoint(appRoot, inputs);
-    stepRunner.ok('Ensure minimal App entrypoint');
+    // Note: App.tsx is now provided by templates/base via attachment engine
+    // No need for separate ensureMinimalAppEntrypoint call
     
     // 6. Apply CORE DX configs
     applyCoreDxConfigs(appRoot, inputs, stepRunner);
@@ -838,13 +909,35 @@ export async function runInit(options: InitOptions): Promise<void> {
     }
     stepRunner.ok('Verify DX baseline acceptance');
     
-    // 10. Run boot sanity checks
+    // 9.3 Verify metro.config.js loads without errors (after deps installed)
+    if (inputs.coreToggles.svg || inputs.target === 'expo') {
+      stepRunner.start('Verify metro.config.js loads');
+      verifyMetroConfigLoads(appRoot, inputs.target);
+      stepRunner.ok('Verify metro.config.js loads');
+    }
+    
+    // 10. Run structural verification (local FS-only, no network)
+    stepRunner.start('Verify generated project structure');
+    const structureVerification = verifyGeneratedProjectStructure(appRoot, inputs);
+    if (!structureVerification.success) {
+      const errorMessage = `Structural verification failed:\n${structureVerification.errors.map(e => `  - ${e}`).join('\n')}`;
+      if (structureVerification.warnings.length > 0) {
+        options.context.logger.info(`Warnings: ${structureVerification.warnings.join(', ')}`);
+      }
+      throw new CliError(errorMessage, ExitCode.VALIDATION_STATE_FAILURE);
+    }
+    if (structureVerification.warnings.length > 0) {
+      options.context.logger.info(`Structure warnings: ${structureVerification.warnings.join(', ')}`);
+    }
+    stepRunner.ok('Verify generated project structure');
+    
+    // 11. Run boot sanity checks
     runBootSanityChecks(appRoot, inputs, stepRunner);
     
-    // 11. Apply plugins if selected
+    // 12. Apply plugins if selected
     await applyPlugins(appRoot, inputs.plugins, inputs, options.context, stepRunner);
     
-    // 12. Print next steps
+    // 13. Print next steps
     printNextSteps(appRoot, inputs);
     
     stepRunner.complete();

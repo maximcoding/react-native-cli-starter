@@ -18,6 +18,7 @@
     "node": ">=18"
   },
   "dependencies": {
+    "jsonc-parser": "^3.2.0",
     "prompts": "^2.4.2"
   },
   "devDependencies": {

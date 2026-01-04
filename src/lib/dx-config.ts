@@ -13,6 +13,10 @@ import { USER_SRC_DIR } from './constants';
  * Configures import aliases (section 4.1)
  * - @rns/* for workspace packages (always enabled)
  * - @/* for user src/** (optional, default ON if src/ exists)
+ * 
+ * NOTE: Config files (babel.config.js, metro.config.js, tsconfig.json) are provided
+ * by templates/base via attachment engine. This function only does minimal post-processing
+ * if needed (e.g., adjusting aliases if src doesn't exist or aliases are disabled).
  */
 export function configureImportAliases(
   appRoot: string,
@@ -22,16 +26,81 @@ export function configureImportAliases(
   const userSrcExists = pathExists(userSrcDir) && isDirectory(userSrcDir);
   const aliasEnabled = inputs.coreToggles.alias && userSrcExists;
 
-  // Configure TypeScript paths (if TypeScript project)
-  if (inputs.language === 'ts') {
-    configureTypeScriptPaths(appRoot, aliasEnabled, userSrcExists, inputs.target);
+  // Config files are provided by templates/base via attachment engine
+  // Only do minimal post-processing if src doesn't exist or aliases are disabled
+  if (!userSrcExists || !aliasEnabled) {
+    // Adjust babel.config.js if src doesn't exist (remove @ and @assets aliases, change root)
+    adjustBabelConfigForNoSrc(appRoot, userSrcExists, aliasEnabled);
+    
+    // Adjust tsconfig.json if TypeScript and src doesn't exist
+    if (inputs.language === 'ts') {
+      adjustTsConfigForNoSrc(appRoot, userSrcExists, aliasEnabled);
+    }
+  }
+}
+
+/**
+ * Minimal post-processing: Adjust babel.config.js if src doesn't exist or aliases disabled
+ * Config file comes from templates/base, we only adjust it if needed
+ */
+function adjustBabelConfigForNoSrc(
+  appRoot: string,
+  userSrcExists: boolean,
+  aliasEnabled: boolean
+): void {
+  const babelConfigPath = join(appRoot, 'babel.config.js');
+  if (!pathExists(babelConfigPath)) {
+    return; // Config should exist from templates, but if not, skip
   }
 
-  // Configure Metro resolver (both Expo and Bare)
-  configureMetroResolver(appRoot, inputs.target, aliasEnabled, userSrcExists);
+  // Read existing config from template
+  const content = readTextFile(babelConfigPath);
+  
+  // If src doesn't exist or aliases disabled, adjust root and remove @/@assets aliases
+  if (!userSrcExists || !aliasEnabled) {
+    // Simple string replacement to adjust root and aliases
+    // This is minimal post-processing - the full config comes from templates
+    let adjusted = content
+      .replace(/root:\s*\[['"]\.\/src['"]\]/g, "root: ['.']")
+      .replace(/['"]@['"]:\s*['"]\.\/src['"],?\s*/g, '')
+      .replace(/['"]@assets['"]:\s*['"]\.\/assets['"],?\s*/g, '')
+      .replace(/,\s*}/g, '}') // Remove trailing comma if aliases were removed
+      .replace(/alias:\s*{\s*}/g, 'alias: {\n          \'@rns\': \'./packages/@rns\',\n        }');
+    
+    writeTextFile(babelConfigPath, adjusted);
+  }
+}
 
-  // Configure Babel module-resolver (both Expo and Bare)
-  configureBabelResolver(appRoot, inputs.target, aliasEnabled, userSrcExists);
+/**
+ * Minimal post-processing: Adjust tsconfig.json if src doesn't exist or aliases disabled
+ * Config file comes from templates/base, we only adjust it if needed
+ */
+function adjustTsConfigForNoSrc(
+  appRoot: string,
+  userSrcExists: boolean,
+  aliasEnabled: boolean
+): void {
+  const tsconfigPath = join(appRoot, 'tsconfig.json');
+  if (!pathExists(tsconfigPath)) {
+    return; // Config should exist from templates, but if not, skip
+  }
+
+  const tsconfig = readJsonFile<any>(tsconfigPath);
+  
+  if (!userSrcExists || !aliasEnabled) {
+    // Adjust baseUrl and paths
+    if (tsconfig.compilerOptions) {
+      tsconfig.compilerOptions.baseUrl = '.';
+      if (tsconfig.compilerOptions.paths) {
+        // Keep only @rns/* path, remove @/* and @assets/*
+        tsconfig.compilerOptions.paths = {
+          '@rns/*': ['packages/@rns/*'],
+        };
+      }
+    }
+    
+    writeJsonFile(tsconfigPath, tsconfig);
+  }
 }
 
 /**
@@ -74,30 +143,50 @@ function configureTypeScriptPaths(
     tsconfig.compilerOptions = {};
   }
 
-  // Configure baseUrl - point to src if it exists, otherwise root
+  // Configure baseUrl and paths (match blueprint pattern)
+  // If src exists, baseUrl points to src (blueprint pattern)
+  // Otherwise, baseUrl points to root for workspace packages
   if (userSrcExists) {
     tsconfig.compilerOptions.baseUrl = './src';
   } else {
     tsconfig.compilerOptions.baseUrl = '.';
   }
 
-  // Configure paths
+  // Configure paths - always include @rns/* for workspace packages
+  // Paths are relative to baseUrl
   tsconfig.compilerOptions.paths = {
-    '@rns/*': ['packages/@rns/*'],
+    '@rns/*': userSrcExists ? ['../packages/@rns/*'] : ['packages/@rns/*'],
   };
 
-  // Add @/* alias if enabled and src exists
+  // Add @/* and @assets/* aliases if enabled and src exists (blueprint pattern)
   if (aliasEnabled && userSrcExists) {
-    tsconfig.compilerOptions.paths['@/*'] = ['*'];
+    tsconfig.compilerOptions.paths['@/*'] = ['*']; // Relative to baseUrl (./src)
+    tsconfig.compilerOptions.paths['@assets/*'] = ['../assets/*']; // Relative to baseUrl (./src)
   }
 
-  // Update include/exclude to ensure proper scope
+  // Update include/exclude to match blueprint pattern
   if (!tsconfig.include) {
     tsconfig.include = [];
   }
-  if (!tsconfig.include.includes('src/**/*') && userSrcExists) {
-    tsconfig.include.push('src/**/*');
+  
+  // Add includes matching blueprint: ["src", "assets", "scripts", "src/types", "types"]
+  if (userSrcExists && !tsconfig.include.includes('src')) {
+    tsconfig.include.push('src');
   }
+  if (!tsconfig.include.includes('assets')) {
+    tsconfig.include.push('assets');
+  }
+  if (!tsconfig.include.includes('scripts')) {
+    tsconfig.include.push('scripts');
+  }
+  if (userSrcExists && !tsconfig.include.includes('src/types')) {
+    tsconfig.include.push('src/types');
+  }
+  if (!tsconfig.include.includes('types')) {
+    tsconfig.include.push('types');
+  }
+  
+  // Always include App entrypoint and workspace packages
   if (!tsconfig.include.includes('App.tsx') && !tsconfig.include.includes('App.js')) {
     tsconfig.include.push('App.tsx', 'App.js');
   }
@@ -110,6 +199,9 @@ function configureTypeScriptPaths(
   }
   if (!tsconfig.exclude.includes('node_modules')) {
     tsconfig.exclude.push('node_modules');
+  }
+  if (!tsconfig.exclude.includes('Pods')) {
+    tsconfig.exclude.push('Pods');
   }
 
   writeJsonFile(tsconfigPath, tsconfig);
@@ -213,23 +305,22 @@ function configureBabelResolver(
     babelConfig.plugins.push(moduleResolverPlugin);
   }
 
-  // Configure aliases
+  // Configure aliases (match blueprint pattern)
+  // Always include @rns for workspace packages (required for @rns/* imports)
   const alias: Record<string, string> = {
     '@rns': './packages/@rns',
   };
-
-  // Add @/* alias if enabled and src exists
+  
+  // Add @/* and @assets/* aliases if enabled and src exists (blueprint pattern)
   if (aliasEnabled && userSrcExists) {
     alias['@'] = './src';
+    alias['@assets'] = './assets';
   }
 
   moduleResolverPlugin[1].alias = alias;
 
-  // Set root - include packages/@rns and src if it exists
-  const root = ['.'];
-  if (userSrcExists) {
-    root.push('./src');
-  }
+  // Set root - match blueprint: root points to src if it exists, otherwise '.'
+  const root = userSrcExists ? ['./src'] : ['.'];
   moduleResolverPlugin[1].root = root;
 
   // Write babel.config.js
@@ -246,31 +337,42 @@ function configureBabelResolver(
 
 /**
  * Generates Babel config JavaScript file content
+ * Matches blueprint format: compact, single-line presets, properly formatted plugins
  */
 function generateBabelConfigJs(config: any, target: 'expo' | 'bare'): string {
-  const presets = config.presets.map((p: string) => `    '${p}'`).join(',\n');
+  // Presets: single-line array format
+  const presets = config.presets.map((p: string) => `'${p}'`).join(', ');
   
+  // Plugins: format each plugin
   const plugins: string[] = [];
   for (const plugin of config.plugins) {
     if (typeof plugin === 'string') {
       plugins.push(`    '${plugin}'`);
     } else if (Array.isArray(plugin)) {
       const [name, options] = plugin;
-      const optionsStr = JSON.stringify(options, null, 6)
-        .split('\n')
-        .map((line: string, idx: number) => idx === 0 ? line : '          ' + line)
-        .join('\n')
-        .replace(/"([^"]+)":/g, '$1:');
-      plugins.push(`    ['${name}', ${optionsStr}]`);
+      
+      // Format root array
+      const rootStr = Array.isArray(options.root)
+        ? `[${options.root.map((r: string) => `'${r}'`).join(', ')}]`
+        : JSON.stringify(options.root);
+      
+      // Format alias object
+      const aliasEntries: string[] = [];
+      for (const [key, value] of Object.entries(options.alias || {})) {
+        aliasEntries.push(`          '${key}': '${value}'`);
+      }
+      const aliasStr = aliasEntries.length > 0
+        ? `{\n${aliasEntries.join(',\n')},\n        }`
+        : '{}';
+      
+      plugins.push(`    [\n      '${name}',\n      {\n        root: ${rootStr},\n        alias: ${aliasStr},\n      },\n    ]`);
     } else {
       plugins.push(`    ${JSON.stringify(plugin)}`);
     }
   }
 
   return `module.exports = {
-  presets: [
-${presets}
-  ],
+  presets: [${presets}],
   plugins: [
 ${plugins.join(',\n')}
   ],
@@ -280,32 +382,30 @@ ${plugins.join(',\n')}
 
 /**
  * Configures SVG import pipeline (section 4.2)
- * - Metro config for SVG transformer
- * - SVG type declarations
- * - assets/svgs directory
+ * - Metro config for SVG transformer (provided by templates/base)
+ * - SVG type declarations (provided by templates/base)
+ * - assets/svgs directory (provided by templates/base)
+ * 
+ * NOTE: SVG pipeline configs are provided by templates/base via attachment engine.
+ * This function only ensures assets/svgs exists (should already exist from templates).
  */
 export function configureSvgPipeline(
   appRoot: string,
   inputs: InitInputs
 ): void {
-  // Update Metro config to include SVG transformer
-  configureMetroSvgTransformer(appRoot, inputs.target);
-
-  // Create SVG type declarations (for TypeScript projects)
-  if (inputs.language === 'ts') {
-    createSvgTypeDeclarations(appRoot);
-  }
-
-  // Create assets/svgs directory
+  // Metro config and SVG types are provided by templates/base via attachment engine
+  // Only ensure assets/svgs directory exists (should already exist from templates)
   const assetsSvgsDir = join(appRoot, 'assets', 'svgs');
-  ensureDir(assetsSvgsDir);
-
-  // Create a placeholder SVG file for validation
-  createPlaceholderSvg(assetsSvgsDir);
+  if (!pathExists(assetsSvgsDir)) {
+    ensureDir(assetsSvgsDir);
+    // Create placeholder SVG if it doesn't exist (should come from templates)
+    createPlaceholderSvg(assetsSvgsDir);
+  }
 }
 
 /**
  * Configures Metro config to handle SVG files
+ * Generates metro.config.js with react-native-svg-transformer configuration
  */
 function configureMetroSvgTransformer(
   appRoot: string,
@@ -313,60 +413,41 @@ function configureMetroSvgTransformer(
 ): void {
   const metroConfigPath = join(appRoot, 'metro.config.js');
   
-  let metroConfigContent: string;
+  // Check if SVG transformer is already configured
   let hasSvgTransformer = false;
-
   if (pathExists(metroConfigPath)) {
-    metroConfigContent = readTextFile(metroConfigPath);
-    hasSvgTransformer = metroConfigContent.includes('react-native-svg-transformer');
-  } else {
-    if (target === 'expo') {
-      metroConfigContent = `const { getDefaultConfig } = require('expo/metro-config');
+    const existingContent = readTextFile(metroConfigPath);
+    hasSvgTransformer = existingContent.includes('react-native-svg-transformer');
+  }
 
-module.exports = getDefaultConfig(__dirname);
+  // If already configured, skip
+  if (hasSvgTransformer) {
+    return;
+  }
+
+  // Generate metro.config.js with SVG transformer configuration
+  let metroConfigContent: string;
+  
+  if (target === 'expo') {
+    // Expo metro.config.js (recommended content)
+    metroConfigContent = `const { getDefaultConfig } = require('expo/metro-config');
+
+const config = getDefaultConfig(__dirname);
+
+config.transformer.babelTransformerPath = require.resolve('react-native-svg-transformer');
+config.resolver.assetExts = config.resolver.assetExts.filter(ext => ext !== 'svg');
+config.resolver.sourceExts.push('svg');
+
+module.exports = config;
 `;
-    } else {
-      metroConfigContent = `const { getDefaultConfig, mergeConfig } = require('@react-native/metro-config');
+  } else {
+    // Bare RN metro.config.js (matches blueprint format)
+    metroConfigContent = `const { getDefaultConfig, mergeConfig } = require('@react-native/metro-config');
 
 module.exports = (async () => {
   const defaultConfig = await getDefaultConfig(__dirname);
-  return mergeConfig(defaultConfig, {
-    // Configuration will be added here
-  });
-})();
-`;
-    }
-  }
 
-  // Add SVG transformer configuration if not present
-  if (!hasSvgTransformer) {
-    if (target === 'expo') {
-      // For Expo, wrap in async function
-      metroConfigContent = metroConfigContent.replace(
-        /module\.exports = getDefaultConfig\(__dirname\);/,
-        `module.exports = (async () => {
-  const config = getDefaultConfig(__dirname);
-  
-  // SVG transformer configuration
-  config.transformer = {
-    ...config.transformer,
-    babelTransformerPath: require.resolve('react-native-svg-transformer'),
-  };
-  
-  config.resolver = {
-    ...config.resolver,
-    assetExts: config.resolver.assetExts.filter(ext => ext !== 'svg'),
-    sourceExts: [...config.resolver.sourceExts, 'svg'],
-  };
-  
-  return config;
-})();`
-      );
-    } else {
-      // For Bare, update mergeConfig
-      metroConfigContent = metroConfigContent.replace(
-        /return mergeConfig\(defaultConfig, \{[\s\S]*?\}\);?/,
-        `return mergeConfig(defaultConfig, {
+  return mergeConfig(defaultConfig, {
     transformer: {
       babelTransformerPath: require.resolve('react-native-svg-transformer'),
     },
@@ -374,9 +455,9 @@ module.exports = (async () => {
       assetExts: defaultConfig.resolver.assetExts.filter(ext => ext !== 'svg'),
       sourceExts: [...defaultConfig.resolver.sourceExts, 'svg'],
     },
-  });`
-      );
-    }
+  });
+})();
+`;
   }
 
   writeTextFile(metroConfigPath, metroConfigContent);
@@ -384,6 +465,7 @@ module.exports = (async () => {
 
 /**
  * Creates SVG type declarations for TypeScript
+ * Note: May already exist from templates/base attachment - we update it to ensure it's correct
  */
 function createSvgTypeDeclarations(appRoot: string): void {
   // Create types directory if it doesn't exist
@@ -392,6 +474,7 @@ function createSvgTypeDeclarations(appRoot: string): void {
 
   const svgTypesPath = join(typesDir, 'svg.d.ts');
   
+  // File may already exist from templates/base - update it to ensure correct content
   const svgTypesContent = `/**
  * FILE: types/svg.d.ts
  * PURPOSE: SVG import type declarations
@@ -548,20 +631,22 @@ ${config.assets.map((path: string) => `    '${path}',`).join('\n')}
 
 /**
  * Configures environment variable pipeline (section 4.4)
- * - Creates .env.example file
- * - Creates typed env access in @rns/core/config/env.ts
+ * - .env.example file (provided by templates/base)
+ * - Typed env access in @rns/core/config/env.ts (provided by templates/base)
+ * 
+ * NOTE: Env pipeline configs are provided by templates/base via attachment engine.
+ * This function only ensures .env.example exists (should already exist from templates).
  */
 export function configureEnvPipeline(
   appRoot: string,
   inputs: InitInputs
 ): void {
-  // Create .env.example file
-  createEnvExample(appRoot);
-
-  // Create typed env access in CORE
-  const coreConfigDir = join(appRoot, 'packages', '@rns', 'core', 'config');
-  ensureDir(coreConfigDir);
-  createTypedEnvAccess(coreConfigDir, inputs);
+  // .env.example and env.ts are provided by templates/base via attachment engine
+  // Only ensure .env.example exists (should already exist from templates)
+  const envExamplePath = join(appRoot, '.env.example');
+  if (!pathExists(envExamplePath)) {
+    createEnvExample(appRoot);
+  }
 }
 
 /**
@@ -592,11 +677,14 @@ USE_MOCK_API=0
 }
 
 /**
- * Creates typed env access in @rns/core/config/env.ts
+ * Creates/updates typed env access in @rns/core/config/env.ts
+ * Note: File may already exist from templates/base attachment - we update it to be target-specific
  */
 function createTypedEnvAccess(coreConfigDir: string, inputs: InitInputs): void {
   const ext = inputs.language === 'ts' ? 'ts' : 'js';
   const envConfigPath = join(coreConfigDir, `env.${ext}`);
+  
+  // File may already exist from templates/base - we update it to be target-specific
   
   if (inputs.language === 'ts') {
     const envConfigContent = `/**
@@ -733,6 +821,10 @@ export function configureBaseScripts(
   // Base scripts that work for both Expo and Bare
   const baseScripts: Record<string, string> = {
     'cache:clean': 'npm cache clean --force',
+    // Icon generation and validation scripts (from blueprint - work for both Expo and Bare)
+    'gen:icons': 'node scripts/generate-icons.js',
+    'check:icons': 'node scripts/check-icons-stale.js',
+    'check:imports': 'node scripts/check-import-paths.js',
   };
 
   // Target-specific scripts
@@ -771,5 +863,22 @@ export function configureBaseScripts(
   }
 
   writeJsonFile(packageJsonPath, packageJson);
+  
+  // Ensure scripts/ folder exists if any script references scripts/*
+  const scriptsDir = join(appRoot, 'scripts');
+  const hasScriptsReference = Object.values(packageJson.scripts || {}).some((cmd: any) => 
+    typeof cmd === 'string' && cmd.includes('scripts/')
+  );
+  if (hasScriptsReference && !pathExists(scriptsDir)) {
+    ensureDir(scriptsDir);
+    // Create a placeholder README to indicate scripts folder is for user scripts
+    const scriptsReadme = `# Scripts
+
+This directory is for custom build and development scripts.
+
+Scripts referenced in package.json should be placed here.
+`;
+    writeTextFile(join(scriptsDir, 'README.md'), scriptsReadme);
+  }
 }
 
