@@ -99,11 +99,12 @@ rns plugin add nav.core nav.flows nav.typed-routes
 - Auth/App/Onboarding flows
 - Typed route params
 
-#### 🌐 Transport
+#### 🌐 Transport Adapters
 ```bash
 rns plugin add transport.rest transport.graphql transport.websocket
 ```
-- REST, GraphQL, WebSocket adapters
+- REST, GraphQL, WebSocket adapters that implement the Transport interface
+- CORE provides the Transport contract; plugins provide concrete adapters
 - Operation-based transport interface
 - Offline queue integration
 
@@ -280,21 +281,23 @@ featureFlagsRegistry.register('auth-core', {
 
 ### CORE (Always Installed)
 
-| Capability | Platforms | Setup |
-|-----------|-----------|-------|
+| Capability | Targets | Setup |
+|-----------|---------|-------|
 | 📦 Workspace Packages | Expo + Bare | ✅ FULL_AUTO |
 | 🔌 Runtime Composition | Expo + Bare | ✅ FULL_AUTO |
-| 📝 Contracts (Logging, Error, Storage, Transport, Offline) | Expo + Bare | ✅ FULL_AUTO |
+| 📝 Contracts (Logging, Error, Storage, Transport Interface, Offline) | Expo + Bare | ✅ FULL_AUTO |
 | 🎨 DX Baseline (Aliases, SVG, Fonts, Env) | Expo + Bare | ✅ FULL_AUTO |
 | 🛠️ Native Utilities | Expo + Bare | ✅ FULL_AUTO |
 | ⚙️ Config System (Constants, Feature Flags) | Expo + Bare | ✅ FULL_AUTO |
+
+**Note:** Transport Interface is the contract defined in CORE. Plugins provide adapters (REST/GraphQL/WebSocket) that implement this interface.
 
 ### Plugins (Optional - Full Catalog)
 
 | Category | Plugins | Setup |
 |----------|---------|-------|
 | 🧭 **Navigation** | `nav.core`, `nav.flows`, `nav.typed-routes` | ✅ FULL_AUTO |
-| 🌐 **Transport** | `transport.rest`, `transport.graphql`, `transport.websocket`, `transport.mock` | ✅ FULL_AUTO |
+| 🌐 **Transport Adapters** | `transport.rest`, `transport.graphql`, `transport.websocket`, `transport.mock` | ✅ FULL_AUTO |
 | 💾 **Storage** | `storage.mmkv`, `storage.sqlite`, `storage.secure`, `storage.files` | ✅ FULL_AUTO |
 | 🔐 **Auth** | `auth.cognito`, `auth.auth0`, `auth.firebase`, `auth.custom` | ✅ FULL_AUTO |
 | 📊 **Data** | `data.react-query`, `data.query-persist`, `data.pagination` | ✅ FULL_AUTO |
