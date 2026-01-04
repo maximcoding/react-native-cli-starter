@@ -13,36 +13,13 @@
  */
 
 /**
- * Load config from available sources (Expo, Bare, or fallback)
- * 
- * WHY THIS HELPER:
- * - Same logic as env.ts - keeps config loading consistent
- * - Handles different targets gracefully
- * - Always returns an object (never null/undefined) for safe property access
- */
-function loadConfig(): Record<string, string> {
-  // Try expo-constants first (Expo target)
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const Constants = require('expo-constants');
-    return Constants.expoConfig?.extra?.env || {};
-  } catch {
-    // Try react-native-config (Bare target)
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      return require('react-native-config').default || require('react-native-config') || {};
-    } catch {
-      // Fallback: empty object (safe default)
-      return {};
-    }
-  }
-}
-
-const Config = loadConfig();
-
-/**
- * Base constants (CORE only)
+ * Base constants (CORE only) - values only (numbers, strings, storage keys)
  * Plugins extend via constantsRegistry.register()
+ * 
+ * WHY VALUES ONLY:
+ * - Constants are values: numbers (MAX_UPLOAD_SIZE), strings (storage keys)
+ * - Feature flags (booleans) are in feature-flags.ts - clear separation
+ * - This keeps concerns separate: constants = values, flags = booleans
  */
 export const constants = {
   // Limits
@@ -55,27 +32,24 @@ export const constants = {
 };
 
 /**
- * Base flags (CORE only)
- * Plugins extend via constantsRegistry.register()
- */
-export const flags = {
-  USE_MOCK: __DEV__ && (Config.USE_MOCK_API ?? '0') === '1',
-};
-
-/**
  * Type for plugin constants extensions
  */
 export type ConstantsExtension = Record<string, unknown>;
 
 /**
- * Constants registry - allows plugins to extend base constants
+ * Constants registry - allows plugins to extend base constants (values only)
  * 
  * WHY THIS PATTERN:
- * - Plugins need to add their own constants (e.g., AUTH_TOKEN, OFFLINE_QUEUE_KEY)
+ * - Plugins need to add their own constants (e.g., AUTH_TOKEN, OFFLINE_QUEUE_KEY, limits)
  * - We can't modify CORE files (plugin-free guarantee)
  * - Registry pattern lets plugins register without touching CORE
  * - App code gets merged values via getAll() - simple and predictable
  * - No complex abstractions - just a simple object with register/getAll methods
+ * 
+ * WHY VALUES ONLY (not booleans):
+ * - Constants = values (numbers, strings, storage keys)
+ * - Feature flags (booleans) are in feature-flags.ts with featureFlagsRegistry
+ * - Clear separation of concerns makes code easier to understand
  * 
  * USAGE:
  *   // Plugin registers during init:
@@ -83,6 +57,7 @@ export type ConstantsExtension = Record<string, unknown>;
  *   constantsRegistry.register('auth-core', {
  *     AUTH_TOKEN: 'auth.token',
  *     REFRESH_TOKEN: 'auth.refreshToken',
+ *     MAX_RETRY_ATTEMPTS: 3,
  *   });
  *   
  *   // App uses merged values:
@@ -92,22 +67,13 @@ export type ConstantsExtension = Record<string, unknown>;
  */
 export const constantsRegistry = {
   core: constants,
-  flags: flags,
   plugins: {} as Record<string, ConstantsExtension>,
-  flagsPlugins: {} as Record<string, ConstantsExtension>,
 
   /**
-   * Register plugin constants
+   * Register plugin constants (values only - numbers, strings, storage keys)
    */
   register(pluginId: string, pluginConstants: ConstantsExtension): void {
     this.plugins[pluginId] = pluginConstants;
-  },
-
-  /**
-   * Register plugin feature flags
-   */
-  registerFlags(pluginId: string, pluginFlags: ConstantsExtension): void {
-    this.flagsPlugins[pluginId] = pluginFlags;
   },
 
   /**
@@ -117,16 +83,6 @@ export const constantsRegistry = {
     return {
       ...this.core,
       ...Object.values(this.plugins).reduce((acc, c) => ({ ...acc, ...c }), {}),
-    };
-  },
-
-  /**
-   * Get all flags (core + all plugins)
-   */
-  getAllFlags(): typeof flags & Record<string, unknown> {
-    return {
-      ...this.flags,
-      ...Object.values(this.flagsPlugins).reduce((acc, f) => ({ ...acc, ...f }), {}),
     };
   },
 };
