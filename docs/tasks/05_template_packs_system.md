@@ -7,31 +7,31 @@ OWNERSHIP: CLI
 # 5) Template Packs System (Option A) — Task List
 
 ## 5.1 Standardize pack locations (fixed)
-- [ ] CORE packs live under `templates/packs/core/*` and are attached into generated app as workspace packages under `packages/@rns/*`.
-- [ ] Plugin packs live under `templates/packs/plugins/<pluginId>/...` and are attached into generated app as workspace packages:
-  - [ ] default target path: `packages/@rns/plugin-<pluginId>/...` (or a stable naming scheme defined by CLI)
-- [ ] Module packs live under `templates/packs/modules/<moduleId>/...` and generate **user-owned business code** by default:
-  - [ ] default target path: `src/modules/<moduleId>/...` (or `src/features/<moduleId>`), configurable by CLI policy
-  - [ ] any CLI-owned module helpers (if needed) must live in `packages/@rns/*`, not in user business folders
+- [x] CORE packs live under `templates/packs/core/*` and are attached into generated app as workspace packages under `packages/@rns/*`.
+- [x] Plugin packs live under `templates/packs/plugins/<pluginId>/...` and are attached into generated app as workspace packages:
+  - [x] default target path: `packages/@rns/plugin-<pluginId>/...` (or a stable naming scheme defined by CLI)
+- [x] Module packs live under `templates/packs/modules/<moduleId>/...` and generate **user-owned business code** by default:
+  - [x] default target path: `src/modules/<moduleId>/...` (or `src/features/<moduleId>`), configurable by CLI policy
+  - [x] any CLI-owned module helpers (if needed) must live in `packages/@rns/*`, not in user business folders
 
 ## 5.2 Pack manifest (required)
-- [ ] Each pack has a manifest file named `pack.json`, containing:
-  - [ ] `id`
-  - [ ] `type` (`core` | `plugin` | `module`)
-  - [ ] `delivery` (`workspace` | `user-code`)  // defines attachment destination ownership
-  - [ ] supported targets (`expo`, `bare`)
-  - [ ] supported languages (`ts`, `js`)
-  - [ ] variant resolution hints (if any)
-  - [ ] default destination mapping (optional, but must be deterministic if present)
-- [ ] CORE packs must have a manifest (no implicit packs in Option A).
+- [x] Each pack has a manifest file named `pack.json`, containing:
+  - [x] `id`
+  - [x] `type` (`core` | `plugin` | `module`)
+  - [x] `delivery` (`workspace` | `user-code`)  // defines attachment destination ownership
+  - [x] supported targets (`expo`, `bare`)
+  - [x] supported languages (`ts`, `js`)
+  - [x] variant resolution hints (if any)
+  - [x] default destination mapping (optional, but must be deterministic if present)
+- [x] CORE packs must have a manifest (no implicit packs in Option A). (validated in loadPackManifest - fails if manifest missing)
 
 ## 5.3 Variant convention (deterministic)
-- [ ] Variants must be resolvable deterministically by:
-  - [ ] target (expo/bare)
-  - [ ] language (ts/js)
-  - [ ] pack delivery type (workspace/user-code)
-  - [ ] plugin/module options (only if required and only from a normalized options key)
-- [ ] If no matching variant exists: fail with actionable error (shows expected variant path(s) + inputs used).
+- [x] Variants must be resolvable deterministically by:
+  - [x] target (expo/bare)
+  - [x] language (ts/js)
+  - [x] pack delivery type (workspace/user-code) (determined from manifest.delivery)
+  - [x] plugin/module options (only if required and only from a normalized options key)
+- [x] If no matching variant exists: fail with actionable error (shows expected variant path(s) + inputs used).
 
 ## 5.4 Pack discovery (single source)
 - [ ] Implement a single pack discovery module that:

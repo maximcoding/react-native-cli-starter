@@ -12,6 +12,9 @@ OWNERSHIP: CLI
 > - Option A workspace installs (host app + packages)
 > - deterministic lockfile behavior
 > - idempotent operations + actionable failures
+> 
+> **Note:** During `rns init`, CORE dependencies installation is optional (prompt with default: No).
+> Users can choose to install dependencies during init or manually after init completes.
 
 ## 11.1 Package manager selection + validation (strict)
 - [ ] Respect init choice (npm/pnpm/yarn) as the primary PM.

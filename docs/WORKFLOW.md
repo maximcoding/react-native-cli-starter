@@ -1,150 +1,139 @@
 <!--
 FILE: docs/WORKFLOW.md
-PURPOSE: Single source of truth for how work is executed in this repo (one task => one commit => checkbox after verification), including Option A Workspace Packages model rules.
+PURPOSE: Single source of truth for how work is executed in this repo (one section => one commit => checkboxes after verification), including Option A Workspace Packages model rules.
 OWNERSHIP: MAINTAINERS
 -->
 
 # WORKFLOW (How to execute tasks in this repo)
 
-This repo is developed by completing `docs/tasks/*` items in a strict, auditable way.
+This repo is developed by completing `docs/tasks/*` in a strict, auditable way.
 
 ---
 
-## 1) Unit of work = a numbered checkbox item
+## 1) Unit of work = ONE numbered section `NN.N`
+**Unit of work is a numbered section header `## NN.N` inside a task file**  
+(example: `## 01.2`, `## 02.1`, `## 09.4`).
 
-Work is done per **numbered sub-item** (e.g. `01.2`, `02.3`, `09.2`), not “whole files” or “whole milestones”.
+A section contains multiple checklist lines.  
+You must complete the entire section, then commit once.
 
----
-
-## 2) Checkbox rule (do not mark early)
-
-A checkbox may be switched from `[ ]` to `[x]` **only after**:
-
-- the code/templates/scripts for that item are implemented
-- the **acceptance** for that item is actually verified (at least minimal)
-- the change is confirmed working (or failing cases are handled as specified)
-
-If verification is not done, the checkbox must remain `[ ]`.
+**NOT allowed:**
+- marking checkboxes across multiple sections in one commit
+- “big-bang” commits that complete half the file
 
 ---
 
-## 3) One task item = one commit (mandatory)
+## 2) Verification before marking `[x]`
+A checkbox inside section `NN.N` may be switched from `[ ]` to `[x]` **only after**:
 
-For every completed numbered item:
+- the code/templates/scripts for section `NN.N` are implemented
+- the minimal acceptance for section `NN.N` is actually verified
 
-- update the corresponding `docs/tasks/XX_*.md` file and mark **only that item** as `[x]`
-- commit the code + the checkbox update in the **same commit**
-
-Do not bundle many task items in one commit.
+If you cannot verify it, it stays `[ ]`.
 
 ---
 
-## 4) Commit message format (mandatory)
+## 3) One section `NN.N` = one commit (MANDATORY)
+For every completed `## NN.N` section:
 
+1) implement the required changes
+2) verify acceptance for that section
+3) mark the checkboxes under **that same section** as `[x]`
+4) commit code + checkbox updates in the **same commit**
+
+Do not mark checkboxes in other sections.
+
+---
+
+## 4) Commit message format (MANDATORY)
 Use this exact format:
 
 `task(<NN.N>): <short, concrete change>`
 
 Examples:
-
 - `task(01.2): build produces runnable dist entry`
-- `task(05.3): pack manifest format + resolver`
-- `task(09.2): config/native patch ops (plist/json/xml/text)`
+- `task(05.3): pack variant resolver`
+- `task(09.2): anchored text patch ops`
 
 ---
 
-## 5) Option A — Workspace Packages model (hard rule)
-
-All generated apps MUST follow **Option A**:
+## 5) Option A — Workspace Packages model (HARD RULE)
+All generated apps MUST follow **Option A**.
 
 ### 5.1 Ownership boundaries
-- **CLI-managed** (generated and maintained by CLI):
-  - `packages/@rns/*` (runtime/core/plugins/modules packs as local workspaces)
-  - `.rns/**` (state, logs, backups, audit)
-- **Developer-owned** (the app author edits freely):
-  - `src/**` (or any developer folder declared as “user-owned”)
-  - business assets under `assets/**` (unless a plugin explicitly owns a sub-path via pack)
+**CLI-managed (CLI may create/update):**
+- `packages/@rns/*` (runtime/core/plugins/modules)
+- `.rns/**` (state/logs/backups/audit)
+
+**Developer-owned (CLI must NOT touch):**
+- `src/**` (business/app code)
+- `assets/**` (unless a plugin explicitly owns a sub-path via pack)
 
 ### 5.2 Isolation guarantee
 - Do **not** inject CLI “glue code” into developer-owned `src/**`.
-- Runtime integration must be done through:
-  - `App.tsx` minimal entry → imports `@rns/runtime` and renders it
+- Runtime integration happens via:
+  - minimal `App.tsx` entry → renders `@rns/runtime`
   - `packages/@rns/runtime` composition (providers/init/root/registries)
-- If “markers/patching” exist, they are allowed **only inside CLI-owned packages** (e.g. within `packages/@rns/runtime/*`), not in user-owned code.
+- If markers/patching exist, they are allowed **only inside CLI-owned packages**.
 
 ### 5.3 Platform/native integration
 Native/config changes (Android/iOS/Expo) must be applied by CLI via **safe patch operations** with backups:
 - anchors + idempotent edits
-- do not instruct users to manually edit platform files
+- never instruct users to do manual edits
 
 ---
 
-## 6) Execution loop (always the same)
-
-For a task item (example `06.4`):
-
-1) Implement the item (code/templates/scripts).
-2) Run the required verification for that item (acceptance check).
-3) Mark the checkbox `[x]` for that item in the relevant `docs/tasks/XX_*.md`.
-4) Commit everything in one commit using the required message format.
-
----
-
-## 7) What may change during an item (no hidden scope creep)
-
-While working on a single numbered item:
-
+## 6) No hidden changes outside the current section
+While working on one section `NN.N`:
 - do not introduce unrelated refactors
-- do not change other task files except the one you are completing
-- keep `src/commands/*` thin unless the item explicitly requires adding/modifying a command
-- prefer adding new libs under `src/lib/*` rather than editing multiple unrelated files
+- do not change other task files
+- do not mark other sections
+- keep `src/commands/*` thin unless the current section requires entrypoint changes
 
-If you discover a prerequisite:
-- implement it as its **earlier** task item (in correct order)
-- do not “smuggle” it into the current item
+If you discover a missing prerequisite:
+- stop
+- implement it in the **earliest required section**, in order
+- one section per commit
 
 ---
 
-## 8) Minimal verification expectations
-
-Each item’s acceptance should be **the smallest proof** that the work is correct.
-
-Typical examples (use only when relevant to the current item):
-
-### 8.1 CLI foundation items
+## 7) Minimal acceptance examples (use only when relevant)
+### 7.1 CLI foundation sections
 - `npm run build` succeeds
 - built entry runs: `node <built_entry> --help`
 - dev runner runs: `npm run cli -- --help`
 
-### 8.2 Init pipeline items
-- run `npm run init -- ...` or `npm run cli -- init ...`
-- verify the created app contains:
-  - `packages/@rns/*` (CLI-owned workspaces)
-  - `.rns/**` state folder
-  - minimal `App.tsx` entry
-  - user `src/**` remains clean (no CLI glue dumped there)
-- verify “boots” requirement at least at the structural level for that item (the full boot smoke test belongs to later verification tasks)
+### 7.2 Init pipeline sections
+- `npm run init -- ...` or `npm run cli -- init ...`
+- generated app contains `packages/@rns/*` and `.rns/**`
+- developer `src/**` remains clean (no CLI glue dumped there)
 
-### 8.3 Plugin items
-- apply plugin using CLI
-- confirm idempotency (run twice does not duplicate)
-- confirm ownership boundaries preserved (plugin code goes into `packages/@rns/plugin-*` and runtime integration into `@rns/runtime`, not into user `src/**`)
+### 7.3 Plugin sections
+- apply plugin via CLI
+- re-run apply (no duplicates)
+- plugin code stays in `packages/@rns/plugin-*`
 
 ---
 
-## 9) Failure handling
-
-If an item cannot be verified due to missing prerequisites:
-
-- keep the checkbox `[ ]`
-- commit only the prerequisite setup as its own earlier task item (in the correct order)
-- never mark items as done “optimistically”
+## 8) Failure handling
+If a section cannot be verified due to missing prerequisites:
+- keep that section’s checkboxes `[ ]`
+- implement the prerequisite in the correct earlier section
+- never mark done “optimistically”
 
 ---
 
-## 10) Source of truth
+## 9) Repair rule (if you bulk-checked by mistake)
+If you marked checkboxes outside the current section:
+- restore the task file to last committed state
+- redo section-by-section correctly
 
+Typical:
+`git restore docs/tasks/XX_*.md`
+
+---
+
+## 10) Source of truth for progress
 Progress tracking is done only via:
-
-- `docs/tasks/*` checkboxes
-- git commit history following the enforced format
+- `docs/tasks/*` checkboxes (per section)
+- git commits following the required message format

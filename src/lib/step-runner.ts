@@ -41,6 +41,7 @@ export class StepRunner {
   start(stepName: string): void {
     this.steps.push({ name: stepName, startTime: Date.now() });
     this.log(`[START] ${stepName}`);
+    // Logger automatically routes to stderr if paused (prevents interference with prompts)
     this.ctx.logger.info(`→ ${stepName}...`);
   }
 

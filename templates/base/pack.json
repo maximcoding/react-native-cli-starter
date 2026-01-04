@@ -1,0 +1,10 @@
+{
+  "id": "base",
+  "type": "core",
+  "delivery": "workspace",
+  "supportedTargets": ["expo", "bare"],
+  "supportedLanguages": ["ts", "js"],
+  "variantResolutionHints": {},
+  "defaultDestinationMapping": "packages/@rns"
+}
+

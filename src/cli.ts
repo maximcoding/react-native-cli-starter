@@ -24,6 +24,18 @@ async function main() {
     dryRun: args.dryRun || false,
   };
 
+  // Handle flags first (before positional commands)
+  if (args.version || args['--version'] || args['-v']) {
+    const { getCliVersion } = await import('./lib/version');
+    console.log(getCliVersion());
+    process.exit(0);
+  }
+
+  if (args.help || args['--help'] || args['-h']) {
+    showHelp();
+    process.exit(0);
+  }
+
   const resolvedRoot = resolveProjectRoot(flags.cwd || process.cwd());
   const logger = new ConsoleLogger(flags.verbose);
   const runId = generateRunId();
@@ -38,15 +50,11 @@ async function main() {
         await commands.init(ctx, args);
         break;
       case 'version':
-      case '--version':
-      case '-v':
-        const { getCliVersion } = await import('./lib/version');
-        console.log(getCliVersion());
+        const { getCliVersion: getVersion } = await import('./lib/version');
+        console.log(getVersion());
         process.exit(0);
         break;
       case 'help':
-      case '--help':
-      case '-h':
         showHelp();
         process.exit(0);
         break;

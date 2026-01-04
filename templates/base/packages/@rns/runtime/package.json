@@ -1,0 +1,13 @@
+{
+  "name": "@rns/runtime",
+  "version": "0.1.0",
+  "main": "index.ts",
+  "types": "index.ts",
+  "private": true,
+  "dependencies": {
+    "@rns/core": "file:../core",
+    "react": "^18.0.0",
+    "react-native": "^0.74.0"
+  }
+}
+
