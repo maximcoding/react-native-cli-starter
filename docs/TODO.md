@@ -2,21 +2,21 @@
 
 # TODO — CliMobile (RNS Starter CLI) — Technical Work Order
 
-## [ ] 1) CLI Foundation
+## [x] 1) CLI Foundation
 
 Build a stable TypeScript CLI repository designed for long-term maintenance. Output must be a runnable `rns` binary from
 `dist/`, plus a local dev runner (`npm run cli`) that behaves the same as the built CLI. Establish a single
 logging/error format (step-based execution, clean failures, no default stack spam) and enforce a repo structure where
 `src/commands/*` are thin entrypoints and all real logic lives in `src/lib/*`.
 
-## [ ] 2) INIT Pipeline (`npm run init` / `rns init`)
+## [x] 2) INIT Pipeline (`npm run init` / `rns init`)
 
 Implement a full init flow that creates a new Expo Framework or Bare React Native app and finishes in a "ready-to-run" state with zero
 manual edits. Init must collect inputs (wizard/flags), create the project, attach the CORE base pack, install required
 dependencies, apply needed configs/scripts, create/validate markers, write `.rn-init.json`, run final integrity checks,
 and print clear next steps. The acceptance bar is simple: the app boots immediately after init.
 
-## [ ] 3) CORE Base Pack (`templates/base`)
+## [x] 3) CORE Base Pack (`templates/base`)
 
 Lock and maintain a single CORE base template pack that is always attached by init. CORE is not a demo app; it is the
 baseline architecture and infrastructure foundation for any app style (online/offline, multiple network adapters,
@@ -24,7 +24,7 @@ multiple storage backends, multiple auth providers, observability, etc.). CORE m
 `app/core/infra/features` layering, assets structure, canonical markers, infrastructure contracts (interfaces/facades),
 and safe defaults (noop/memory/stubs) so the project compiles and runs even with zero capability plugins installed.
 
-## [ ] 4) DX Baseline (out-of-the-box)
+## [x] 4) DX Baseline (out-of-the-box)
 
 Guarantee zero-manual-setup developer experience immediately after init. `@/` alias must work for TypeScript and
 runtime. SVG imports must work via normal code imports. Fonts pipeline must be ready for custom fonts without extra
