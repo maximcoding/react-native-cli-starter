@@ -1,6 +1,6 @@
 <!--
 FILE: docs/tasks/02_init_pipeline.md
-PURPOSE: INIT pipeline tasks producing bootable CORE app (Expo/Bare) using Option A Workspace Packages model.
+PURPOSE: INIT pipeline tasks producing bootable CORE app (Expo Framework/Bare React Native) using Option A Workspace Packages model.
 OWNERSHIP: CLI
 -->
 
@@ -9,7 +9,7 @@ OWNERSHIP: CLI
 ## 2.1 Init inputs (selection-first UX)
 - [x] Project name (text).
 - [x] Destination path (default: `./<ProjectName>`).
-- [x] Target: Expo or Bare (select).
+- [x] Target: Expo Framework or Bare React Native (select).
 - [x] Language: TS or JS (select).
 - [x] Package manager: npm / pnpm / yarn (select).
 - [x] Bare-only: RN version (select) if needed by creation step.
@@ -21,7 +21,7 @@ OWNERSHIP: CLI
 ## 2.2 Init pipeline steps (implemented in `src/lib/init/*`)
 - [x] Resolve destination (from `--cwd` + destination + project name).
 - [x] Preflight: fail if destination exists (actionable error).
-- [x] Create the host app (Expo or Bare).
+- [x] Create the host app (Expo Framework or Bare React Native).
 - [x] Initialize CLI-managed folders in the host app:
   - [x] Create `.rns/` (state/logs/backups layout from constants).
 - [x] Install **Option A Workspace Packages model** into the host app:
@@ -56,13 +56,13 @@ OWNERSHIP: CLI
 ## 2.4 Blueprint reference rule
 - [x] Use `docs/ReactNativeCLITemplate/*` as reference for shapes/config patterns.
 - [x] Do not copy the entire blueprint folder into generated app; only:
-  - [x] host app skeleton (created by Expo/RN)
+  - [x] host app skeleton (created by Expo Framework/React Native)
   - [x] CLI-owned workspace packages under `packages/@rns/*`
   - [x] optional plugin packs selected by user
 
 ## 2.5 Acceptance
-- [x] Expo init → generated app boots without manual edits AND Option A workspace packages are present. (verified via structure verification, CORE baseline acceptance, DX baseline acceptance, and boot sanity checks)
-- [x] Bare init → generated app boots without manual edits AND Option A workspace packages are present. (verified via structure verification, CORE baseline acceptance, DX baseline acceptance, and boot sanity checks)
+- [x] Expo Framework init → generated app boots without manual edits AND Option A workspace packages are present. (verified via structure verification, CORE baseline acceptance, DX baseline acceptance, and boot sanity checks)
+- [x] Bare React Native init → generated app boots without manual edits AND Option A workspace packages are present. (verified via structure verification, CORE baseline acceptance, DX baseline acceptance, and boot sanity checks)
 - [x] `.rn-init.json` exists and validates. (verification implemented)
 - [x] `--yes` init completes using defaults. (structure ready, full boot test requires section 03)
 - [x] Ownership boundary check passes: CLI-managed code is in `packages/@rns/*` + `.rns/*`, not injected into user `src/**`. (verification implemented)

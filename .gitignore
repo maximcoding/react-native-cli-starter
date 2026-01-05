@@ -4,3 +4,6 @@ dist/
 .DS_Store
 *.tsbuildinfo
 
+# Verification reports (temporary)
+VERIFICATION_*.md
+

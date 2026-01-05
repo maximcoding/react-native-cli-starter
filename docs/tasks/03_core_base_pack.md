@@ -24,7 +24,7 @@ All must live under `packages/@rns/core` (or `@rns/shared` when appropriate) and
 - [x] Error: normalization contract + safe default normalizer. (implemented in template - fixed 2026-01-04)
 - [x] Storage: kv + cache engine APIs with memory fallback default. (implemented in template - fixed 2026-01-04)
 - [x] Network: connectivity API with stub default. (implemented in template)
-- [x] Transport: transport facade + types + noop adapter default. (implemented in template - fixed 2026-01-04)
+- [x] Network Interface: network interface + types + noop adapter default (implemented as `transport.ts` in template - fixed 2026-01-04)
 - [x] Offline: offline/outbox/sync contracts with noop defaults (no background work without plugin). (implemented in template - fixed 2026-01-04)
 
 **Note:** Initially marked complete based on CLI code, but template files were missing 4 contracts. Fixed by adding missing contracts to `templates/base/packages/@rns/core/contracts/`.
