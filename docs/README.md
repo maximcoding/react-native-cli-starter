@@ -62,7 +62,7 @@ npm install -g climobile
 rns init MyApp
 
 # Add features
-rns plugin add network.rest nav.core
+rns plugin add adapter.rest nav.core
 
 # That's it! Your app is ready 🎉
 cd MyApp
@@ -110,7 +110,7 @@ Add infrastructure capabilities with **one command**—no configuration needed:
 
 #### 🌐 Network Adapters
 ```bash
-rns plugin add network.rest network.graphql network.websocket network.firebase
+rns plugin add adapter.rest adapter.graphql adapter.websocket adapter.firebase
 ```
 - **REST** — Axios/fetch-based REST API adapter
 - **GraphQL** — Apollo/urql/AWS AppSync adapter
@@ -148,7 +148,7 @@ rns plugin add auth.cognito auth.auth0 auth.firebase auth.custom
 
 **Firebase Cloud:**
 ```bash
-rns plugin add network.firebase
+rns plugin add adapter.firebase
 ```
 - **Firestore** — NoSQL document database
 - **Realtime Database** — Real-time synchronized database
@@ -160,7 +160,7 @@ rns plugin add network.firebase
 
 **AWS Amplify & Services:**
 ```bash
-rns plugin add network.graphql network.rest auth.cognito
+rns plugin add adapter.graphql adapter.rest auth.cognito
 ```
 - **AWS AppSync** — Managed GraphQL API with real-time subscriptions
 - **API Gateway** — RESTful API management
@@ -309,7 +309,7 @@ CliMobile generates apps that are **backend-agnostic**, **protocol-agnostic**, a
 **E-commerce App**
 ```bash
 rns init EcommerceApp
-rns plugin add network.rest nav.core data.react-query auth.cognito storage.mmkv ui.theme state.zustand
+rns plugin add adapter.rest nav.core data.react-query auth.cognito storage.mmkv ui.theme state.zustand
 ```
 - REST API integration
 - Product catalog with React Query caching
@@ -321,7 +321,7 @@ rns plugin add network.rest nav.core data.react-query auth.cognito storage.mmkv 
 **Social Media App**
 ```bash
 rns init SocialApp
-rns plugin add network.graphql network.websocket nav.core data.react-query auth.auth0 offline.netinfo notify.fcm
+rns plugin add adapter.graphql adapter.websocket nav.core data.react-query auth.auth0 offline.netinfo notify.fcm
 ```
 - GraphQL API (AWS AppSync or custom) with real-time subscriptions
 - WebSocket for live updates
@@ -333,7 +333,7 @@ rns plugin add network.graphql network.websocket nav.core data.react-query auth.
 **SaaS Dashboard**
 ```bash
 rns init DashboardApp
-rns plugin add network.rest nav.core data.react-query auth.firebase analytics.firebase obs.sentry state.redux
+rns plugin add adapter.rest nav.core data.react-query auth.firebase analytics.firebase obs.sentry state.redux
 ```
 - REST API integration
 - Firebase authentication
@@ -344,7 +344,7 @@ rns plugin add network.rest nav.core data.react-query auth.firebase analytics.fi
 **Firebase-Powered App**
 ```bash
 rns init FirebaseApp
-rns plugin add network.firebase auth.firebase notify.fcm analytics.firebase
+rns plugin add adapter.firebase auth.firebase notify.fcm analytics.firebase
 ```
 - Firestore for data storage
 - Realtime Database for live updates
@@ -356,7 +356,7 @@ rns plugin add network.firebase auth.firebase notify.fcm analytics.firebase
 **AWS Amplify App**
 ```bash
 rns init AmplifyApp
-rns plugin add network.graphql auth.cognito
+rns plugin add adapter.graphql auth.cognito
 # Configure AWS AppSync + Cognito + DynamoDB
 ```
 - AWS AppSync GraphQL API
@@ -370,7 +370,7 @@ rns plugin add network.graphql auth.cognito
 **Field Service App**
 ```bash
 rns init FieldServiceApp
-rns plugin add network.rest offline.netinfo offline.outbox offline.sync storage.mmkv nav.core state.zustand
+rns plugin add adapter.rest offline.netinfo offline.outbox offline.sync storage.mmkv nav.core state.zustand
 ```
 - Works without internet connection
 - Queues mutations when offline
@@ -381,7 +381,7 @@ rns plugin add network.rest offline.netinfo offline.outbox offline.sync storage.
 **Delivery App**
 ```bash
 rns init DeliveryApp
-rns plugin add network.rest offline.netinfo offline.outbox offline.sync storage.sqlite nav.core notify.fcm state.zustand
+rns plugin add adapter.rest offline.netinfo offline.outbox offline.sync storage.sqlite nav.core notify.fcm state.zustand
 ```
 - Offline order management
 - Location tracking (works offline)
@@ -392,7 +392,7 @@ rns plugin add network.rest offline.netinfo offline.outbox offline.sync storage.
 **Note-Taking App**
 ```bash
 rns init NotesApp
-rns plugin add network.local storage.mmkv offline.outbox offline.sync nav.core state.zustand
+rns plugin add adapter.local storage.mmkv offline.outbox offline.sync nav.core state.zustand
 ```
 - Fully offline-capable
 - Local-first architecture
@@ -405,7 +405,7 @@ rns plugin add network.local storage.mmkv offline.outbox offline.sync nav.core s
 **Task Management App**
 ```bash
 rns init TaskApp
-rns plugin add network.rest offline.netinfo offline.outbox offline.sync data.react-query storage.mmkv nav.core state.zustand notify.fcm
+rns plugin add adapter.rest offline.netinfo offline.outbox offline.sync data.react-query storage.mmkv nav.core state.zustand notify.fcm
 ```
 - Online: Real-time sync with server
 - Offline: Full functionality, queues changes
@@ -419,10 +419,10 @@ rns plugin add network.rest offline.netinfo offline.outbox offline.sync data.rea
 **Switch from REST to GraphQL:**
 ```bash
 # Start with REST
-rns plugin add network.rest
+rns plugin add adapter.rest
 
 # Later, switch to GraphQL (same interface!)
-rns plugin add network.graphql
+rns plugin add adapter.graphql
 # Your business code doesn't change - Network interface is the same
 ```
 
@@ -439,10 +439,10 @@ rns plugin add auth.auth0
 **Switch from REST to Firebase:**
 ```bash
 # Start with REST
-rns plugin add network.rest
+rns plugin add adapter.rest
 
 # Later, switch to Firebase (same interface!)
-rns plugin add network.firebase
+rns plugin add adapter.firebase
 # Your business code uses the same Network interface
 ```
 
@@ -566,11 +566,11 @@ Your Code (src/)          CLI Code (packages/@rns/*)
 
 The CORE provides a **Network Interface** (contract) for data communication. Plugins provide **Network Adapters** that implement this interface:
 
-- `network.rest` — REST API adapter
-- `network.graphql` — GraphQL adapter (Apollo, urql, AWS AppSync)
-- `network.websocket` — WebSocket adapter
-- `network.firebase` — Firebase adapter (Firestore, RTDB, Storage)
-- `network.mock` — Development/testing adapter
+- `adapter.rest` — REST API adapter
+- `adapter.graphql` — GraphQL adapter (Apollo, urql, AWS AppSync)
+- `adapter.websocket` — WebSocket adapter
+- `adapter.firebase` — Firebase adapter (Firestore, RTDB, Storage)
+- `adapter.mock` — Development/testing adapter
 
 All adapters implement the same interface: `query()`, `mutate()`, `subscribe()`, `upload()`
 
@@ -579,7 +579,7 @@ All adapters implement the same interface: `query()`, `mutate()`, `subscribe()`,
 Lightweight snapshot cache for offline-first patterns:
 
 ```typescript
-// Set snapshot (from network.query())
+// Set snapshot (from adapter.query())
 cacheEngine.setSnapshot('user.profile', userData);
 
 // Get snapshot (offline fallback)
@@ -593,7 +593,7 @@ Supports:
 - Stale-while-revalidate patterns
 - Offline fallback
 - Domain-level prefetching
-- High-level services using network.query()
+- High-level services using adapter.query()
 
 ### Bootstrap Routing
 
@@ -661,7 +661,7 @@ featureFlagsRegistry.register('auth-core', {
 
 | Category | Plugins | Setup |
 |----------|---------|-------|
-| 🌐 **Network Adapters** | `network.rest`, `network.graphql`, `network.websocket`, `network.firebase`, `network.mock` | ✅ FULL_AUTO |
+| 🌐 **Network Adapters** | `adapter.rest`, `adapter.graphql`, `adapter.websocket`, `adapter.firebase`, `adapter.mock` | ✅ FULL_AUTO |
 | 🔐 **Auth** | `auth.cognito`, `auth.auth0`, `auth.firebase`, `auth.custom` | ✅ FULL_AUTO |
 | 🧭 **Navigation** | `nav.core`, `nav.flows`, `nav.typed-routes` | ✅ FULL_AUTO |
 | 💾 **Storage** | `storage.mmkv`, `storage.sqlite`, `storage.secure`, `storage.files` | ✅ FULL_AUTO |
