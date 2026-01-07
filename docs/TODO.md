@@ -35,7 +35,7 @@ runtime. SVG imports must work via normal code imports. Fonts pipeline must be r
 steps. Env pipeline must exist with `.env.example` and a typed access pattern. The user must not open docs or hand-edit
 configs to get these basics working.
 
-## [ ] 5) Docs Contract Set (canonical, non-duplicated)
+## [x] 5) Docs Contract Set (canonical, non-duplicated)
 
 Lock the canonical docs set and rules so work can be delegated safely:
 - `README.md` high-level product model + quick start

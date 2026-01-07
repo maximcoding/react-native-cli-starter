@@ -276,11 +276,46 @@ When installing a plugin, the Modulator pipeline is deterministic:
 
 All docs live in `/docs` (flat).
 
-- `docs/TODO.md` — **single work-order** (execute top-to-bottom)
-- `docs/WORKFLOW.md` — repo execution rules (verify, commit, no regressions)
-- `docs/AGENT.md` — working with AI agents (rules + task format)
-- `docs/cli-interface-and-types.md` — canonical contracts (manifest, plugins, patch ops, runtime contributions)
-- `docs/plugins-permissions.md` — permission IDs + platform mapping dataset
+### Canonical Docs Contract
+
+The following six documents form the **canonical, non-duplicated** documentation set. This contract ensures work can be delegated safely without schema duplication or intent loss.
+
+1. **`README.md`** — high-level product model + quick start
+   - Purpose: User-facing introduction and getting started guide
+   - Audience: End users, contributors, maintainers
+   - Rule: Keep high-level; detailed specs belong in other docs
+
+2. **`docs/TODO.md`** — single work-order
+   - Purpose: Technical work order (execute top-to-bottom)
+   - Audience: Maintainers, AI agents
+   - Rule: One section = one commit; checkbox only on section title
+
+3. **`docs/WORKFLOW.md`** — execution rules
+   - Purpose: Repo execution rules (run/verify/commit; no regressions)
+   - Audience: Maintainers, AI agents
+   - Rule: Defines mandatory workflow gates and regression policy
+
+4. **`docs/AGENT.md`** — AI agent rules
+   - Purpose: Scope control + acceptance checks for AI-assisted development
+   - Audience: AI agents, maintainers delegating work
+   - Rule: Defines task format and non-negotiable constraints
+
+5. **`docs/cli-interface-and-types.md`** — canonical type names/shapes index
+   - Purpose: Single source of truth for all type names, interfaces, and schemas
+   - Audience: Developers, maintainers, AI agents
+   - Rule: **No duplicated schema elsewhere**; code types must match this doc
+
+6. **`docs/plugins-permissions.md`** — permission catalog dataset
+   - Purpose: Permission IDs + platform mapping (providers + mappings)
+   - Audience: Plugin authors, permission resolution logic
+   - Rule: Machine-readable catalog; JSON blobs must match `PermissionObject` in `cli-interface-and-types.md`
+
+### Documentation Rules
+
+- **Do not shrink or delete intent** — if content is too long, move it to a dedicated doc instead of removing it
+- **No schema duplication** — type definitions live in `cli-interface-and-types.md`; code must reference this doc
+- **Cross-reference, don't duplicate** — docs should reference each other, not copy content
+- **Source of truth** — TypeScript code is authoritative; docs describe the contracts
 
 ---
 

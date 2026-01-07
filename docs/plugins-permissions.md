@@ -12,6 +12,8 @@ OWNERSHIP: CLI
 
 # Mobile Permissions Catalog (React Native + Expo)
 
+**Canonical Docs Contract:** This doc is part of the canonical, non-duplicated docs set (see `README.md` → Documentation).
+
 **Source of truth (types):**
 - `docs/cli-interface-and-types.md` → `PermissionObject`, `AppPlatform`, `PluginKind`
 
