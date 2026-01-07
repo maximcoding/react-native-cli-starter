@@ -46,9 +46,9 @@ Lock the canonical docs set and rules so work can be delegated safely:
 - `docs/plugins-permissions.md` permission catalog dataset (providers + mappings)
 Rule: do not shrink or delete intent; move long lists to dedicated docs instead of removing them.
 
-## [ ] 6) Template Packs System (CORE / Plugin / Module packs)
+## [x] 6) Template Packs System (CORE / Plugin / Module packs)
 
-Define the template-pack system as the core mechanism for “dynamic attachment” into the generated app. The CLI must
+Define the template-pack system as the core mechanism for "dynamic attachment" into the generated app. The CLI must
 support CORE packs, plugin packs, and module packs with a consistent structure, clear ownership rules, and target
 variants (Expo Framework/Bare React Native, TS/JS) without turning the repo into duplication chaos. This is how capabilities scale without
 rewriting CORE.

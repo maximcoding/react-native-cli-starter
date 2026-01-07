@@ -53,6 +53,12 @@ The authoritative definitions live in code.
 - `src/lib/types/commands.ts` — command ids + exit codes
 - `src/lib/types/planning.ts` — ownership/change/audit enums
 
+**Template Pack System (implementation):**
+- `src/lib/pack-locations.ts` — pack type definitions, location constants, path resolution
+- `src/lib/pack-manifest.ts` — pack manifest structure and validation
+- `src/lib/pack-discovery.ts` — pack discovery and resolution
+- `src/lib/pack-variants.ts` — variant resolution logic
+
 ### 1.2 Runtime/app contracts (Generated app side)
 
 These live in `packages/@rns/core` and are intentionally stable:
@@ -124,7 +130,41 @@ Rule: runtime wiring must be symbol-based and AST-driven (ts-morph). No regex in
 
 Rule: patchers must be anchored, idempotent, and backed up under `.rns/backups/...`.
 
-### 2.8 Modulator engine contracts (installer pipeline)
+### 2.8 Template Pack System (CORE / Plugin / Module packs)
+
+The template-pack system is the core mechanism for "dynamic attachment" into generated apps. It enables capabilities to scale without rewriting CORE.
+
+- **`PackType`** — `'core' | 'plugin' | 'module'`
+- **`PackDelivery`** — `'workspace' | 'user-code'`
+- **`PackManifest`** — pack descriptor: id, type, delivery, supportedTargets, supportedLanguages, variantResolutionHints, defaultDestinationMapping
+- **`DiscoveredPack`** — discovered pack with manifest and source path
+- **`PackResolution`** — resolved pack with variant path, delivery, and destination
+- **`VariantResolutionInputs`** — target, language, packType, normalizedOptionsKey
+
+**Pack Type Rules:**
+- **CORE packs** (`type: 'core'`): Always attached during init. Single pack at `templates/base/`. Delivery: `workspace`. Destination: `packages/@rns/<packId>`
+- **Plugin packs** (`type: 'plugin'`): Installed via `rns plugin add`. Located at `templates/plugins/<pluginId>/`. Delivery: `workspace`. Destination: `packages/@rns/plugin-<pluginId>`
+- **Module packs** (`type: 'module'`): Business feature scaffolds. Located at `templates/modules/<moduleId>/`. Delivery: `user-code`. Destination: `src/modules/<moduleId>`
+
+**Variant Resolution:**
+Packs support target/language variants via `variants/` directory structure:
+- `variants/<target>/<language>/` (e.g., `variants/expo/ts/`)
+- `variants/<target>-<language>/` (e.g., `variants/expo-ts/`)
+- `variants/<target>/` or `variants/<language>/` (fallbacks)
+- Root pack directory (if no variants exist)
+
+**Ownership Rules:**
+- CORE/Plugin packs → **System Zone** (CLI-managed, workspace packages)
+- Module packs → **User Zone** (developer-owned business code)
+- No duplication: variants are selected deterministically, same inputs → same output
+
+**Source of truth (TypeScript):**
+- `src/lib/pack-locations.ts` — pack type definitions, location constants, path resolution
+- `src/lib/pack-manifest.ts` — manifest structure and validation
+- `src/lib/pack-discovery.ts` — pack discovery and resolution
+- `src/lib/pack-variants.ts` — variant resolution logic
+
+### 2.9 Modulator engine contracts (installer pipeline)
 
 - **`ModulatorContext`** — project env + target + package manager + manifest + flags.
 - **`ModulatorPlan`** — dry-run plan: ordered actions + patches + runtime contributions + conflicts.
