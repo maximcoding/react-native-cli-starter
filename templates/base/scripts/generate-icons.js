@@ -50,3 +50,4 @@ export type IconNameType = keyof typeof AppIcon;
 
 fs.writeFileSync(outputFile, content, 'utf8');
 
+

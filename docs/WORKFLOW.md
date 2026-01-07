@@ -1,139 +1,183 @@
 <!--
 FILE: docs/WORKFLOW.md
-PURPOSE: Single source of truth for how work is executed in this repo (one section => one commit => checkboxes after verification), including Option A Workspace Packages model rules.
+PURPOSE: Repo execution rules: how to run, verify, commit, and evolve the CLI safely without regressions.
 OWNERSHIP: MAINTAINERS
 -->
 
-# WORKFLOW (How to execute tasks in this repo)
+# Workflow (CliMobile / RNS)
 
-This repo is developed by completing `docs/tasks/*` in a strict, auditable way.
-
----
-
-## 1) Unit of work = ONE numbered section `NN.N`
-**Unit of work is a numbered section header `## NN.N` inside a task file**  
-(example: `## 01.2`, `## 02.1`, `## 09.4`).
-
-A section contains multiple checklist lines.  
-You must complete the entire section, then commit once.
-
-**NOT allowed:**
-- marking checkboxes across multiple sections in one commit
-- “big-bang” commits that complete half the file
+This repo is **regression-intolerant**: if something already works, you must not break it.
+Treat all previously completed TODO sections (`[x]`) as **protected smoke gates**.
 
 ---
 
-## 2) Verification before marking `[x]`
-A checkbox inside section `NN.N` may be switched from `[ ]` to `[x]` **only after**:
+## 1) Canonical local commands (do not invent new entrypoints)
 
-- the code/templates/scripts for section `NN.N` are implemented
-- the minimal acceptance for section `NN.N` is actually verified
+- Dev CLI runner (must behave like released CLI):
+  - `npm run cli -- <args>`
 
-If you cannot verify it, it stays `[ ]`.
+- Build:
+  - `npm run build`
 
----
+- Typical smoke (example set; adapt to current TODO scope):
+  - `npm run cli -- --help`
+  - `npm run cli -- doctor --env`
+  - `npm run cli -- init MyApp --target expo`
+  - `npm run cli -- plugin list`
+  - `npm run cli -- plugin add <id> --dry-run`
 
-## 3) One section `NN.N` = one commit (MANDATORY)
-For every completed `## NN.N` section:
-
-1) implement the required changes
-2) verify acceptance for that section
-3) mark the checkboxes under **that same section** as `[x]`
-4) commit code + checkbox updates in the **same commit**
-
-Do not mark checkboxes in other sections.
+If you add an entrypoint or rename one, you **must** update this file and keep it consistent across docs.
 
 ---
 
-## 4) Commit message format (MANDATORY)
-Use this exact format:
+## 2) Work-order system (single source of truth)
 
-`task(<NN.N>): <short, concrete change>`
+Single source of truth:
+- `docs/TODO.md`
 
-Examples:
-- `task(01.2): build produces runnable dist entry`
-- `task(05.3): pack variant resolver`
-- `task(09.2): anchored text patch ops`
+Rules:
+- Work strictly from the **first unchecked** `[ ]` section (top-to-bottom).
+- Unit of work = **ONE section**.
+- One section = **one commit**.
+- Mark a section `[x]` **only after** its acceptance commands pass.
 
----
-
-## 5) Option A — Workspace Packages model (HARD RULE)
-All generated apps MUST follow **Option A**.
-
-### 5.1 Ownership boundaries
-**CLI-managed (CLI may create/update):**
-- `packages/@rns/*` (runtime/core/plugins/modules)
-- `.rns/**` (state/logs/backups/audit)
-
-**Developer-owned (CLI must NOT touch):**
-- `src/**` (business/app code)
-- `assets/**` (unless a plugin explicitly owns a sub-path via pack)
-
-### 5.2 Isolation guarantee
-- Do **not** inject CLI “glue code” into developer-owned `src/**`.
-- Runtime integration happens via:
-  - minimal `App.tsx` entry → renders `@rns/runtime`
-  - `packages/@rns/runtime` composition (providers/init/root/registries)
-- If markers/patching exist, they are allowed **only inside CLI-owned packages**.
-
-### 5.3 Platform/native integration
-Native/config changes (Android/iOS/Expo) must be applied by CLI via **safe patch operations** with backups:
-- anchors + idempotent edits
-- never instruct users to do manual edits
+Commit message format:
+`task(<sectionNumber>): <short concrete change>`
 
 ---
 
-## 6) No hidden changes outside the current section
-While working on one section `NN.N`:
-- do not introduce unrelated refactors
-- do not change other task files
-- do not mark other sections
-- keep `src/commands/*` thin unless the current section requires entrypoint changes
+## 3) Scope control (no regressions / no scope creep)
+
+While executing the active TODO section:
+
+✅ Allowed:
+- only files required to complete **that** section
+- updating **that** section in `docs/TODO.md`
+
+❌ Not allowed:
+- drive-by refactors
+- touching multiple TODO sections
+- changing unrelated docs/types “because you noticed it”
+- silently changing contracts that cause breaking behavior
 
 If you discover a missing prerequisite:
 - stop
-- implement it in the **earliest required section**, in order
-- one section per commit
+- move to the **earliest** TODO section where it belongs
+- implement it there (one section per commit)
 
 ---
 
-## 7) Minimal acceptance examples (use only when relevant)
-### 7.1 CLI foundation sections
-- `npm run build` succeeds
-- built entry runs: `node <built_entry> --help`
-- dev runner runs: `npm run cli -- --help`
+## 4) Failure policy (how to handle blockers)
 
-### 7.2 Init pipeline sections
-- `npm run init -- ...` or `npm run cli -- init ...`
-- generated app contains `packages/@rns/*` and `.rns/**`
-- developer `src/**` remains clean (no CLI glue dumped there)
+If anything fails (install/build/test/init/plugin):
+- do **not** mark the section `[x]`
+- capture the failure output (logs or notes)
+- fix it **within the current section scope**
 
-### 7.3 Plugin sections
-- apply plugin via CLI
-- re-run apply (no duplicates)
-- plugin code stays in `packages/@rns/plugin-*`
+If it cannot be fixed without earlier prerequisites:
+- leave the section `[ ]`
+- implement prerequisites in the earlier section first (correct order)
 
 ---
 
-## 8) Failure handling
-If a section cannot be verified due to missing prerequisites:
-- keep that section’s checkboxes `[ ]`
-- implement the prerequisite in the correct earlier section
-- never mark done “optimistically”
+## 5) Ownership zones (hard boundary)
+
+CLI-managed (agent/maintainers MAY create/update):
+- `packages/@rns/**`
+- `.rns/**`
+
+Developer-owned (forbidden by default):
+- `src/**`
+- `assets/**` (unless a plugin explicitly owns a declared sub-scope)
+
+Hard rule:
+- do not inject CLI runtime glue into developer `src/**`
+- any need to touch developer-owned code must be explicitly defined in TODO and treated as a breaking behavior risk
 
 ---
 
-## 9) Repair rule (if you bulk-checked by mistake)
-If you marked checkboxes outside the current section:
-- restore the task file to last committed state
-- redo section-by-section correctly
+## 6) Injection & patching rules
 
-Typical:
-`git restore docs/tasks/XX_*.md`
+### 6.1 Runtime wiring (TS/JS)
+
+- AST-only: **ts-morph**.
+- Symbol-based injection (imports + registrations by symbol ref).
+- No regex injection or raw code-string wiring into TS/JS.
+
+### 6.2 Native/config changes
+
+- Express changes as **patch operations** (idempotent).
+- Apply changes using anchors/markers; “insert once” semantics.
+- Create backups under `.rns/backups/<timestamp>/...` before modifying any existing file.
+- Never instruct users to manually edit Podfile/Gradle/Manifest/Info.plist for shipped plugins.
 
 ---
 
-## 10) Source of truth for progress
-Progress tracking is done only via:
-- `docs/tasks/*` checkboxes (per section)
-- git commits following the required message format
+## 7) Idempotency policy (mandatory)
+
+Every command that changes state must be safe to re-run:
+
+- `rns init` should refuse on existing projects (or be explicitly designed to be re-runnable), with a clear message.
+- `rns plugin add <id>` repeated → **NO-OP** (no duplicate deps, imports, registrations, patches).
+- `rns plugin remove <id>` repeated → **NO-OP**.
+
+Verification should include “run twice” scenarios where applicable.
+
+---
+
+## 8) Contracts/types policy (docs-first)
+
+Canonical contract:
+- `docs/cli-interface-and-types.md`
+
+Rules:
+- code types must match the doc
+- schema changes must be:
+  - versioned (manifest `schemaVersion`)
+  - migrated (explicit migration logic)
+  - documented (update doc + TODO in the same section scope)
+
+Prefer:
+- additive changes (backward compatible)
+
+Avoid:
+- breaking shape changes without a migration path
+
+---
+
+## 9) Regression gates (required before marking `[x]`)
+
+Before marking the active TODO section `[x]`:
+
+- `npm run build` passes
+- all acceptance commands for the active TODO section pass
+- previously-working commands still work (at minimum: the latest `[x]` items’ acceptance checks)
+- `plugin add` re-run is a NO-OP (when plugin pipeline exists)
+- `doctor` passes (when doctor exists)
+- backups are produced for patched files (when patching exists)
+
+---
+
+## 10) Repair / rollback helpers
+
+If you accidentally edited the wrong scope or checked the wrong TODO section:
+
+- Undo local doc changes:
+  - `git restore docs/TODO.md`
+
+- Undo local file changes (selectively):
+  - `git restore <path>`
+
+- Verify what changed:
+  - `git status`
+  - `git diff`
+
+---
+
+## 11) Resume protocol (when picking work back up)
+
+1) `git status`
+2) `git log -20 --oneline`
+3) open `docs/TODO.md`
+4) continue from the first unchecked `[ ]` section
+5) complete one section → verify → mark `[x]` → commit

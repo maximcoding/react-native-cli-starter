@@ -54,3 +54,4 @@ if (missingInIcons.length || extraInIcons.length) {
 
 console.log('[OK] icons.ts is up-to-date.');
 
+

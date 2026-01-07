@@ -60,3 +60,4 @@ export function formatErrorOutput(error: CliError | Error, verbose: boolean): st
   return lines.join('\n');
 }
 
+
