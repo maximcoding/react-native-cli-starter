@@ -1,7 +1,8 @@
 <!--
-FILE: docs/README.md
+FILE: README.md
 PURPOSE: High-level, human-readable overview + quick start for CliMobile (RNS).
          Explains the product model (Base App + Plugins) and links to /docs for the canonical contracts and workflow.
+         This is the root README.md for GitHub. The canonical version is in docs/README.md.
 OWNERSHIP: CLI
 -->
 
@@ -293,7 +294,7 @@ rns plugin add offline.netinfo offline.outbox storage.sqlite
 
 All canonical documentation lives under `docs/`:
 
-- **`docs/README.md`** (this file) — high-level product model + quick start
+- **`docs/README.md`** — high-level product model + quick start (canonical version)
 - **`docs/TODO.md`** — single work-order (execute top-to-bottom)
 - **`docs/WORKFLOW.md`** — repo execution rules (run/verify/commit/no regressions)
 - **`docs/AGENT.md`** — AI agent rules (scope control + acceptance checks)
@@ -305,7 +306,7 @@ All canonical documentation lives under `docs/`:
 
 The following six documents form the **canonical, non-duplicated** documentation set. This contract ensures work can be delegated safely without schema duplication or intent loss.
 
-1. **`README.md`** (this file) — high-level product model + quick start
+1. **`docs/README.md`** — high-level product model + quick start
 2. **`docs/TODO.md`** — single work-order (execute top-to-bottom)
 3. **`docs/WORKFLOW.md`** — repo execution rules (run/verify/commit/no regressions)
 4. **`docs/AGENT.md`** — AI agent rules (scope control + acceptance checks)
@@ -344,3 +345,4 @@ See: `docs/WORKFLOW.md`.
 ## 📄 License
 
 ISC
+
