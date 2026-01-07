@@ -10,6 +10,8 @@ Treat the agent like a fast junior maintainer. It can work only if the rules are
 
 ## Required reading (always)
 
+**Canonical Docs Contract:** These six docs form the canonical, non-duplicated set (see `README.md` → Documentation).
+
 1. `README.md`
 2. `docs/TODO.md` (single work-order)
 3. `docs/WORKFLOW.md`

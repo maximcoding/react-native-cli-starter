@@ -127,11 +127,14 @@ Verification should include “run twice” scenarios where applicable.
 
 ## 8) Contracts/types policy (docs-first)
 
+**Canonical Docs Contract:** See `README.md` → Documentation for the complete canonical docs set.
+
 Canonical contract:
-- `docs/cli-interface-and-types.md`
+- `docs/cli-interface-and-types.md` — **single source of truth** for all type names and schemas
 
 Rules:
 - code types must match the doc
+- **no schema duplication** — types live in `cli-interface-and-types.md`; other docs reference it
 - schema changes must be:
   - versioned (manifest `schemaVersion`)
   - migrated (explicit migration logic)

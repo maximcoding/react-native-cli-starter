@@ -7,13 +7,20 @@ OWNERSHIP: CLI
 
 # CLI Interfaces & Types (v3)
 
-This document is the **single reference** for the platform’s contract names and required shapes.
+This document is the **single reference** for the platform's contract names and required shapes.
+
+**Canonical Docs Contract:** This doc is part of the canonical, non-duplicated docs set (see `README.md` → Documentation).
 
 **Rule:** Do not redefine the same schema in multiple docs.  
 If a type is referenced by multiple docs, it must have one home here **and** one TS source file.
 
 **Source-of-truth rule:** the authoritative definitions live in TypeScript.  
 If code and this doc diverge, treat it as a bug and bring them back in sync.
+
+**No duplication policy:** When adding new types or schemas:
+- Define them here first (or reference the TS file location)
+- Reference this doc from other docs; do not copy type definitions
+- If a doc needs a type, link to this doc's section instead of redefining it
 
 ---
 
