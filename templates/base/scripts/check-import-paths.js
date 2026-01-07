@@ -38,3 +38,4 @@ if (BAD.length) {
 
 console.log('[OK] import path policy passed.');
 
+

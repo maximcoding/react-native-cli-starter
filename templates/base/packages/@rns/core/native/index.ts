@@ -8,3 +8,4 @@ export * from './device-info';
 export * from './haptics';
 export * from './permissions';
 
+

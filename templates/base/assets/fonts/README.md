@@ -17,3 +17,4 @@ Fonts are auto-linked via react-native.config.js. After adding fonts:
 - Font file names should match the font family name used in styles
 - Example: Inter-Regular.ttf → fontFamily: 'Inter-Regular'
 
+

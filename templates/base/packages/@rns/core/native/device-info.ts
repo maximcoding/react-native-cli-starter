@@ -19,3 +19,4 @@ export const deviceInfo = {
   platform: Platform.OS,
 };
 
+
