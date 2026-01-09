@@ -461,9 +461,42 @@ Phase interfaces (v1 targets):
 
 ### 2.14 Doctor tooling
 
-- **`DoctorCheckId`**
-- **`DoctorFinding`**
-- **`DoctorReport`**
+The doctor tooling provides environment and project validation. Environment doctor (`rns doctor --env`) checks required tooling for the chosen target and fails early with actionable fixes.
+
+**Core Types:**
+- **`DoctorCheckId`** — stable identifier for each check (e.g., `'node.version'`, `'android.sdk'`, `'manifest.exists'`)
+- **`DoctorFinding`** — result of a single check: checkId, name, severity, passed, message, fix, value
+- **`CheckSeverity`** — `'error' | 'warning' | 'info'`
+- **`EnvironmentDoctorReport`** — environment doctor report: target, findings, passed, criticalErrors, warnings
+- **`ProjectDoctorReport`** — project doctor report: findings, passed, errors, warnings, fixable
+
+**Environment Checks:**
+- **Core (always required):** Node.js version, package managers (npm/pnpm/yarn), Git
+- **Expo target:** Expo CLI
+- **Bare target:** Android toolchain (SDK, JDK, adb, Gradle), iOS toolchain (Xcode, CocoaPods)
+
+**Behavior:**
+- Fail early: blocks destructive commands when critical items are missing
+- Actionable fixes: each failed check includes fix instructions
+- Target-aware: only checks tooling required for the chosen target
+- Validation: `validateEnvironment()` throws if critical checks fail
+
+**Source of truth (TypeScript):**
+- `src/lib/types/doctor.ts` — `DoctorCheckId`, `DoctorFinding`, `EnvironmentDoctorReport`, `ProjectDoctorReport`
+- `src/lib/environment-doctor.ts` — environment doctor (`runEnvironmentDoctor`, `validateEnvironment`)
+
+**Rule:** Must fail early with actionable fixes and block destructive commands when critical items are missing.
+
+**Project Doctor:**
+- **`runProjectDoctor()`** — runs project-level validation checks
+- **`applySafeFixes()`** — applies safe fixes in SYSTEM ZONE only (never touches `src/**`)
+- Checks: manifest exists/valid, markers intact, ownership zones, duplicate injections, plugin consistency
+- Fix mode: `--fix` flag applies safe fixes automatically (manifest migration, etc.)
+
+**Source of truth (TypeScript):**
+- `src/lib/project-doctor.ts` — project doctor (`runProjectDoctor`, `applySafeFixes`)
+
+**Rule:** `--fix` may only apply safe fixes in SYSTEM ZONE (never touches `src/**`).
 
 ### 2.15 Commands & exit codes
 

@@ -126,7 +126,7 @@ Make permissions data-driven:
 - installers apply platform changes via patch ops
 Manifest must store aggregated permissions plus per-plugin traceability (mandatory vs optional).
 
-## [ ] 17) Environment Doctor (`rns doctor --env`)
+## [x] 17) Environment Doctor (`rns doctor --env`)
 
 Implement a machine preflight that checks required tooling for the chosen target:
 - Node, package manager, git
@@ -134,7 +134,7 @@ Implement a machine preflight that checks required tooling for the chosen target
 - Android toolchain (SDK/JDK/adb/gradle) and iOS toolchain (Xcode/CocoaPods) when target is Bare
 Must fail early with actionable fixes and block destructive commands when critical items are missing.
 
-## [ ] 18) Project Doctor (`rns doctor`, `rns doctor --fix`)
+## [x] 18) Project Doctor (`rns doctor`, `rns doctor --fix`)
 
 Implement project-level validation:
 - manifest present + valid schema version (migrate when needed)
