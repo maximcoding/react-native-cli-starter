@@ -28,6 +28,14 @@ export function initCore(): void {
   // Initialize network monitoring (stub by default, plugins can wire NetInfo)
   initNetInfoBridge();
 
+  // @rns-marker:init-steps:start
+  // Plugin initialization steps will be injected here
+  // @rns-marker:init-steps:end
+
+  // @rns-marker:registrations:start
+  // Plugin registrations will be injected here
+  // @rns-marker:registrations:end
+
   initialized = true;
   logger.info('CORE initialized');
 }

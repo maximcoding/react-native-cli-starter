@@ -42,7 +42,21 @@ function resolveCliRoot(): string {
 }
 
 /**
+ * Default dependency versions (used when blueprint is not available)
+ */
+const DEFAULT_DEPENDENCIES: Record<string, string> = {
+  'react-native-svg': '^15.0.0',
+  'react-native-svg-transformer': '^1.5.0',
+  'react-native-config': '^1.5.0',
+};
+
+const DEFAULT_DEV_DEPENDENCIES: Record<string, string> = {
+  'babel-plugin-module-resolver': '^5.0.0',
+};
+
+/**
  * Reads blueprint package.json and extracts dependencies for enabled toggles
+ * Falls back to default versions if blueprint is not available
  */
 export function extractBlueprintDependencies(
   toggles: {
@@ -56,36 +70,54 @@ export function extractBlueprintDependencies(
   const cliRoot = resolveCliRoot();
   const blueprintPath = join(cliRoot, BLUEPRINT_PACKAGE_JSON);
   
-  if (!pathExists(blueprintPath)) {
-    throw new Error(
-      `Blueprint package.json not found at ${blueprintPath}\n` +
-      `This file is required to determine CORE toggle dependencies.`
-    );
+  // Try to read blueprint, but don't fail if it doesn't exist
+  let blueprint: any = null;
+  if (pathExists(blueprintPath)) {
+    try {
+      blueprint = readJsonFile<any>(blueprintPath);
+    } catch {
+      // If blueprint exists but can't be read, continue with defaults
+      blueprint = null;
+    }
   }
   
-  const blueprint = readJsonFile<any>(blueprintPath);
   const deps: ToggleDependencies = {
     dependencies: {},
     devDependencies: {},
   };
   
+  // Helper to get dependency version (from blueprint or default)
+  const getDepVersion = (name: string, isDev: boolean = false): string | undefined => {
+    if (blueprint) {
+      const source = isDev ? blueprint.devDependencies : blueprint.dependencies;
+      if (source?.[name]) {
+        return source[name];
+      }
+    }
+    const defaults = isDev ? DEFAULT_DEV_DEPENDENCIES : DEFAULT_DEPENDENCIES;
+    return defaults[name];
+  };
+  
   // SVG toggle dependencies
   if (toggles.svg) {
     // react-native-svg is required for SVG support
-    if (blueprint.dependencies?.['react-native-svg']) {
-      deps.dependencies['react-native-svg'] = blueprint.dependencies['react-native-svg'];
+    const svgVersion = getDepVersion('react-native-svg');
+    if (svgVersion) {
+      deps.dependencies['react-native-svg'] = svgVersion;
     }
     // react-native-svg-transformer is required for Metro to transform SVG files
-    if (blueprint.dependencies?.['react-native-svg-transformer']) {
-      deps.dependencies['react-native-svg-transformer'] = blueprint.dependencies['react-native-svg-transformer'];
+    const transformerVersion = getDepVersion('react-native-svg-transformer');
+    if (transformerVersion) {
+      deps.dependencies['react-native-svg-transformer'] = transformerVersion;
     }
   }
   
   // Alias toggle dependencies
   if (toggles.alias) {
     // babel-plugin-module-resolver is required for path aliases
-    if (blueprint.devDependencies?.['babel-plugin-module-resolver']) {
-      deps.devDependencies['babel-plugin-module-resolver'] = blueprint.devDependencies['babel-plugin-module-resolver'];
+    const resolverVersion = getDepVersion('babel-plugin-module-resolver', true);
+    if (resolverVersion) {
+      deps.devDependencies['babel-plugin-module-resolver'] = resolverVersion;
     }
   }
   
@@ -97,8 +129,9 @@ export function extractBlueprintDependencies(
       // No additional dependency needed for basic env support
     } else {
       // Bare RN uses react-native-config
-      if (blueprint.dependencies?.['react-native-config']) {
-        deps.dependencies['react-native-config'] = blueprint.dependencies['react-native-config'];
+      const configVersion = getDepVersion('react-native-config');
+      if (configVersion) {
+        deps.dependencies['react-native-config'] = configVersion;
       }
     }
   }
