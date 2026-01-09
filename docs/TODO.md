@@ -87,7 +87,7 @@ Implement runtime wiring via ts-morph only (no regex, no raw code-string injecti
 composed in SYSTEM ZONE (`packages/@rns/**`) so developer business code (`src/**`) remains untouched. Define stable
 injection points for providers/wrappers/init steps/registrations and guarantee deterministic ordering.
 
-## [ ] 12) Patch Operations System (native/config, idempotent)
+## [x] 12) Patch Operations System (native/config, idempotent)
 
 Define and implement patch operations as declarative, idempotent units for:
 - Expo config (app.json/app.config.*)
@@ -96,14 +96,14 @@ Define and implement patch operations as declarative, idempotent units for:
 - anchored text edits (Gradle/Podfile)
 Rules: anchored, insert-once, backed up under `.rns/backups/...`, traceable by plugin id.
 
-## [ ] 13) Project State System (`.rns/rn-init.json`)
+## [x] 13) Project State System (`.rns/rn-init.json`)
 
 Make `.rns/rn-init.json` the single source of truth for what was generated and what is installed. Init writes base
 parameters (target, language, package manager, toggles, versions). Plugin/module installs update state (id, version,
 installedAt, options). Every CLI command must validate state before acting and refuse to run on non-initialized projects
 with an actionable message. State enables correct status/doctor behavior and safe repeatable installs.
 
-## [ ] 14) Dependency Layer (pm-aware)
+## [x] 14) Dependency Layer (pm-aware)
 
 Build a unified dependency installation layer for npm/pnpm/yarn that guarantees deterministic installs for
 init/plugins/modules. It must respect lockfile discipline, never mix package managers, log install commands, and provide

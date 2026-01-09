@@ -48,6 +48,7 @@ The authoritative definitions live in code.
 - `src/lib/types/permissions.ts` — permission requirements + provider catalog types
 - `src/lib/types/runtime.ts` — runtime injection types (`RuntimeContribution`, `SymbolRef`)
 - `src/lib/types/patch-ops.ts` — declarative patch ops (iOS/Android/Expo/text)
+- `src/lib/types/dependencies.ts` — dependency installation types (`DependencySpec`, `DependencyScope`)
 - `src/lib/types/modulator.ts` — modulator plan/apply contracts + phase interfaces
 - `src/lib/types/doctor.ts` — doctor report types
 - `src/lib/types/commands.ts` — command ids + exit codes
@@ -82,10 +83,41 @@ This section is the “high-level design” index: what objects exist, which enu
 
 ### 2.2 Project state (manifest)
 
-- **`RnsProjectManifest`** — single source of truth: identity + target + installed plugins + schema version.
-- **`RnsProjectIdentity`** — name/displayName/bundleId/packageName/version/build.
-- **`InstalledPluginRecord`** — installed plugin instance: id, version, options, owned files/dirs, timestamps.
-- **`ManifestSchemaVersion`** — schema version for `.rns/rn-init.json` (for migrations).
+The project manifest (`.rns/rn-init.json`) is the single source of truth for what was generated and what is installed. Every CLI command (except `init`) must validate state before acting.
+
+**Core Types:**
+- **`RnsProjectManifest`** — single source of truth: identity + target + installed plugins + schema version
+- **`RnsProjectIdentity`** — name/displayName/bundleId/packageName/version/build
+- **`InstalledPluginRecord`** — installed plugin/module instance: id, version, options, owned files/dirs, timestamps
+- **`ManifestSchemaVersion`** — schema version for `.rns/rn-init.json` (for migrations)
+- **`ManifestValidationResult`** — validation result with errors/warnings/migration flag
+
+**Manifest Structure:**
+- `schemaVersion` — current schema version (for migrations)
+- `cliVersion` — CLI version that generated this manifest
+- `workspaceModel` — workspace model (Option A)
+- `identity` — project identity information
+- `target` — target platform (expo/bare)
+- `language` — language (ts/js)
+- `packageManager` — package manager (npm/pnpm/yarn)
+- `reactNativeVersion` — React Native version
+- `coreToggles` — CORE feature toggles from init
+- `plugins` — installed plugins array
+- `modules` — installed modules array
+- `createdAt` — creation timestamp
+- `updatedAt` — last update timestamp
+
+**Behavior:**
+- Validation: all manifests are validated on read (schema version, required fields)
+- Migration: manifests with older schema versions are automatically migrated
+- State check: `validateProjectInitialized()` must be called by all commands (except `init`)
+- Updates: plugins/modules are added/removed via manifest functions
+
+**Source of truth (TypeScript):**
+- `src/lib/types/manifest.ts` — `RnsProjectManifest`, `RnsProjectIdentity`, `InstalledPluginRecord`, `ManifestSchemaVersion`
+- `src/lib/manifest.ts` — manifest management (`readManifest`, `writeManifest`, `validateManifest`, `migrateManifest`, `validateProjectInitialized`)
+
+**Rule:** Every CLI command (except `init`) must call `validateProjectInitialized()` before acting and refuse to run on non-initialized projects with an actionable message.
 
 ### 2.3 Plugin catalog (what a plugin is)
 
@@ -148,12 +180,67 @@ Runtime wiring enables plugins/modules to inject code into the app runtime via A
 
 ### 2.7 Patch operations (native/config, idempotent)
 
-- **`PatchOp`** — base union type for patch operations.
-- **`PlistPatchOp`**, **`AndroidManifestPatchOp`**, **`GradlePatchOp`**, **`TextAnchorPatchOp`**, **`ExpoConfigPatchOp`** — concrete op types.
+Patch operations enable plugins/modules to modify native configuration files and build scripts in a declarative, idempotent way. All patches are anchored, traceable, and backed up.
 
-Rule: patchers must be anchored, idempotent, and backed up under `.rns/backups/...`.
+**Core Types:**
+- **`PatchOp`** — union type for all patch operations
+- **`ExpoConfigPatchOp`** — patches app.json/app.config.* (JSON path-based)
+- **`PlistPatchOp`** — patches iOS Info.plist files (key-value pairs)
+- **`EntitlementsPatchOp`** — patches iOS .entitlements files
+- **`AndroidManifestPatchOp`** — patches AndroidManifest.xml (permissions/features/components)
+- **`GradlePatchOp`** — patches build.gradle files (anchored text insertion)
+- **`PodfilePatchOp`** — patches Podfile (anchored text insertion)
+- **`TextAnchorPatchOp`** — generic anchored text patches
 
-### 2.8 Template Pack System (CORE / Plugin / Module packs)
+**Patch Results:**
+- **`PatchOpResult`** — result of a patch operation (applied/skipped/error)
+
+**Behavior:**
+- Anchored: all patches use anchors (JSON paths, XML keys, text anchors) for precise targeting
+- Idempotent: duplicate patches are skipped based on operationId markers
+- Backup: all file modifications are backed up under `.rns/backups/...`
+- Traceable: each patch includes capabilityId and operationId for tracking
+
+**Source of truth (TypeScript):**
+- `src/lib/types/patch-ops.ts` — `PatchOp`, `PatchOpResult`, and all patch operation types
+- `src/lib/patch-ops.ts` — patch operations engine (`applyPatchOp`, `applyPatchOps`)
+
+**Rule:** Patchers must be anchored, idempotent, and backed up under `.rns/backups/...`.
+
+### 2.8 Dependency Layer (pm-aware)
+
+The dependency layer is the only place allowed to install/remove dependencies. It guarantees deterministic installs, respects lockfile discipline, never mixes package managers, and provides clear error output.
+
+**Core Types:**
+- **`DependencySpec`** — `{ name, version }` — dependency specification
+- **`DependencyScope`** — `'workspace' | 'host' | 'package:<name>'` — installation scope
+- **`DependencyInstallOptions`** — installation options (scope, cwd, verbose, dryRun)
+- **`DependencyInstallResult`** — installation result (success, action, error)
+- **`PackageManagerDetectionResult`** — PM detection result with source and conflicts
+
+**Behavior:**
+- Lockfile discipline: never mixes package managers, validates no conflicting lockfiles
+- PM detection: uses manifest first, falls back to lockfile detection, defaults to npm
+- Deterministic installs: respects lockfiles, ensures consistent installs
+- Clear errors: provides actionable error messages on failures
+- Scope support: workspace (root), host (app), package (workspace package)
+
+**Functions:**
+- `detectPackageManager()` — detects PM from manifest or lockfiles
+- `resolvePackageManager()` — resolves PM with override support
+- `validateLockfileDiscipline()` — ensures no PM mixing
+- `addRuntimeDependencies()` — installs runtime deps
+- `addDevDependencies()` — installs dev deps
+- `installDependencies()` — installs from lockfile
+
+**Source of truth (TypeScript):**
+- `src/lib/types/dependencies.ts` — `DependencySpec`, `DependencyScope`, `DependencyInstallOptions`, etc.
+- `src/lib/types/common.ts` — `PackageManager` type
+- `src/lib/dependencies.ts` — dependency layer (`addRuntimeDependencies`, `addDevDependencies`, `installDependencies`, etc.)
+
+**Rule:** Plugins/modules must not run package-manager commands directly; they must go through the dependency layer for consistent behavior.
+
+### 2.9 Template Pack System (CORE / Plugin / Module packs)
 
 The template-pack system is the core mechanism for "dynamic attachment" into generated apps. It enables capabilities to scale without rewriting CORE.
 
