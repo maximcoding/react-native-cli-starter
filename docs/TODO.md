@@ -150,13 +150,13 @@ support stable plugin IDs, a registry/catalog, a standardized apply pipeline (de
 a `doctor` validation model. Installing any shipped plugin must never require manual file edits in the app; the CLI must
 perform the entire setup.
 
-## [ ] 20) Plugin Commands (list, add, remove, status, doctor)
+## [x] 20) Plugin Commands (list, add, remove, status, doctor)
 
 Implement the plugin command surface: list catalog, add by IDs (or interactive selection), remove, status (installed vs
 available), and doctor (validation/diagnostics). Commands must be state-driven, use the template attachment engine and
 marker patcher, respect ownership/backup/idempotency policy, and output minimal but precise information to the user.
 
-## [ ] 21) Module Framework (business scaffolds)
+## [x] 21) Module Framework (business scaffolds)
 
 Design and implement the business module framework that generates feature code (screens/flows/domain/state) and
 integrates through a stable registration model. Modules are not infrastructure; they consume CORE contracts and
