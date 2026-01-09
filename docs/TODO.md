@@ -143,7 +143,7 @@ Implement project-level validation:
 - installed plugins are consistent with workspace + deps
 `--fix` may only apply safe fixes in SYSTEM ZONE (never touches `src/**`).
 
-## [ ] 19) Plugin Framework (registry, apply, doctor)
+## [x] 19) Plugin Framework (registry, apply, doctor)
 
 Build a real plugin system where every shipped plugin is a fully automated capability (FULL_AUTO). The framework must
 support stable plugin IDs, a registry/catalog, a standardized apply pipeline (deps + packs + wiring + state update), and

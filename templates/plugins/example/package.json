@@ -1,0 +1,8 @@
+{
+  "name": "@rns/plugin-example",
+  "version": "1.0.0",
+  "description": "Example plugin for RNS",
+  "main": "index.ts",
+  "types": "index.ts",
+  "private": true
+}
