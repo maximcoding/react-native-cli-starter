@@ -118,7 +118,7 @@ Build the generic installation engine that:
 - can remove plugins safely (NO-OP if already absent; never touches USER ZONE)
 Plan/apply/remove must report: deps, runtime wiring ops, patch ops, permissions summary, conflicts, and manifest updates.
 
-## [ ] 16) Permissions Model v1 (IDs + mapping + providers)
+## [x] 16) Permissions Model v1 (IDs + mapping + providers)
 
 Make permissions data-driven:
 - plugins declare PermissionIds (not raw platform strings)

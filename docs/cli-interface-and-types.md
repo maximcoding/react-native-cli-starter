@@ -138,15 +138,47 @@ Useful taxonomy (for UI, presets, discoverability):
 
 ### 2.5 Permissions (IDs + mapping)
 
-- **`PermissionId`** — canonical permission identifier (e.g. `camera`, `location.whenInUse`)
-- **`PermissionRequirement`** — one permission unit with iOS/Android mapping + notes.
-- **`PlatformPermissionSpec`** — iOS plist keys / Android manifest entries + rationale.
-- **`PermissionsSummary`** — aggregated permissions required by currently installed plugins.
+The permissions model is data-driven: plugins declare PermissionIds (not raw platform strings), permissions resolve through `docs/plugins-permissions.md` dataset, and installers apply platform changes via patch ops.
 
-Permission provider UX tooling:
-- **`PermissionPlugin`** — describes a permission SDK/provider (expo-camera, react-native-permissions, etc.)
+**Core Types:**
+- **`PermissionId`** — canonical permission identifier (e.g., `camera`, `location.whenInUse`)
+- **`PermissionRequirement`** — permission requirement with mandatory flag: `{ permissionId, mandatory, notes? }`
+- **`PermissionObject`** — permission object from catalog: pluginId, os, permissionType, value, etc.
+- **`PermissionCatalogEntry`** — catalog entry: id, fullPermissionConstant, appPlatform, pluginKind, permissionObject
+- **`ResolvedPermission`** — resolved permission mapping: permissionId, catalogEntries, iosKeys, androidPermissions, etc.
+- **`AggregatedPermissions`** — aggregated permissions summary: permissionIds, mandatory/optional, resolved, byPlugin
 
-Full catalog lives in: `docs/plugins-permissions.md`
+**Permission Types:**
+- **`PermissionType`** — `'runtimePermission' | 'manifestPermission' | 'infoPlistKey' | 'configKey'`
+- **`AppPlatform`** — `'expo' | 'bare' | 'both'` — where permission is used
+- **`PluginKind`** — `'expo-module' | 'rn-library' | 'rn-core'` — provider ecosystem
+
+**Behavior:**
+- Data-driven: plugins declare PermissionIds, not raw platform strings
+- Resolution: PermissionIds resolve through `docs/plugins-permissions.md` dataset
+- Platform mapping: automatically maps to iOS plist keys and Android manifest permissions
+- Aggregation: manifest stores aggregated permissions plus per-plugin traceability
+- Mandatory vs optional: permissions marked as mandatory or optional per plugin
+
+**Functions:**
+- `loadPermissionsCatalog()` — loads and parses permissions catalog from docs
+- `resolvePermissions()` — resolves permission IDs to catalog entries and platform mappings
+- `aggregatePermissions()` — aggregates permissions from multiple plugins
+- `getIosPlistKeys()` — gets iOS Info.plist keys for permission IDs
+- `getAndroidPermissions()` — gets Android manifest permissions for permission IDs
+- `getAndroidFeatures()` — gets Android manifest features for permission IDs
+
+**Source of truth (TypeScript):**
+- `src/lib/types/permissions.ts` — `PermissionId`, `PermissionRequirement`, `PermissionObject`, `ResolvedPermission`, `AggregatedPermissions`
+- `src/lib/permissions.ts` — permissions resolution and aggregation (`loadPermissionsCatalog`, `resolvePermissions`, `aggregatePermissions`, etc.)
+- `docs/plugins-permissions.md` — machine-readable permissions catalog (canonical dataset)
+
+**Manifest Integration:**
+- `InstalledPluginRecord.permissions` — stores permission requirements per plugin
+- `RnsProjectManifest.permissions` — stores aggregated permissions with traceability
+- `updateAggregatedPermissions()` — recalculates aggregated permissions from installed plugins
+
+**Rule:** Plugins declare PermissionIds (not raw platform strings). Permissions resolve through `docs/plugins-permissions.md` dataset. Installers apply platform changes via patch ops. Manifest stores aggregated permissions plus per-plugin traceability (mandatory vs optional).
 
 ### 2.6 Runtime contributions (wiring, symbol-based)
 
