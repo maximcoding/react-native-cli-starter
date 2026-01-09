@@ -1,0 +1,7 @@
+{
+  "id": "example",
+  "type": "plugin",
+  "delivery": "workspace",
+  "supportedTargets": ["expo", "bare"],
+  "supportedLanguages": ["ts", "js"]
+}

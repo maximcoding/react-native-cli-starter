@@ -15,6 +15,7 @@ import { readdirSync, statSync } from 'fs';
 import { pathExists, isDirectory, isFile } from './fs';
 import { readTextFile } from './fs';
 import { INJECTION_MARKER_PATTERN } from './idempotency';
+import { getPluginRegistry, initializePluginRegistry } from './plugin-registry';
 import { CliError, ExitCode } from './errors';
 import type {
   ProjectDoctorReport,
@@ -29,7 +30,7 @@ import type {
  * @param fix - If true, apply safe fixes in SYSTEM ZONE only
  * @returns Project doctor report
  */
-export function runProjectDoctor(projectRoot: string, fix: boolean = false): ProjectDoctorReport {
+export async function runProjectDoctor(projectRoot: string, fix: boolean = false): Promise<ProjectDoctorReport> {
   const findings: DoctorFinding[] = [];
   
   // Check 1: Manifest exists and is valid
@@ -44,8 +45,8 @@ export function runProjectDoctor(projectRoot: string, fix: boolean = false): Pro
   // Check 4: No duplicate injections
   findings.push(...checkDuplicateInjections(projectRoot));
   
-  // Check 5: Plugins consistent with workspace + deps
-  findings.push(...checkPluginConsistency(projectRoot));
+  // Check 5: Plugins consistent with workspace + deps + registry
+  findings.push(...(await checkPluginConsistency(projectRoot)));
   
   // Categorize findings
   const errors = findings.filter(f => f.severity === 'error' && !f.passed);
@@ -355,9 +356,9 @@ function checkDuplicateInjections(projectRoot: string): DoctorFinding[] {
 }
 
 /**
- * Checks plugin consistency with workspace + deps
+ * Checks plugin consistency with workspace + deps + registry
  */
-function checkPluginConsistency(projectRoot: string): DoctorFinding[] {
+async function checkPluginConsistency(projectRoot: string): Promise<DoctorFinding[]> {
   const findings: DoctorFinding[] = [];
   const inconsistencies: string[] = [];
   
@@ -367,11 +368,20 @@ function checkPluginConsistency(projectRoot: string): DoctorFinding[] {
       return findings; // Can't check without manifest
     }
     
+    // Initialize plugin registry
+    await initializePluginRegistry();
+    const registry = getPluginRegistry();
+    
     // Check installed plugins exist in workspace
     for (const plugin of manifest.plugins) {
       const pluginPackagePath = join(projectRoot, 'packages', '@rns', `plugin-${plugin.id}`);
       if (!pathExists(pluginPackagePath)) {
         inconsistencies.push(`Plugin ${plugin.id} is in manifest but package not found at ${pluginPackagePath}`);
+      }
+      
+      // Check plugin exists in registry
+      if (!registry.hasPlugin(plugin.id)) {
+        inconsistencies.push(`Plugin ${plugin.id} is installed but not found in plugin registry`);
       }
     }
     

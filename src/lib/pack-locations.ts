@@ -30,7 +30,7 @@ export const APP_USER_SRC_DIR = 'src';
  * Resolves the CLI root directory (where templates/ lives)
  * This is the directory containing the CLI's package.json
  */
-function resolveCliRoot(): string {
+export function resolveCliRoot(): string {
   // CLI root is where this source file's dist/ equivalent lives
   // When running from dist/, go up to find package.json
   // When running from source, go up from src/lib/ to find package.json
