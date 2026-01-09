@@ -53,35 +53,35 @@ support CORE packs, plugin packs, and module packs with a consistent structure, 
 variants (Expo Framework/Bare React Native, TS/JS) without turning the repo into duplication chaos. This is how capabilities scale without
 rewriting CORE.
 
-## [ ] 7) Dynamic Template Attachment Engine
+## [x] 7) Dynamic Template Attachment Engine
 
 Build the engine that deterministically selects and attaches the correct template packs/variants into the target app
 based on init parameters and chosen capability options. It must understand targets (expo/bare, ts/js), apply
 option-driven variants, merge safely by stable priorities, prevent destructive collisions, and guarantee repeatable
-output (same inputs → same output). This engine is the backbone of “CLI does the setup automatically.”
+output (same inputs → same output). This engine is the backbone of "CLI does the setup automatically."
 
-## [ ] 8) Ownership, Backups, Idempotency
+## [x] 8) Ownership, Backups, Idempotency
 
 Enforce strict safety rules: which files are CLI-owned vs user-owned, which regions may be changed only through markers,
 and how backups/rollback work. Any operation that edits files must create `.rns/backups/<timestamp>/...`. Any operation
 must be idempotent: rerunning init (when applicable) or reapplying a plugin must never duplicate injections or break the
 app. This is mandatory to support many plugins at scale.
 
-## [ ] 9) Marker Contract (canonical integration points)
+## [x] 9) Marker Contract (canonical integration points)
 
 Lock the canonical integration markers as the only supported wiring method for plugins/modules into the app shell.
 Markers must always exist in CORE, be validated before patching, and produce clean, actionable errors when missing or
 corrupted (which marker, which file, how to restore). This contract prevents plugins from rewriting app code and keeps
 the system maintainable.
 
-## [ ] 10) Marker Patcher Engine v1
+## [x] 10) Marker Patcher Engine v1
 
 Implement a single patcher that safely injects changes only inside markers (imports/providers/init/root). It must
 guarantee no duplicates, stable output, resilience to formatting/newlines, and traceability by capability id
 (plugin/module). It must always backup before writing. All plugins/modules must use this patcher (no ad-hoc regex hacks
 per plugin).
 
-## [ ] 11) Runtime Wiring Engine (AST-only, symbol-based)
+## [x] 11) Runtime Wiring Engine (AST-only, symbol-based)
 
 Implement runtime wiring via ts-morph only (no regex, no raw code-string injection). Wiring must be symbol-based and
 composed in SYSTEM ZONE (`packages/@rns/**`) so developer business code (`src/**`) remains untouched. Define stable

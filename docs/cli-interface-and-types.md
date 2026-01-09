@@ -118,10 +118,33 @@ Full catalog lives in: `docs/plugins-permissions.md`
 
 ### 2.6 Runtime contributions (wiring, symbol-based)
 
-- **`RuntimeContribution`** — what a plugin adds: providers/wrappers/init steps/registrations.
-- **`SymbolRef`** — `{ symbol, source }` used for ts-morph injection (no raw code strings).
+Runtime wiring enables plugins/modules to inject code into the app runtime via AST manipulation only. All wiring happens in SYSTEM ZONE (`packages/@rns/**`) and uses ts-morph for symbol-based injection (no regex, no raw code strings).
 
-Rule: runtime wiring must be symbol-based and AST-driven (ts-morph). No regex injection.
+**Core Types:**
+- **`SymbolRef`** — `{ symbol: string, source: string }` — symbol name and module source for AST-based injection
+- **`RuntimeContribution`** — union type representing what a plugin/module adds:
+  - `ImportContribution` — import statements (ordered)
+  - `ProviderContribution` — provider wrapper components (ordered)
+  - `InitStepContribution` — initialization function calls (ordered)
+  - `RegistrationContribution` — registration calls (ordered)
+  - `RootContribution` — root component replacement
+
+**Wiring Operations:**
+- **`RuntimeWiringOp`** — combines a contribution with its target marker location and capability ID
+- **`RuntimeWiringResult`** — result of a wiring operation (success/skipped/error)
+
+**Behavior:**
+- Deterministic ordering: contributions are sorted by `order` (lower = earlier), then by capability ID
+- Idempotency: duplicate injections are skipped based on injection markers
+- SYSTEM ZONE only: validates files are in `packages/@rns/**` before wiring
+- Backup: all file modifications are backed up under `.rns/backups/...`
+- AST-based: uses ts-morph for all injections (imports, providers, init steps, registrations)
+
+**Source of truth (TypeScript):**
+- `src/lib/types/runtime.ts` — `RuntimeContribution`, `SymbolRef`, `RuntimeWiringOp`, `RuntimeWiringResult`
+- `src/lib/runtime-wiring.ts` — AST-based wiring engine (`wireRuntimeContribution`, `wireRuntimeContributions`, `validateWiringOps`)
+
+**Rule:** Runtime wiring must be symbol-based and AST-driven (ts-morph). No regex injection.
 
 ### 2.7 Patch operations (native/config, idempotent)
 
@@ -164,7 +187,116 @@ Packs support target/language variants via `variants/` directory structure:
 - `src/lib/pack-discovery.ts` — pack discovery and resolution
 - `src/lib/pack-variants.ts` — variant resolution logic
 
-### 2.9 Modulator engine contracts (installer pipeline)
+### 2.9 Dynamic Template Attachment Engine
+
+The attachment engine deterministically selects and attaches template packs/variants into the target app based on init parameters and capability options. It guarantees repeatable output (same inputs → same output).
+
+- **`AttachmentMode`** — `'CORE' | 'PLUGIN' | 'MODULE'`
+- **`AttachmentOptions`** — projectRoot, packManifest, resolvedPackPath, target, language, mode, options, dryRun
+- **`AttachmentReport`** — created, updated, skipped, conflicts, resolvedDestinations, ownedFilesCandidate
+
+**Engine Behavior:**
+- **Deterministic variant selection**: Based on target (expo/bare), language (ts/js), and normalized options key
+- **Option-driven variants**: Supports option-specific variant paths (e.g., `variants/<target>/<language>/<optionsKey>/`)
+- **Safe merging with stable priorities**: Root pack files copied first, then variant files overlay (variant files override root files)
+- **Collision prevention**: Detects conflicts with existing user-owned files, skips CLI-managed file updates in dry-run
+- **Repeatable output**: Files processed in sorted order, deterministic destination resolution
+
+**Attachment Process:**
+1. Resolve variant path using `resolvePackVariant()` (target + language + options)
+2. Resolve destination root based on pack type and delivery mode
+3. Copy root pack files (if variant exists, exclude variants directory)
+4. Overlay variant files (variant files override root files)
+5. Report created/updated/skipped/conflicts
+
+**Source of truth (TypeScript):**
+- `src/lib/attachment-engine.ts` — main attachment engine implementation
+
+### 2.10 Ownership, Backups, Idempotency (safety rules)
+
+Strict safety rules ensure CLI operations are safe, reversible, and repeatable. Mandatory for supporting many plugins at scale.
+
+- **Ownership Zones**: Clear boundaries between CLI-managed (System Zone) and user-owned (User Zone) files
+- **Backup System**: All file modifications create timestamped backups under `.rns/backups/<timestamp>-<operationId>/`
+- **Idempotency**: Re-running operations must never duplicate injections or break the app
+
+**Ownership Zones:**
+- **System Zone (CLI-managed)**: `packages/@rns/**`, `.rns/**` — CLI can modify these files
+- **User Zone (user-owned)**: `src/**`, `assets/**` — CLI must not modify these files (except through markers)
+
+**Backup Rules:**
+- Any operation that edits files must create `.rns/backups/<timestamp>-<operationId>/` directory
+- Files are backed up before modification (not after)
+- Backup format: preserves directory structure relative to project root
+- Restore: files can be restored from backup if needed
+
+**Idempotency Rules:**
+- Re-running `rns init` (when applicable) → NO-OP or clean reconcile
+- Re-running `rns plugin add <id>` → NO-OP (no duplicate deps, imports, registrations, patches)
+- Injection markers: `// @rns-inject:<operationId>:<timestamp>` track applied operations
+- Same inputs → same output (deterministic)
+
+**Source of truth (TypeScript):**
+- `src/lib/backup.ts` — backup system (createBackupDirectory, backupFile, restoreFromBackup)
+- `src/lib/idempotency.ts` — idempotency checks (hasInjectionMarker, isIdempotent, validateIdempotent)
+- `src/lib/attachment-engine.ts` — uses backup and idempotency systems
+
+### 2.11 Marker Contract (canonical integration points)
+
+Canonical integration markers are the only supported wiring method for plugins/modules into the app shell. Markers prevent plugins from rewriting app code and keep the system maintainable.
+
+- **`MarkerType`** — `'imports' | 'providers' | 'init-steps' | 'root' | 'registrations'`
+- **`MarkerDefinition`** — marker type, file path, description, required flag
+- **`CANONICAL_MARKERS`** — array of all canonical marker definitions
+
+**Marker Format:**
+- Start marker: `// @rns-marker:<type>:start`
+- End marker: `// @rns-marker:<type>:end`
+- Content between markers is the injection region
+
+**Canonical Markers (must exist in CORE):**
+1. **`imports`** — `packages/@rns/runtime/index.ts` — Import statements region
+2. **`providers`** — `packages/@rns/runtime/index.ts` — Provider wrappers region
+3. **`init-steps`** — `packages/@rns/runtime/core-init.ts` — Initialization steps region
+4. **`root`** — `packages/@rns/runtime/index.ts` — Root component region (replace MinimalUI)
+5. **`registrations`** — `packages/@rns/runtime/core-init.ts` — Registration calls region (optional)
+
+**Marker Validation Rules:**
+- Markers must always exist in CORE (validated before patching)
+- Markers must be well-formed (start before end, both present)
+- Missing or corrupted markers produce clean, actionable errors
+- Error messages specify: which marker, which file, how to restore
+
+**Source of truth (TypeScript):**
+- `src/lib/markers.ts` — marker contract, validation, and utilities (findMarker, validateMarker, validateAllMarkers)
+
+### 2.12 Marker Patcher Engine v1
+
+The marker patcher engine safely injects code only inside canonical markers. It guarantees no duplicates, stable output, resilience to formatting/newlines, and traceability by capability id (plugin/module). All plugins/modules must use this patcher (no ad-hoc regex hacks).
+
+- **`MarkerPatch`** — patch operation: markerType, file, content, capabilityId, insertMode
+- **`MarkerPatchResult`** — patch result: success, action (injected/skipped/error), backupPath
+- **`patchMarker()`** — patches a single marker region
+- **`patchMarkers()`** — patches multiple markers in a single operation
+- **`validatePatches()`** — validates all required markers exist before patching
+
+**Patcher Behavior:**
+- **Safe injection**: Only injects inside validated marker regions
+- **No duplicates**: Checks for injection markers before patching (idempotent)
+- **Stable output**: Deterministic insertion order (append/prepend/replace modes)
+- **Format-resilient**: Line-based insertion, not regex-based
+- **Traceability**: Each injection includes capability ID in marker comment
+- **Backup**: Always creates backup before modification
+
+**Insert Modes:**
+- **`append`** (default): Insert before end marker
+- **`prepend`**: Insert after start marker
+- **`replace`**: Replace all content between markers
+
+**Source of truth (TypeScript):**
+- `src/lib/marker-patcher.ts` — marker patcher engine implementation
+
+### 2.13 Modulator engine contracts (installer pipeline)
 
 - **`ModulatorContext`** — project env + target + package manager + manifest + flags.
 - **`ModulatorPlan`** — dry-run plan: ordered actions + patches + runtime contributions + conflicts.
@@ -178,13 +310,13 @@ Phase interfaces (v1 targets):
 - **`INativePatcher`**
 - **`IVerifier`**
 
-### 2.9 Doctor tooling
+### 2.14 Doctor tooling
 
 - **`DoctorCheckId`**
 - **`DoctorFinding`**
 - **`DoctorReport`**
 
-### 2.10 Commands & exit codes
+### 2.15 Commands & exit codes
 
 - **`CliCommandId`**
 - **`CommandExitCode`**
