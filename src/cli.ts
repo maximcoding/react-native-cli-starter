@@ -52,6 +52,9 @@ async function main() {
       case 'plugin':
         await commands.plugin(args, ctx);
         break;
+      case 'module':
+        await commands.module(args, ctx);
+        break;
       case 'version':
         const { getCliVersion: getVersion } = await import('./lib/version');
         console.log(getVersion());
@@ -84,6 +87,7 @@ Usage:
 Commands:
   init        Create a new React Native app with CORE baseline
   plugin      Manage plugins (list, add, remove, status, doctor)
+  module      Manage modules (list, add, status, doctor)
   version     Show CLI version
   help        Show this help message
 
@@ -93,6 +97,12 @@ Plugin Commands:
   rns plugin remove [ids...] [--dry-run] [--yes] Remove plugins
   rns plugin status [--json]                 Show installed vs available
   rns plugin doctor [--fix]                  Validate installed plugins
+
+Module Commands:
+  rns module list [--json] [--category <cat>] [--target <target>] List available modules
+  rns module add [ids...] [--dry-run] [--yes] [--verbose]         Generate modules
+  rns module status [--json]                                       Show installed vs available
+  rns module doctor                                                Validate installed modules
 
 Global Options:
   --cwd <dir>     Working directory (default: current directory)
