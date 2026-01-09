@@ -275,7 +275,8 @@ export function addPluginToManifest(
     manifest.plugins.push(plugin);
   }
   
-  writeManifest(projectRoot, manifest);
+  // Update aggregated permissions
+  updateAggregatedPermissions(projectRoot);
 }
 
 /**
@@ -292,7 +293,8 @@ export function removePluginFromManifest(
   
   manifest.plugins = manifest.plugins.filter(p => p.id !== pluginId);
   
-  writeManifest(projectRoot, manifest);
+  // Update aggregated permissions
+  updateAggregatedPermissions(projectRoot);
 }
 
 /**
@@ -309,6 +311,53 @@ export function getPluginFromManifest(
   const manifest = validateProjectInitialized(projectRoot);
   
   return manifest.plugins.find(p => p.id === pluginId) || null;
+}
+
+/**
+ * Updates aggregated permissions in manifest
+ * Recalculates permissions from all installed plugins
+ * 
+ * @param projectRoot - Project root directory
+ */
+export function updateAggregatedPermissions(projectRoot: string): void {
+  const manifest = validateProjectInitialized(projectRoot);
+  
+  // Collect all permissions from installed plugins
+  const allPermissionIds = new Set<string>();
+  const mandatory = new Set<string>();
+  const optional = new Set<string>();
+  const byPlugin: Record<string, { pluginId: string; permissions: Array<{ permissionId: string; mandatory: boolean }> }> = {};
+  
+  for (const plugin of manifest.plugins) {
+    if (plugin.permissions && plugin.permissions.length > 0) {
+      byPlugin[plugin.id] = {
+        pluginId: plugin.id,
+        permissions: plugin.permissions.map(p => ({
+          permissionId: p.permissionId,
+          mandatory: p.mandatory,
+        })),
+      };
+      
+      for (const perm of plugin.permissions) {
+        allPermissionIds.add(perm.permissionId);
+        if (perm.mandatory) {
+          mandatory.add(perm.permissionId);
+        } else {
+          optional.add(perm.permissionId);
+        }
+      }
+    }
+  }
+  
+  // Update manifest
+  manifest.permissions = {
+    permissionIds: Array.from(allPermissionIds),
+    mandatory: Array.from(mandatory),
+    optional: Array.from(optional),
+    byPlugin,
+  };
+  
+  writeManifest(projectRoot, manifest);
 }
 
 /**

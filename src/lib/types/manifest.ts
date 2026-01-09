@@ -36,6 +36,16 @@ export interface RnsProjectIdentity {
 }
 
 /**
+ * Permission requirement record (for manifest storage)
+ */
+export interface PermissionRequirementRecord {
+  /** Permission ID */
+  permissionId: string;
+  /** Whether permission is mandatory */
+  mandatory: boolean;
+}
+
+/**
  * Installed plugin/module record
  * Tracks what plugins/modules are installed and when
  */
@@ -51,6 +61,8 @@ export interface InstalledPluginRecord {
   /** Files/directories owned by this plugin (for cleanup) */
   ownedFiles?: string[];
   ownedDirs?: string[];
+  /** Permission requirements (for traceability) */
+  permissions?: PermissionRequirementRecord[];
   /** Last updated timestamp */
   updatedAt?: string;
 }
@@ -82,6 +94,20 @@ export interface RnsProjectManifest {
   plugins: InstalledPluginRecord[];
   /** Installed modules */
   modules?: InstalledPluginRecord[];
+  /** Aggregated permissions (all installed plugins) */
+  permissions?: {
+    /** All permission IDs */
+    permissionIds: string[];
+    /** Mandatory permission IDs */
+    mandatory: string[];
+    /** Optional permission IDs */
+    optional: string[];
+    /** Per-plugin traceability */
+    byPlugin: Record<string, {
+      pluginId: string;
+      permissions: PermissionRequirementRecord[];
+    }>;
+  };
   /** Creation timestamp */
   createdAt: string;
   /** Last update timestamp */
