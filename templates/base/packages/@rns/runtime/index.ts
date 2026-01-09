@@ -19,6 +19,10 @@ import React, { useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { initCore } from './core-init';
 
+// @rns-marker:imports:start
+// Plugin imports will be injected here
+// @rns-marker:imports:end
+
 /**
  * Minimal root composition provider (stable for future plugin integration)
  * Plugins can extend this via registries/hooks without modifying CORE
@@ -28,6 +32,10 @@ function RootProvider({ children }: { children: React.ReactNode }): React.ReactE
   useEffect(() => {
     initCore();
   }, []);
+
+  // @rns-marker:providers:start
+  // Plugin providers will wrap children here
+  // @rns-marker:providers:end
 
   return <>{children}</>;
 }
@@ -53,11 +61,13 @@ function MinimalUI(): React.ReactElement {
  * Provides minimal composition that can be extended via plugins
  */
 export function RnsApp(): React.ReactElement {
+  // @rns-marker:root:start
   return (
     <RootProvider>
       <MinimalUI />
     </RootProvider>
   );
+  // @rns-marker:root:end
 }
 
 const styles = StyleSheet.create({

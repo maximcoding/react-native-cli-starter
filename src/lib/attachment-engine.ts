@@ -9,6 +9,8 @@ import { pathExists, isDirectory, isFile, copyDir, ensureDir, readTextFile, writ
 import { CliError, ExitCode } from './errors';
 import type { PackManifest } from './pack-manifest';
 import { resolvePackDestinationPath, resolvePackSourcePath, type PackType } from './pack-locations';
+import { createBackupDirectory, backupFile } from './backup';
+import { isIdempotent, validateIdempotent, createInjectionMarker } from './idempotency';
 
 /**
  * Attachment mode
@@ -39,6 +41,8 @@ export interface AttachmentReport {
   conflicts: string[];
   resolvedDestinations: Record<string, string>;
   ownedFilesCandidate: string[];
+  backupDir?: string; // Backup directory created for this operation (section 8)
+  backedUpFiles: string[]; // Files that were backed up before modification
 }
 
 /**
@@ -103,7 +107,13 @@ export function attachPack(opts: AttachmentOptions): AttachmentReport {
     conflicts: [],
     resolvedDestinations: {},
     ownedFilesCandidate: [],
+    backedUpFiles: [],
   };
+
+  // Create backup directory for this operation (section 8)
+  const operationId = `${packManifest.type}-${packManifest.id}`;
+  const backupDir = createBackupDirectory(projectRoot, operationId);
+  report.backupDir = backupDir;
 
   // Get the root pack path (for merging root files with variant files)
   const rootPackPath = resolvePackSourcePath(packManifest.type, packManifest.id);
@@ -119,6 +129,7 @@ export function attachPack(opts: AttachmentOptions): AttachmentReport {
       packManifest,
       report,
       dryRun,
+      projectRoot,
       resolvedPackPath // Pass variant path to skip variant directory when copying root
     );
     
@@ -128,7 +139,8 @@ export function attachPack(opts: AttachmentOptions): AttachmentReport {
       destinationRoot,
       packManifest,
       report,
-      dryRun
+      dryRun,
+      projectRoot
     );
   } else {
     // No variant or variant is root - just copy normally
@@ -137,7 +149,8 @@ export function attachPack(opts: AttachmentOptions): AttachmentReport {
       destinationRoot,
       packManifest,
       report,
-      dryRun
+      dryRun,
+      projectRoot
     );
   }
 
@@ -171,6 +184,7 @@ function copyPackContent(
   manifest: PackManifest,
   report: AttachmentReport,
   dryRun: boolean,
+  projectRoot: string,
   variantPath?: string
 ): void {
   // Get all files to copy (excluding ignore patterns)
@@ -203,8 +217,20 @@ function copyPackContent(
 
     // CLI-managed file
     if (pathExists(destFile)) {
-      // File exists and is CLI-managed - update allowed (section 6.5)
+      // Check idempotency: if already applied, skip (section 8)
+      const operationId = `${manifest.type}-${manifest.id}`;
+      if (isIdempotent(destFile, operationId)) {
+        report.skipped.push(relativePath);
+        continue;
+      }
+
+      // File exists and is CLI-managed - backup before update (section 8)
       if (!dryRun) {
+        const backupPath = backupFile(projectRoot, destFile, report.backupDir!);
+        if (backupPath) {
+          report.backedUpFiles.push(relativePath);
+        }
+        
         ensureDir(dirname(destFile));
         const content = readTextFile(sourceFile);
         writeTextFile(destFile, content);
@@ -212,6 +238,7 @@ function copyPackContent(
       report.updated.push(relativePath);
     } else {
       // File doesn't exist - create (section 6.5)
+      // No backup needed for new files
       if (!dryRun) {
         ensureDir(dirname(destFile));
         const content = readTextFile(sourceFile);
