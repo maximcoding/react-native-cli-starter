@@ -163,7 +163,7 @@ integrates through a stable registration model. Modules are not infrastructure; 
 installed capability plugins (navigation, auth, transport, storage, query). Module generation must result in a fully
 integrated feature without manual wiring or CORE rewrites.
 
-## [ ] 22) Module Commands (list, add, status, doctor)
+## [x] 22) Module Commands (list, add, status, doctor)
 
 Implement module list/add/status/doctor commands. Adding a module must automatically attach and register the module (no
 manual “edit registry”), update state, and be diagnosable via doctor. Module removal is not required in MVP; stability

@@ -8,6 +8,7 @@ import { RuntimeContext } from '../lib/runtime';
 import { ParsedArgs } from '../lib/args';
 import { runInit } from '../lib/init';
 import { handlePlugin } from './plugin';
+import { handleModule } from './module';
 
 /**
  * Init command - creates a new React Native app with CORE baseline
@@ -27,3 +28,9 @@ export async function init(ctx: RuntimeContext, args: ParsedArgs): Promise<void>
  * This is a thin entrypoint; all logic lives in src/lib/plugin.ts
  */
 export { handlePlugin as plugin };
+
+/**
+ * Module command - manages modules (list, add, status, doctor)
+ * This is a thin entrypoint; all logic lives in src/lib/module.ts
+ */
+export { handleModule as module };
