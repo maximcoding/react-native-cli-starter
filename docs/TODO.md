@@ -110,7 +110,7 @@ init/plugins/modules. It must respect lockfile discipline, never mix package man
 clear error output on failure. Plugins/modules must not run package-manager commands directly; they must go through the
 dependency layer for consistent behavior.
 
-## [ ] 15) Modulator Engine v1 (plan/apply/remove)
+## [x] 15) Modulator Engine v1 (plan/apply/remove)
 
 Build the generic installation engine that:
 - plans changes (dry-run) deterministically

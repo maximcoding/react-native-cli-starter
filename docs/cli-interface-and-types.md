@@ -385,10 +385,40 @@ The marker patcher engine safely injects code only inside canonical markers. It 
 
 ### 2.13 Modulator engine contracts (installer pipeline)
 
-- **`ModulatorContext`** — project env + target + package manager + manifest + flags.
-- **`ModulatorPlan`** — dry-run plan: ordered actions + patches + runtime contributions + conflicts.
-- **`ModulatorResult`** — apply/remove result: phase results + warnings/errors + state update.
-- **`IModulator`** — main API: `plan/apply/remove`.
+The modulator engine is the generic installation engine that plans, applies, and removes plugins/modules. It executes changes in stable phases and ensures safety through dry-run planning, backups, and validation.
+
+**Core Types:**
+- **`ModulatorContext`** — project env + target + package manager + manifest + flags
+- **`ModulatorPlan`** — dry-run plan: ordered actions + patches + runtime contributions + conflicts
+- **`ModulatorResult`** — apply/remove result: phase results + warnings/errors + state update
+- **`PhaseResult`** — result of a single phase execution
+- **`DependencyPlan`** — dependency installation plan (runtime/dev, scope)
+- **`PermissionsSummary`** — permissions summary (IDs, iOS keys, Android perms)
+- **`ConflictResult`** — conflict detection result (slot/dependency/permission/file)
+
+**Modulator Interface:**
+- **`IModulator`** — main API: `plan()`, `apply()`, `remove()`
+
+**Execution Phases:**
+1. **Doctor gate** — validates project initialized and environment sane
+2. **Scaffold** — attaches plugin pack (System Zone only)
+3. **Link** — installs dependencies via dependency layer
+4. **Wire** — applies runtime wiring via AST (ts-morph)
+5. **Patch** — applies native/config patches (idempotent, backed up)
+6. **Manifest** — updates project manifest
+7. **Verify** — checks for duplicates, validates markers
+
+**Behavior:**
+- Deterministic planning: same inputs → same plan
+- Stable phases: phases execute in order, each phase can be validated independently
+- Safe removal: NO-OP if plugin not installed, never touches USER ZONE
+- Comprehensive reporting: deps, runtime wiring, patches, permissions, conflicts, manifest updates
+
+**Source of truth (TypeScript):**
+- `src/lib/types/modulator.ts` — `ModulatorContext`, `ModulatorPlan`, `ModulatorResult`, `IModulator`, etc.
+- `src/lib/modulator.ts` — modulator engine implementation (`ModulatorEngine`, `createModulator`)
+
+**Rule:** All plugin/module installations must go through the modulator engine for consistent behavior and safety.
 
 Phase interfaces (v1 targets):
 - **`IPackageScaffolder`**
