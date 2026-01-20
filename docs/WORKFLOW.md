@@ -19,6 +19,11 @@ Treat all previously completed TODO sections (`[x]`) as **protected smoke gates*
 - Build:
   - `npm run build`
 
+- Quality checks (use existing scripts; do not invent new names without updating this file):
+  - `npm test`
+  - `npm run typecheck` (if present)
+  - `npm run lint` (if present)
+
 - Typical smoke (example set; adapt to current TODO scope):
   - `npm run cli -- --help`
   - `npm run cli -- doctor --env`
@@ -26,7 +31,7 @@ Treat all previously completed TODO sections (`[x]`) as **protected smoke gates*
   - `npm run cli -- plugin list`
   - `npm run cli -- plugin add <id> --dry-run`
 
-If you add an entrypoint or rename one, you **must** update this file and keep it consistent across docs.
+If you add an entrypoint, rename a script, or change CLI surface, you **must** update this file and keep it consistent across docs.
 
 ---
 
@@ -38,7 +43,7 @@ Single source of truth:
 Rules:
 - Work strictly from the **first unchecked** `[ ]` section (top-to-bottom).
 - Unit of work = **ONE section**.
-- One section = **one commit**.
+- One section = **one change-set/commit**.
 - Mark a section `[x]` **only after** its acceptance commands pass.
 
 Commit message format:
@@ -53,12 +58,14 @@ While executing the active TODO section:
 ✅ Allowed:
 - only files required to complete **that** section
 - updating **that** section in `docs/TODO.md`
+- adding tests that directly validate the section’s behavior/contracts
 
 ❌ Not allowed:
 - drive-by refactors
 - touching multiple TODO sections
 - changing unrelated docs/types “because you noticed it”
 - silently changing contracts that cause breaking behavior
+- “cleanup” refactors without tests (refactor only with coverage)
 
 If you discover a missing prerequisite:
 - stop
@@ -87,11 +94,13 @@ CLI-managed (agent/maintainers MAY create/update):
 - `.rns/**`
 
 Developer-owned (forbidden by default):
-- `src/**`
-- `assets/**` (unless a plugin explicitly owns a declared sub-scope)
+- `src/**` (in generated apps)
+- `assets/**` (in generated apps, unless explicitly owned by a plugin under a declared sub-scope)
+- `App.tsx` / `App.js` (root entrypoint - user-editable, but CLI generates initial structure)
 
 Hard rule:
 - do not inject CLI runtime glue into developer `src/**`
+- `App.tsx` is user-editable but CLI generates initial structure with providers and marker-based injection points
 - any need to touch developer-owned code must be explicitly defined in TODO and treated as a breaking behavior risk
 
 ---
@@ -103,12 +112,13 @@ Hard rule:
 - AST-only: **ts-morph**.
 - Symbol-based injection (imports + registrations by symbol ref).
 - No regex injection or raw code-string wiring into TS/JS.
+- Must be deterministic and idempotent (no duplicates on rerun).
 
 ### 6.2 Native/config changes
 
-- Express changes as **patch operations** (idempotent).
+- Express changes as **Patch Operations** (idempotent).
 - Apply changes using anchors/markers; “insert once” semantics.
-- Create backups under `.rns/backups/<timestamp>/...` before modifying any existing file.
+- Create backups under `.rns/backups/<timestamp>/...` **only when modifying an existing file**.
 - Never instruct users to manually edit Podfile/Gradle/Manifest/Info.plist for shipped plugins.
 
 ---
@@ -120,6 +130,7 @@ Every command that changes state must be safe to re-run:
 - `rns init` should refuse on existing projects (or be explicitly designed to be re-runnable), with a clear message.
 - `rns plugin add <id>` repeated → **NO-OP** (no duplicate deps, imports, registrations, patches).
 - `rns plugin remove <id>` repeated → **NO-OP**.
+- `rns module add <id>` repeated → either NO-OP or a safe “already present” outcome (no duplicates).
 
 Verification should include “run twice” scenarios where applicable.
 
@@ -134,7 +145,7 @@ Canonical contract:
 
 Rules:
 - code types must match the doc
-- **no schema duplication** — types live in `cli-interface-and-types.md`; other docs reference it
+- **no schema duplication** — other docs reference the canonical type names
 - schema changes must be:
   - versioned (manifest `schemaVersion`)
   - migrated (explicit migration logic)
@@ -148,20 +159,68 @@ Avoid:
 
 ---
 
-## 9) Regression gates (required before marking `[x]`)
+## 9) Functional vs Non-functional requirements (how we use them)
+
+Definitions:
+- **Functional requirements** = what the system does (features/behaviors/commands).
+- **Non-functional requirements** = quality attributes (determinism, idempotency, safety, testability, UX of errors, performance, maintainability).
+
+Policy:
+- Each TODO section’s acceptance criteria must include both:
+  - at least one functional acceptance check (a command/behavior)
+  - at least one non-functional gate (e.g., idempotency, determinism, “no USER ZONE edits”, actionable errors)
+
+Non-functional requirements we enforce by default:
+- deterministic output for same inputs
+- strict ownership boundaries (no USER ZONE mutations)
+- idempotent operations (rerun safe)
+- actionable failures (clear error + fix hints)
+- test coverage for critical engines and commands
+
+---
+
+## 10) Testing strategy (unit/spec/smoke) — required going forward
+
+Test types:
+- **Unit tests**: pure functions/modules (fast, isolated).
+- **Spec tests**: behavior-level tests for engines/commands that assert contracts and invariants
+  (e.g., “rerun add produces NO-OP”, “patch inserts once”, “plan is deterministic”).
+- **Smoke tests**: end-to-end flows (init → plugin/module → doctor), using fixtures and temp dirs.
+
+Rules:
+- Tests must be deterministic: no real network, no relying on local machine state unless explicitly gated.
+- Prefer table-driven specs for matrices (target=expo/bare, lang=ts/js, pm=npm/pnpm/yarn, runtime constraints, slots).
+- When refactoring, add/adjust tests in the same change-set.
+
+---
+
+## 11) Regression gates (required before marking `[x]`)
 
 Before marking the active TODO section `[x]`:
 
 - `npm run build` passes
+- `npm test` passes (and includes new unit/spec coverage relevant to the section)
 - all acceptance commands for the active TODO section pass
 - previously-working commands still work (at minimum: the latest `[x]` items’ acceptance checks)
-- `plugin add` re-run is a NO-OP (when plugin pipeline exists)
+- idempotency checks are verified (run twice scenarios) where applicable
 - `doctor` passes (when doctor exists)
-- backups are produced for patched files (when patching exists)
+- backups are produced for patched files **when patching modifies existing files** (no extra backup layers)
 
 ---
 
-## 10) Repair / rollback helpers
+## 12) CI gate policy (must block regressions)
+
+CI must run at least:
+- build
+- unit/spec tests
+- smoke tests (where feasible)
+- lint/typecheck if present
+
+If CI is red, the change is not acceptable (do not mark TODO sections `[x]`).
+
+---
+
+## 13) Repair / rollback helpers
 
 If you accidentally edited the wrong scope or checked the wrong TODO section:
 
@@ -177,7 +236,7 @@ If you accidentally edited the wrong scope or checked the wrong TODO section:
 
 ---
 
-## 11) Resume protocol (when picking work back up)
+## 14) Resume protocol (when picking work back up)
 
 1) `git status`
 2) `git log -20 --oneline`

@@ -135,6 +135,7 @@ The Base App is designed to be a stable foundation for **any app archetype** (on
 - **DX baseline**: aliases (`@/`), SVG, fonts, env pipeline (no manual setup)
 - **Project manifest** `.rns/rn-init.json` (single source of truth)
 - **Doctor tooling**: environment + project validation gates
+- **Navigation infrastructure** (Bare RN): React Navigation presets with registry-based screen registration (see `docs/navigation.md`)
 
 > CORE provides *contracts and defaults*. Concrete capabilities (auth, adapters, payments, etc.) come from plugins.
 
@@ -178,6 +179,8 @@ MyApp/
 
 **Key principle:** plugins integrate via `packages/@rns/runtime/**`, not by patching your `src/**`.
 
+**Navigation (Bare RN):** The CORE navigation system (`packages/@rns/navigation/**`) includes React Navigation with preset support (stack, tabs, drawer, modals). Users can register their own screens from User Zone via a registry file (`src/app/navigation/registry.ts`) without modifying System Zone. See [`docs/navigation.md`](docs/navigation.md) for complete guide.
+
 ---
 
 ## 📋 Capabilities Matrix
@@ -193,6 +196,15 @@ MyApp/
 | Manifest (`.rns/rn-init.json`) | Expo + Bare | Project passport + migrations |
 | Doctor (`doctor --env`, `doctor`) | Expo + Bare | Safety gate for changes |
 | DX baseline (alias/SVG/fonts/env) | Expo + Bare | Zero manual setup |
+| CI/CD Workflows (GitHub Actions templates) | Expo + Bare | ⚠️ PLANNED - Implementation in TODO Section 24 |
+| Theme System (dark/light) | Expo + Bare | Theme provider + tokens |
+| Splash Screen | Expo + Bare | Boot splash screen |
+| Feature Flags Registry | Expo + Bare | Local feature flags (extendable by plugins) |
+| Code Quality Tools (Prettier, Husky, ESLint) | Expo + Bare | Formatting, git hooks, linting |
+| Navigation Infrastructure | Expo + Bare | React Navigation presets (Bare RN). Registry-based screen registration (see `docs/navigation.md`) |
+| Cache Engine | Expo + Bare | Snapshot cache contract + in-memory default |
+| UI Components | Expo + Bare | Minimal UI components (MinimalUI, basic components) |
+| Development Scripts | Expo + Bare | Clean, and other dev scripts (beyond doctor) |
 
 ### Plugins (Optional - Full Catalog)
 
@@ -202,18 +214,28 @@ MyApp/
 |---|---|---|
 | Navigation root | `nav.react-navigation`, `nav.expo-router` | **single** |
 | UI framework | `ui.paper`, `ui.tamagui`, `ui.nativebase` | **single** |
-| State | `state.zustand`, `state.redux-toolkit`, `state.xstate` | multi |
+| Animations | `animation.reanimated`, `animation.lottie` | multi |
+| State | `state.zustand`, `state.xstate`, `state.mobx` | multi |
 | Data fetching / cache | `data.react-query`, `data.apollo`, `data.swr` | multi |
-| Network transport | `transport.axios`, `transport.graphql`, `transport.ws`, `transport.sse` | **multi** |
+| Network transport | `transport.axios`, `transport.fetch`, `transport.graphql`, `transport.websocket`, `transport.firebase` | **multi** |
 | Auth | `auth.firebase`, `auth.cognito`, `auth.auth0`, `auth.custom-jwt` | multi |
+| AWS Services | `aws.amplify`, `aws.appsync`, `aws.dynamodb`, `aws.s3` | multi |
 | Storage | `storage.mmkv`, `storage.sqlite`, `storage.secure`, `storage.filesystem` | multi |
+| Firebase Products | `firebase.firestore`, `firebase.realtime-database`, `firebase.storage`, `firebase.remote-config` | multi |
 | Offline-first | `offline.netinfo`, `offline.outbox`, `offline.sync` | multi |
 | Notifications | `notify.expo`, `notify.fcm`, `notify.onesignal` | multi |
 | Maps / location | `geo.location`, `maps.mapbox`, `maps.google` | multi |
 | Camera / media | `media.camera`, `media.vision-camera`, `media.picker` | multi |
 | Payments | `pay.stripe` | multi |
+| Subscriptions / IAP | `iap.revenuecat`, `iap.adapty`, `iap.app-store`, `iap.play-billing` | **single** |
 | Analytics / observability | `analytics.firebase`, `analytics.amplitude`, `obs.sentry`, `obs.bugsnag` | multi |
 | i18n | `i18n.i18next`, `i18n.lingui` | multi |
+| Search | `search.algolia`, `search.local-index` | multi |
+| OTA Updates | `ota.expo-updates`, `ota.code-push` | **single** |
+| Background Tasks | `background.tasks`, `background.geofencing`, `background.fetch` | multi |
+| Privacy & Consent | `privacy.att`, `privacy.consent`, `privacy.gdpr` | multi |
+| Device / Hardware | `device.biometrics`, `device.bluetooth` | multi |
+| Testing | `test.detox` | multi |
 
 ---
 
@@ -300,6 +322,7 @@ All canonical documentation lives under `docs/`:
 - **`docs/AGENT.md`** — AI agent rules (scope control + acceptance checks)
 - **`docs/cli-interface-and-types.md`** — canonical contracts/types (**no duplicated schema elsewhere**)
 - **`docs/plugins-permissions.md`** — permission IDs dataset + platform mapping
+- **`docs/navigation.md`** — navigation registry system guide (Bare RN projects)
 
 <details>
 <summary><b>📋 Canonical Docs Contract</b> (for maintainers)</summary>

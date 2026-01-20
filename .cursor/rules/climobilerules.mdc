@@ -17,35 +17,22 @@ Docs-first: if code and canonical docs diverge → treat as a bug and fix in the
 Work strictly from docs/TODO.md: always start with the FIRST unchecked [ ] section.
 Unit of work = ONE TODO section per change-set/commit.
 No drive-by refactors. Do not touch multiple TODO sections in one change.
-If you discover a prerequisite: stop, move to the earliest TODO section where it belongs, implement it there.
-Do not break what already works. Preserve existing behavior unless the active TODO section explicitly requires change.
+Do not change contracts/behavior unless the active TODO section requires it.
 
-
-Non-negotiable ownership:
+Ownership boundary (non-negotiable):
 - User Zone (src/** in generated apps) is developer-owned: the CLI must NOT patch it.
 - System Zone (packages/@rns/** + .rns/**) is CLI-managed: OK to create/modify here.
-Any integration/wiring must happen in System Zone only. If a change requires touching User Zone, it must be explicitly defined in TODO and treated as breaking-risk.
-
+All integration/wiring must happen in System Zone only.
 
 Runtime wiring must be AST-based (ts-morph) and symbol-based.
 NO regex injection for TS/JS runtime wiring.
-NO raw string code snippets for wiring/initializationCode.
-Use SymbolRef-like references: { symbol, source } and stable, idempotent injections (no duplicates).
+NO raw code-string wiring for providers/initialization; use symbol refs and idempotent injections.
 
-
-All native/config changes must be Patch Operations:
+Native/config changes must be Patch Operations:
 - anchored/marker-based edits
 - idempotent (insert-once)
-- backup before writing to .rns/backups/<timestamp>/...
+Never instruct users to edit Podfile/Gradle/Manifest/Info.plist manually for shipped plugins.
 
-Never instruct users to edit Podfile/Gradle/Manifest manually for shipped plugins.
-No raw "append text" hacks; always anchored patch ops.
-
-
-Before implementing: state a short plan (3–7 bullets) and list exact files to touch.
-After changes: provide a concise summary + list verification commands (that must pass), e.g.:
-- npm run build
-- npm run cli -- --help
-- npm run cli -- doctor --env
-- smoke scenarios relevant to the active TODO section
-Update docs/TODO.md checkbox ONLY when verification is satisfied.
+Before implementing: state a short plan (3–7 bullets) + exact files to touch.
+After changes: provide concise summary + verification commands that must pass.
+Update docs/TODO.md checkbox ONLY when verification passes.

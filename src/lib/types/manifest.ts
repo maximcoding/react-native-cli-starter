@@ -88,6 +88,56 @@ export interface RnsProjectManifest {
   packageManager: 'npm' | 'pnpm' | 'yarn';
   /** React Native version */
   reactNativeVersion?: string;
+  /**
+   * Init-selected CORE navigation preset.
+   * Note: currently Bare RN only (section 26); Expo selection can be added later.
+   */
+  navigationPreset?: 'stack-only' | 'tabs-only' | 'stack-tabs' | 'stack-tabs-modals' | 'drawer';
+  /**
+   * Selected locales for I18n (CORE).
+   * Only populated if i18n option is selected in selectedOptions.
+   */
+  locales?: string[];
+  /**
+   * Selected project feature options (section 29, 30).
+   */
+  selectedOptions?: {
+    // Common options (available for both Expo and Bare)
+    i18n: boolean;
+    theming: boolean;
+    reactNavigation: boolean;
+    styling: 'nativewind' | 'unistyles' | 'tamagui' | 'restyle' | 'stylesheet';
+    reactNativeScreens?: boolean; // Optional (currently auto-included with React Navigation)
+    reactNativePaper?: boolean; // Material Design component library
+    reactNativeElements?: boolean; // Component library (React Native Elements)
+    uiKitten?: boolean; // Component library (UI Kitten)
+    styledComponents?: boolean; // CSS-in-JS styling library
+    reactNativeWeb?: boolean; // Web support for React Native apps
+    
+    // Expo-specific options (only available when target is Expo)
+    expoRouter?: boolean; // Currently implemented
+    expoLinking?: boolean; // URL handling and deep linking
+    expoStatusBar?: boolean; // Status bar customization
+    expoSystemUI?: boolean; // System UI customization
+    expoWebBrowser?: boolean; // Open links in browser
+    expoDevClient?: boolean; // Custom development client for native modules
+    expoVectorIcons?: boolean; // Vector icon library (Ionicons, MaterialIcons, etc.)
+    expoImage?: boolean; // Optimized image component with caching
+    expoLinearGradient?: boolean; // Linear gradient component
+    expoHaptics?: boolean; // Haptic feedback (vibrations)
+    expoDevice?: boolean; // Device information utilities
+    
+    // Bare-specific options (only available when target is Bare)
+    reactNativeKeychain?: boolean; // Secure keychain/keystore storage
+    reactNativeFS?: boolean; // Native file system access
+    reactNativePermissions?: boolean; // Unified permissions API for native modules
+    reactNativeFastImage?: boolean; // Optimized image loading with native caching
+    nativeModulesSupport?: boolean; // Provider SDKs and native configuration support
+    
+    // Deprecated/removed options (kept for backward compatibility)
+    authentication?: 'firebase' | 'supabase' | null; // Use plugin system instead
+    analytics: boolean; // Use plugin system instead
+  };
   /** CORE toggles (from init) */
   coreToggles?: Record<string, boolean>;
   /** Installed plugins */

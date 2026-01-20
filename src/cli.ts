@@ -55,6 +55,9 @@ async function main() {
       case 'module':
         await commands.module(args, ctx);
         break;
+      case 'component':
+        await commands.component(args, ctx);
+        break;
       case 'version':
         const { getCliVersion: getVersion } = await import('./lib/version');
         console.log(getVersion());
@@ -88,6 +91,7 @@ Commands:
   init        Create a new React Native app with CORE baseline
   plugin      Manage plugins (list, add, remove, status, doctor)
   module      Manage modules (list, add, status, doctor)
+  component   Generate UI components (add)
   version     Show CLI version
   help        Show this help message
 
@@ -103,6 +107,9 @@ Module Commands:
   rns module add [ids...] [--dry-run] [--yes] [--verbose]         Generate modules
   rns module status [--json]                                       Show installed vs available
   rns module doctor                                                Validate installed modules
+
+Component Commands:
+  rns component add <name> [names...] [--dry-run] [--yes] [--verbose]  Generate UI components
 
 Global Options:
   --cwd <dir>     Working directory (default: current directory)

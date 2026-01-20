@@ -7,7 +7,7 @@
 import { join } from 'path';
 import { pathExists, isDirectory, readTextFile, readJsonFile } from './fs';
 import { CliError, ExitCode } from './errors';
-import { WORKSPACE_PACKAGES_DIR, RUNTIME_PACKAGE_NAME } from './constants';
+import { WORKSPACE_PACKAGES_DIR, RUNTIME_PACKAGE_NAME, PROJECT_STATE_FILE } from './constants';
 import type { InitInputs } from './init';
 
 /**
@@ -30,7 +30,8 @@ export function verifyGeneratedProjectStructure(
   const errors: string[] = [];
   const warnings: string[] = [];
 
-  // 1. Verify App.tsx exists and imports @rns/runtime (Option A)
+  // 1. Verify App.tsx exists and contains expected structure
+  // App.tsx is now in User Zone and contains providers directly (standard React Native structure)
   const appEntryPath = inputs.language === 'ts' 
     ? join(projectRoot, 'App.tsx')
     : join(projectRoot, 'App.js');
@@ -39,12 +40,17 @@ export function verifyGeneratedProjectStructure(
     errors.push(`App entrypoint (${inputs.language === 'ts' ? 'App.tsx' : 'App.js'}) not found`);
   } else {
     const appContent = readTextFile(appEntryPath);
-    if (!appContent.includes('@rns/runtime')) {
-      errors.push(`App.tsx does not import @rns/runtime (Option A violation)`);
+    // App.tsx should import initCore from @rns/runtime/core-init
+    if (!appContent.includes('initCore') && !appContent.includes('@rns/runtime/core-init')) {
+      warnings.push(`App.tsx should import initCore from @rns/runtime/core-init`);
     }
-    if (appContent.includes('src/') && appContent.includes('@rns')) {
-      // Check if there's CLI glue in src - this is a warning
-      warnings.push(`App.tsx may contain CLI glue code in user src/ (should only import @rns/runtime)`);
+    // App.tsx should contain providers (GestureHandlerRootView, SafeAreaProvider)
+    if (!appContent.includes('GestureHandlerRootView') || !appContent.includes('SafeAreaProvider')) {
+      warnings.push(`App.tsx should contain GestureHandlerRootView and SafeAreaProvider providers`);
+    }
+    // Check for marker comments for plugin injection
+    if (!appContent.includes('@rns-marker:providers:start')) {
+      warnings.push(`App.tsx should contain @rns-marker:providers:start/end for plugin injection`);
     }
   }
 
@@ -65,6 +71,36 @@ export function verifyGeneratedProjectStructure(
       }
     } else {
       errors.push(`Runtime package.json not found`);
+    }
+  }
+
+  // 2.1 Section 26: Bare init includes navigation package + bare runtime override
+  if (inputs.target === 'bare') {
+    const navDir = join(projectRoot, WORKSPACE_PACKAGES_DIR, 'navigation');
+    if (!pathExists(navDir) || !isDirectory(navDir)) {
+      errors.push(`packages/@rns/navigation not found (Bare init navigation expected)`);
+    }
+
+    // Check for index.tsx (bare projects use .tsx for JSX) or index.ts (fallback)
+    const runtimeIndexPath = join(runtimeDir, 'index.tsx');
+    const runtimeIndexPathFallback = join(runtimeDir, 'index.ts');
+    const runtimeIndexFile = pathExists(runtimeIndexPath) ? runtimeIndexPath : runtimeIndexPathFallback;
+    if (pathExists(runtimeIndexFile)) {
+      const runtimeIndex = readTextFile(runtimeIndexFile);
+      if (!runtimeIndex.includes('@rns/navigation')) {
+        errors.push(`@rns/runtime/index.tsx (or index.ts) does not reference @rns/navigation (Bare init navigation expected)`);
+      }
+    }
+
+    // Bare entrypoint should initialize gesture handler
+    const entryIndexJs = join(projectRoot, 'index.js');
+    if (pathExists(entryIndexJs)) {
+      const entry = readTextFile(entryIndexJs);
+      if (!entry.includes('react-native-gesture-handler')) {
+        errors.push(`index.js missing react-native-gesture-handler import (Bare navigation requirement)`);
+      }
+    } else {
+      warnings.push(`index.js not found (Bare entrypoint); gesture-handler init may be missing`);
     }
   }
 
@@ -197,6 +233,19 @@ export function verifyInitResult(
     errors.push('packages/@rns/core not found');
   }
 
+  // Section 26: Bare init should include navigation package
+  try {
+    const state = readJsonFile<any>(join(appRoot, PROJECT_STATE_FILE));
+    if (state?.target === 'bare') {
+      const navDir = join(appRoot, WORKSPACE_PACKAGES_DIR, 'navigation');
+      if (!pathExists(navDir) || !isDirectory(navDir)) {
+        errors.push('packages/@rns/navigation not found (Bare init navigation expected)');
+      }
+    }
+  } catch {
+    // If manifest can't be read, skip this check
+  }
+
   return {
     success: errors.length === 0,
     errors,
@@ -212,6 +261,17 @@ export function verifyCoreBaselineAcceptance(
 ): VerificationResult {
   const errors: string[] = [];
   const warnings: string[] = [];
+
+  // Determine target from manifest (navigation is CORE for bare in section 26)
+  let manifestTarget: 'expo' | 'bare' | undefined;
+  try {
+    const state = readJsonFile<any>(join(appRoot, PROJECT_STATE_FILE));
+    if (state?.target === 'expo' || state?.target === 'bare') {
+      manifestTarget = state.target;
+    }
+  } catch {
+    // If we can't read state, keep strict checks below.
+  }
 
   // Check ownership boundary: CLI-managed code is in packages/@rns/* + .rns/*
   // User src/** should not contain CLI glue
@@ -244,8 +304,16 @@ export function verifyCoreBaselineAcceptance(
       const pkg = readJsonFile<any>(runtimePackageJson);
       const deps = { ...(pkg.dependencies || {}), ...(pkg.devDependencies || {}) };
       for (const dep of Object.keys(deps)) {
-        // Runtime can have React/RN, but not plugin-only deps
-        if (dep.includes('navigation') || dep.includes('i18n') || dep.includes('query') || dep.includes('auth')) {
+        // Runtime can have React/RN. Navigation is allowed for bare (section 26).
+        const isNavigation = dep.includes('navigation');
+        const isDisallowed =
+          dep.includes('i18n') || dep.includes('query') || dep.includes('auth');
+
+        if (isDisallowed) {
+          errors.push(`@rns/runtime has plugin dependency: ${dep}`);
+        }
+
+        if (isNavigation && manifestTarget !== 'bare') {
           errors.push(`@rns/runtime has plugin dependency: ${dep}`);
         }
       }

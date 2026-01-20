@@ -10,7 +10,7 @@
 import { join } from 'path';
 import { Project, SyntaxKind, Node, ImportDeclaration, CallExpression, SourceFile } from 'ts-morph';
 import { readTextFile, writeTextFile, pathExists } from './fs';
-import { findMarker, validateMarker, formatMarkerError, type MarkerType, CANONICAL_MARKERS } from './markers';
+import { findMarker, validateMarker, validateMarkerInFile, formatMarkerError, type MarkerType, CANONICAL_MARKERS } from './markers';
 import { backupFile, createBackupDirectory } from './backup';
 import { hasInjectionMarker, createInjectionMarker, isCliManagedZone } from './idempotency';
 import { CliError, ExitCode } from './errors';
@@ -81,9 +81,9 @@ export function wireRuntimeContribution(
     };
   }
 
-  // Validate marker exists and is well-formed
-  const validation = validateMarker(projectRoot, markerDef);
-  if (!validation.valid) {
+  // Validate marker exists and is well-formed in the operation's file (not marker definition's default file)
+  const markerValidation = validateMarkerInFile(filePath, op.markerType, markerDef.required);
+  if (!markerValidation.valid) {
     return {
       success: false,
       file: op.file,
@@ -91,13 +91,17 @@ export function wireRuntimeContribution(
       capabilityId: op.capabilityId,
       contributionType: op.contribution.type,
       action: 'error',
-      error: formatMarkerError(markerDef, filePath, validation.error!),
+      error: markerValidation.error || `Marker validation failed for ${op.markerType} in ${op.file}`,
     };
   }
 
   // Check for duplicate injection (idempotency)
+  // For imports, check if they already exist rather than just checking marker
   const operationId = `${op.capabilityId}-${op.markerType}-${op.contribution.type}`;
-  if (hasInjectionMarker(filePath, operationId)) {
+  
+  // Fast check: if marker exists, already injected (skip)
+  // Note: Skip marker check for imports - they need per-symbol idempotency check via AST
+  if (op.contribution.type !== 'import' && hasInjectionMarker(filePath, operationId)) {
     return {
       success: true,
       file: op.file,
@@ -106,6 +110,65 @@ export function wireRuntimeContribution(
       contributionType: op.contribution.type,
       action: 'skipped',
     };
+  }
+
+  // For imports, check if all symbols are already imported (more accurate idempotency)
+  if (op.contribution.type === 'import') {
+    try {
+      const project = new Project({
+        skipAddingFilesFromTsConfig: true,
+        skipFileDependencyResolution: true,
+        skipLoadingLibFiles: true,
+        useInMemoryFileSystem: false,
+      });
+      const tempSourceFile = project.addSourceFileAtPath(filePath);
+      const existingImports = tempSourceFile.getImportDeclarations();
+      const contribution = op.contribution as ImportContribution;
+      
+      // Check if all requested imports already exist
+      let allImportsExist = true;
+      for (const symbolRef of contribution.imports) {
+        const existingImport = existingImports.find((imp: ImportDeclaration) => {
+          const moduleSpecifier = imp.getModuleSpecifierValue().replace(/['"]/g, '');
+          return moduleSpecifier === symbolRef.source;
+        });
+        
+        if (!existingImport) {
+          allImportsExist = false;
+          break;
+        }
+        
+        const importedNames = existingImport.getNamedImports().map((named: { getName: () => string }) => named.getName());
+        if (!importedNames.includes(symbolRef.symbol)) {
+          allImportsExist = false;
+          break;
+        }
+      }
+      
+      if (allImportsExist) {
+        // All imports already exist - mark as injected for future runs
+        // Add marker for idempotency tracking
+        const content = readTextFile(filePath);
+        const marker = createInjectionMarker(operationId);
+        const markerLine = `\n${marker}`;
+        const newContent = content.trim() + markerLine + '\n';
+        if (!dryRun) {
+          writeTextFile(filePath, newContent);
+        }
+        
+        return {
+          success: true,
+          file: op.file,
+          markerType: op.markerType,
+          capabilityId: op.capabilityId,
+          contributionType: op.contribution.type,
+          action: 'skipped',
+        };
+      }
+    } catch (error) {
+      // If AST check fails, continue with normal injection
+      // This is fine - we'll inject and add marker anyway
+    }
   }
 
   // Find marker location
@@ -133,6 +196,17 @@ export function wireRuntimeContribution(
   try {
     if (!dryRun) {
       injectContributionViaAST(filePath, op, markerInfo.startLine, markerInfo.endLine);
+      
+      // Add injection marker after successful injection (for idempotency tracking)
+      const content = readTextFile(filePath);
+      const marker = createInjectionMarker(operationId);
+      // Add marker at the end of the file (or after last import if imports)
+      const markerLine = `\n${marker}`;
+      // Only add if not already present
+      if (!content.includes(marker)) {
+        const newContent = content.trim() + markerLine + '\n';
+        writeTextFile(filePath, newContent);
+      }
     }
 
     return {
@@ -247,6 +321,8 @@ function injectContributionViaAST(
 
 /**
  * Injects import statements using AST
+ * Imports are added at the top of the file (standard TypeScript/JavaScript syntax)
+ * Injection marker is added as a comment after the last import for tracking
  */
 function injectImportContribution(
   sourceFile: SourceFile,
@@ -263,6 +339,9 @@ function injectImportContribution(
     existing.push(symbolRef);
     importsBySource.set(symbolRef.source, existing);
   }
+
+  let hasChanges = false;
+  let lastAddedImport: ImportDeclaration | null = null;
 
   // Check if imports already exist (idempotency check) and add missing ones
   for (const [source, symbols] of importsBySource) {
@@ -282,6 +361,13 @@ function injectImportContribution(
         for (const symbol of missingSymbols) {
           existingImport.addNamedImport(symbol.symbol);
         }
+        hasChanges = true;
+        lastAddedImport = existingImport;
+      } else {
+        // All symbols already imported - mark as last import if not already set
+        if (!lastAddedImport) {
+          lastAddedImport = existingImport;
+        }
       }
     } else {
       // Create new import declaration
@@ -293,16 +379,17 @@ function injectImportContribution(
       }
 
       // Add new import declaration using AST
-      sourceFile.insertImportDeclaration(insertionIndex, {
+      const newImport = sourceFile.insertImportDeclaration(insertionIndex, {
         namedImports: symbols.map(s => s.symbol),
         moduleSpecifier: source,
       });
+      hasChanges = true;
+      lastAddedImport = newImport;
     }
   }
 
-  // Add injection marker as trailing comment on last import
-  // Note: ts-morph doesn't easily support arbitrary comments, so we add it as a statement if needed
-  // For imports, the marker is tracked via idempotency check on the capability ID
+  // Note: Injection marker is added by wireRuntimeContribution after successful injection
+  // This function only handles the AST manipulation
 }
 
 /**
@@ -476,10 +563,10 @@ export function validateWiringOps(
       continue;
     }
 
-    const validation = validateMarker(projectRoot, markerDef);
-    if (!validation.valid) {
+    const markerValidation = validateMarkerInFile(filePath, op.markerType, markerDef.required);
+    if (!markerValidation.valid) {
       errors.push(
-        `Marker validation failed for ${op.capabilityId}: ${validation.error}`
+        `Marker validation failed for ${op.capabilityId} in ${op.file}: ${markerValidation.error || 'Unknown error'}`
       );
     }
 

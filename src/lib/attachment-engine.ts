@@ -55,6 +55,7 @@ const IGNORE_PATTERNS = [
   'node_modules',
   'dist',
   '*.log',
+  '.github/workflows/*.yml', // CI/CD workflows are generated explicitly (section 24)
 ];
 
 /**
@@ -302,7 +303,11 @@ function collectFilesToCopy(sourceDir: string, baseDir: string, variantPath?: st
 function shouldIgnoreFile(relativePath: string): boolean {
   for (const pattern of IGNORE_PATTERNS) {
     if (pattern.includes('*')) {
-      const regex = new RegExp(pattern.replace(/\*/g, '.*'));
+      // Escape special regex characters except * which we convert to .*
+      const escapedPattern = pattern
+        .replace(/[.+?^${}()|[\]\\]/g, '\\$&')
+        .replace(/\*/g, '.*');
+      const regex = new RegExp(escapedPattern);
       if (regex.test(relativePath)) {
         return true;
       }

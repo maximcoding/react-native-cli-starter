@@ -57,15 +57,50 @@ export function applyPatchOp(
   }
 
   // Check for duplicate operation (idempotency)
-  if (hasInjectionMarker(filePath, patch.operationId)) {
-    return {
-      success: true,
-      file: patch.file,
-      capabilityId: patch.capabilityId,
-      operationId: patch.operationId,
-      patchType: patch.type,
-      action: 'skipped',
-    };
+  // Different patch types use different idempotency tracking
+  if (patch.type === 'expo-config') {
+    // Expo config uses _rns_patches array in the JSON
+    try {
+      const config = readJsonFile<Record<string, unknown>>(filePath);
+      const patches = config._rns_patches as string[] | undefined;
+      if (patches && patches.includes(patch.operationId)) {
+        return {
+          success: true,
+          file: patch.file,
+          capabilityId: patch.capabilityId,
+          operationId: patch.operationId,
+          patchType: patch.type,
+          action: 'skipped',
+        };
+      }
+    } catch {
+      // If we can't read the file, continue with normal patch
+    }
+  } else if (patch.type === 'gradle' || patch.type === 'podfile' || patch.type === 'text-anchor') {
+    // Gradle/Podfile/text files use @rns-operation: comments
+    const content = readTextFile(filePath);
+    if (content.includes(`@rns-operation:${patch.operationId}`)) {
+      return {
+        success: true,
+        file: patch.file,
+        capabilityId: patch.capabilityId,
+        operationId: patch.operationId,
+        patchType: patch.type,
+        action: 'skipped',
+      };
+    }
+  } else {
+    // Other types (plist, android-manifest) use @rns-inject: markers or similar
+    if (hasInjectionMarker(filePath, patch.operationId)) {
+      return {
+        success: true,
+        file: patch.file,
+        capabilityId: patch.capabilityId,
+        operationId: patch.operationId,
+        patchType: patch.type,
+        action: 'skipped',
+      };
+    }
   }
 
   // Create backup before modification
@@ -165,8 +200,15 @@ function applyExpoConfigPatch(filePath: string, patch: ExpoConfigPatchOp): void 
   if (mode === 'set') {
     current[lastKey] = patch.value;
   } else if (mode === 'merge') {
+    // Deep merge objects, preserving structure
     if (typeof current[lastKey] === 'object' && current[lastKey] !== null && typeof patch.value === 'object' && patch.value !== null) {
-      current[lastKey] = { ...current[lastKey], ...patch.value };
+      if (Array.isArray(current[lastKey]) || Array.isArray(patch.value)) {
+        // Arrays don't merge, replace
+        current[lastKey] = patch.value;
+      } else {
+        // Deep merge objects
+        current[lastKey] = deepMerge(current[lastKey] as Record<string, unknown>, patch.value as Record<string, unknown>);
+      }
     } else {
       current[lastKey] = patch.value;
     }
@@ -175,8 +217,21 @@ function applyExpoConfigPatch(filePath: string, patch: ExpoConfigPatchOp): void 
       current[lastKey] = [];
     }
     const arr = current[lastKey] as unknown[];
-    if (!arr.includes(patch.value)) {
-      arr.push(patch.value);
+    
+    // If patch.value is an array, append each element individually
+    // If patch.value is a single value, append it if not already present
+    if (Array.isArray(patch.value)) {
+      // Append array elements (check for duplicates per element)
+      for (const item of patch.value) {
+        if (!arr.includes(item)) {
+          arr.push(item);
+        }
+      }
+    } else {
+      // Append single value (check if already exists)
+      if (!arr.includes(patch.value)) {
+        arr.push(patch.value);
+      }
     }
   }
   
@@ -326,8 +381,9 @@ function applyTextAnchorPatch(
 ): void {
   let content = readTextFile(filePath);
   
-  // Check if already patched
-  if (hasInjectionMarker(filePath, patch.operationId)) {
+  // Check if already patched (use @rns-operation: marker for Gradle/Podfile/text)
+  const operationMarkerCheck = `@rns-operation:${patch.operationId}`;
+  if (content.includes(operationMarkerCheck)) {
     return; // Already applied
   }
   
@@ -342,11 +398,11 @@ function applyTextAnchorPatch(
     throw new Error(`Anchor not found in file: "${patch.anchor}"`);
   }
   
-  // Insert content
-  const injectionMarker = createInjectionMarker(patch.operationId);
+  // Insert content with operation marker (use @rns-operation: for Gradle/Podfile/text files)
+  const operationMarker = `// @rns-operation:${patch.operationId}`;
   const contentToInsert = patch.mode === 'before'
-    ? `${patch.content}\n    // ${injectionMarker}\n`
-    : `\n    // ${injectionMarker}\n    ${patch.content}`;
+    ? `${patch.content}\n    ${operationMarker}\n`
+    : `\n    ${operationMarker}\n    ${patch.content}`;
   
   const insertPos = patch.mode === 'before'
     ? anchorIndex
@@ -372,6 +428,37 @@ function formatPlistValue(value: string | number | boolean | string[]): string {
     return `<array>${items}\n        </array>`;
   }
   return `<string>${escapeXml(String(value))}</string>`;
+}
+
+/**
+ * Deep merges two objects, preserving nested structure
+ */
+function deepMerge(target: Record<string, unknown>, source: Record<string, unknown>): Record<string, unknown> {
+  const result = { ...target };
+  
+  for (const key in source) {
+    if (source.hasOwnProperty(key)) {
+      const sourceValue = source[key];
+      const targetValue = result[key];
+      
+      if (
+        typeof targetValue === 'object' &&
+        targetValue !== null &&
+        !Array.isArray(targetValue) &&
+        typeof sourceValue === 'object' &&
+        sourceValue !== null &&
+        !Array.isArray(sourceValue)
+      ) {
+        // Recursively merge nested objects
+        result[key] = deepMerge(targetValue as Record<string, unknown>, sourceValue as Record<string, unknown>);
+      } else {
+        // Replace with source value
+        result[key] = sourceValue;
+      }
+    }
+  }
+  
+  return result;
 }
 
 /**

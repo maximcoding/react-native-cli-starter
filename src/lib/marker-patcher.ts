@@ -6,7 +6,7 @@
 
 import { join } from 'path';
 import { readTextFile, writeTextFile, pathExists } from './fs';
-import { findMarker, validateMarker, formatMarkerError, type MarkerType, CANONICAL_MARKERS } from './markers';
+import { findMarker, validateMarker, validateMarkerInFile, type MarkerType, CANONICAL_MARKERS } from './markers';
 import { backupFile, createBackupDirectory } from './backup';
 import { hasInjectionMarker, createInjectionMarker } from './idempotency';
 import { CliError, ExitCode } from './errors';
@@ -75,8 +75,8 @@ export function patchMarker(
     };
   }
 
-  // Validate marker exists and is well-formed
-  const validation = validateMarker(projectRoot, markerDef);
+  // Validate marker exists and is well-formed in the actual file being patched
+  const validation = validateMarkerInFile(filePath, patch.markerType, true);
   if (!validation.valid) {
     return {
       success: false,
@@ -84,7 +84,7 @@ export function patchMarker(
       markerType: patch.markerType,
       capabilityId: patch.capabilityId,
       action: 'error',
-      error: formatMarkerError(markerDef, filePath, validation.error!),
+      error: validation.error || `Marker validation failed: @rns-marker:${patch.markerType}`,
     };
   }
 

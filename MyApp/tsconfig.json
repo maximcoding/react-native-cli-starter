@@ -1,0 +1,18 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "paths": {
+      "@rns/*": [
+        "../packages/@rns/*"
+      ],
+      "@/*": [
+        "*"
+      ],
+      "@assets/*": [
+        "../assets/*"
+      ]
+    },
+    "baseUrl": "./src"
+  }
+}

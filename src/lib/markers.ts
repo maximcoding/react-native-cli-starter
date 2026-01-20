@@ -167,6 +167,50 @@ export function validateMarker(
 }
 
 /**
+ * Validates that a marker exists and is well-formed in a specific file
+ * 
+ * @param filePath - Absolute path to file
+ * @param markerType - Marker type to validate
+ * @param required - Whether marker is required (default: true)
+ * @returns Validation result with error message if invalid
+ */
+export function validateMarkerInFile(
+  filePath: string,
+  markerType: MarkerType,
+  required: boolean = true
+): { valid: boolean; error?: string } {
+  if (!pathExists(filePath)) {
+    return {
+      valid: false,
+      error: `Marker file not found: ${filePath}`,
+    };
+  }
+
+  const markerInfo = findMarker(filePath, markerType);
+
+  if (!markerInfo) {
+    if (required) {
+      return {
+        valid: false,
+        error: `Required marker "@rns-marker:${markerType}" not found in ${filePath}`,
+      };
+    }
+    // Optional markers are valid if not found
+    return { valid: true };
+  }
+
+  // Validate marker is well-formed (start before end)
+  if (markerInfo.startLine >= markerInfo.endLine) {
+    return {
+      valid: false,
+      error: `Marker "@rns-marker:${markerType}" in ${filePath} is malformed: start line (${markerInfo.startLine}) must be before end line (${markerInfo.endLine})`,
+    };
+  }
+
+  return { valid: true };
+}
+
+/**
  * Validates all canonical markers in a project
  * 
  * @param projectRoot - Project root directory

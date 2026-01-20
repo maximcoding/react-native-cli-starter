@@ -147,7 +147,14 @@ export function isCliManagedZone(filePath: string, projectRoot: string): boolean
  * Simple pattern matching (supports ** wildcards)
  */
 function matchesPattern(path: string, pattern: string): boolean {
-  const regex = new RegExp('^' + pattern.replace(/\*\*/g, '.*').replace(/\*/g, '[^/]*') + '$');
+  // Replace ** with placeholder first to avoid conflict with * replacement
+  // Then replace * with [^/]*, then replace placeholder with .*
+  const placeholder = '__DOUBLE_STAR_PLACEHOLDER__';
+  let regexStr = pattern.replace(/\*\*/g, placeholder);
+  regexStr = regexStr.replace(/\*/g, '[^/]*');
+  // Replace placeholder back with .* (match any chars including slashes)
+  regexStr = regexStr.replace(placeholder, '.*');
+  const regex = new RegExp('^' + regexStr + '$');
   return regex.test(path);
 }
 

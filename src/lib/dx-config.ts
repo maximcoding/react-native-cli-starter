@@ -44,6 +44,9 @@ export function configureImportAliases(
       adjustTsConfigForNoSrc(appRoot, userSrcExists, aliasEnabled);
     }
   }
+
+  // Section 26: Ensure react-native-reanimated/plugin is added if React Navigation is selected
+  ensureReanimatedPlugin(appRoot, inputs);
 }
 
 /**
@@ -129,6 +132,59 @@ function adjustBabelConfigForNoSrc(
       .replace(/,\s*}/g, '}') // Remove trailing comma if aliases were removed
       .replace(/alias:\s*{\s*}/g, 'alias: {\n          \'@rns\': \'./packages/@rns\',\n        }');
     
+    writeTextFile(babelConfigPath, adjusted);
+  }
+}
+
+/**
+ * Ensures react-native-reanimated/plugin is added to babel.config.js when React Navigation is selected
+ * This plugin must be the LAST plugin in the plugins array
+ */
+function ensureReanimatedPlugin(
+  appRoot: string,
+  inputs: InitInputs
+): void {
+  // Only add if React Navigation is selected
+  if (!inputs.selectedOptions?.reactNavigation) {
+    return;
+  }
+
+  const babelConfigPath = join(appRoot, 'babel.config.js');
+  if (!pathExists(babelConfigPath)) {
+    return; // Config should exist from templates
+  }
+
+  const content = readTextFile(babelConfigPath);
+  
+  // Check if reanimated plugin is already present
+  if (content.includes('react-native-reanimated/plugin')) {
+    return; // Already present
+  }
+
+  // Add the plugin as the last item in the plugins array
+  // Pattern: plugins: [\n  [...],\n],\n}
+  // We need to insert before the closing ], of plugins array
+  const pluginToAdd = `    // Required by @react-navigation/drawer (react-native-reanimated)
+    'react-native-reanimated/plugin',`;
+  
+  // Match the closing ], of the plugins array (before the closing } of module.exports)
+  // Pattern: ],\n],\n} or ],\n  ],\n}
+  let adjusted = content.replace(
+    /(\],\s*\n\s*)(\],\s*\n\s*\})/,
+    `$1${pluginToAdd}\n$2`
+  );
+  
+  // If that didn't work, try matching just before the closing bracket
+  if (!adjusted.includes('react-native-reanimated/plugin')) {
+    // Try matching: plugins: [\n  [...],\n]\n}
+    adjusted = content.replace(
+      /(\],\s*\n\s*)(\n\s*\})/,
+      `$1${pluginToAdd}\n$2`
+    );
+  }
+  
+  // Only write if we successfully added the plugin
+  if (adjusted.includes('react-native-reanimated/plugin')) {
     writeTextFile(babelConfigPath, adjusted);
   }
 }
@@ -335,12 +391,14 @@ module.exports = (async () => {
 
 /**
  * Configures Babel module-resolver for runtime alias resolution
+ * Also adds react-native-reanimated/plugin if React Navigation is selected
  */
 function configureBabelResolver(
   appRoot: string,
   target: 'expo' | 'bare',
   aliasEnabled: boolean,
-  userSrcExists: boolean
+  userSrcExists: boolean,
+  inputs: InitInputs
 ): void {
   const babelConfigPath = join(appRoot, 'babel.config.js');
   
@@ -397,6 +455,17 @@ function configureBabelResolver(
   // Set root - match blueprint: root points to src if it exists, otherwise '.'
   const root = userSrcExists ? ['./src'] : ['.'];
   moduleResolverPlugin[1].root = root;
+
+  // Section 26: Add react-native-reanimated/plugin if React Navigation is selected
+  // This plugin must be the LAST plugin in the array
+  if (inputs.selectedOptions?.reactNavigation) {
+    const hasReanimatedPlugin = babelConfig.plugins.some(
+      (p: any) => p === 'react-native-reanimated/plugin' || (typeof p === 'string' && p.includes('react-native-reanimated'))
+    );
+    if (!hasReanimatedPlugin) {
+      babelConfig.plugins.push('react-native-reanimated/plugin');
+    }
+  }
 
   // Write babel.config.js
   const babelConfigContent = `module.exports = ${JSON.stringify(babelConfig, null, 2).replace(
@@ -922,6 +991,13 @@ export function configureBaseScripts(
     'check:icons': 'node scripts/check-icons-stale.js',
     'check:imports': 'node scripts/check-import-paths.js',
   };
+  
+  // I18n scripts (section 28 - CORE) - only if I18n is selected
+  if (inputs.selectedOptions?.i18n) {
+    baseScripts['i18n:extract'] = 'i18next "src/**/*.{ts,tsx}" --config packages/@rns/core/i18n/i18next-parser.config.cjs';
+    baseScripts['i18n:types'] = 'node packages/@rns/core/i18n/generate-i18n-types.cjs';
+    baseScripts['i18n:all'] = 'npm run i18n:extract && npm run i18n:types';
+  }
 
   // Target-specific scripts
   if (inputs.target === 'expo') {

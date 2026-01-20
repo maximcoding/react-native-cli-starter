@@ -16,6 +16,7 @@ import { pathExists, isDirectory, isFile } from './fs';
 import { readTextFile } from './fs';
 import { INJECTION_MARKER_PATTERN } from './idempotency';
 import { getPluginRegistry, initializePluginRegistry } from './plugin-registry';
+import { PROJECT_STATE_FILE } from './constants';
 import { CliError, ExitCode } from './errors';
 import type {
   ProjectDoctorReport,
@@ -68,7 +69,7 @@ export async function runProjectDoctor(projectRoot: string, fix: boolean = false
  */
 function checkManifest(projectRoot: string, fix: boolean): DoctorFinding[] {
   const findings: DoctorFinding[] = [];
-  const manifestPath = join(projectRoot, '.rns', 'rn-init.json');
+  const manifestPath = join(projectRoot, PROJECT_STATE_FILE);
   
   // Check manifest exists
   if (!pathExists(manifestPath)) {
@@ -77,7 +78,7 @@ function checkManifest(projectRoot: string, fix: boolean): DoctorFinding[] {
       name: 'Manifest exists',
       severity: 'error',
       passed: false,
-      message: 'Project manifest (.rns/rn-init.json) not found',
+      message: `Project manifest (${PROJECT_STATE_FILE}) not found`,
       fix: 'Run "rns init" to initialize the project',
     });
     return findings; // Can't continue without manifest
@@ -94,50 +95,21 @@ function checkManifest(projectRoot: string, fix: boolean): DoctorFinding[] {
   try {
     const manifest = readManifest(projectRoot);
     if (!manifest) {
+      // File exists but readManifest returned null (shouldn't happen - readManifest throws on error)
+      // This case is unlikely but handle it
       findings.push({
         checkId: 'manifest.valid',
         name: 'Manifest valid',
         severity: 'error',
         passed: false,
-        message: 'Manifest file exists but is invalid',
-        fix: 'Manifest may need migration. Run "rns doctor --fix" to attempt migration',
+        message: 'Manifest file exists but could not be read',
+        fix: 'Check manifest file format and permissions',
       });
       return findings;
     }
     
-    // Check if migration is needed
-    const validation = validateManifest(manifest);
-    if (!validation.valid) {
-      if (fix && validation.migrated) {
-        // Attempt migration
-        try {
-          const migrated = migrateManifest(manifest, manifest.schemaVersion || '1.0.0');
-          if (migrated) {
-            findings.push({
-              checkId: 'manifest.valid',
-              name: 'Manifest valid',
-              severity: 'error',
-              passed: true,
-              message: 'Manifest migrated successfully',
-            });
-            return findings;
-          }
-        } catch (error) {
-          // Migration failed
-        }
-      }
-      
-      findings.push({
-        checkId: 'manifest.valid',
-        name: 'Manifest valid',
-        severity: 'error',
-        passed: false,
-        message: `Manifest validation failed: ${validation.errors?.join(', ')}`,
-        fix: 'Manifest may need migration. Run "rns doctor --fix" to attempt migration',
-      });
-      return findings;
-    }
-    
+    // Manifest was successfully read and validated by readManifest
+    // readManifest already validates, so if we get here, manifest is valid
     findings.push({
       checkId: 'manifest.valid',
       name: 'Manifest valid',
@@ -145,14 +117,26 @@ function checkManifest(projectRoot: string, fix: boolean): DoctorFinding[] {
       passed: true,
     });
   } catch (error) {
-    findings.push({
-      checkId: 'manifest.valid',
-      name: 'Manifest valid',
-      severity: 'error',
-      passed: false,
-      message: `Failed to read manifest: ${error instanceof Error ? error.message : String(error)}`,
-      fix: 'Check manifest file format and permissions',
-    });
+    // readManifest throws CliError if validation fails
+    if (error instanceof Error) {
+      findings.push({
+        checkId: 'manifest.valid',
+        name: 'Manifest valid',
+        severity: 'error',
+        passed: false,
+        message: error.message,
+        fix: 'Manifest may need migration. Run "rns doctor --fix" to attempt migration',
+      });
+    } else {
+      findings.push({
+        checkId: 'manifest.valid',
+        name: 'Manifest valid',
+        severity: 'error',
+        passed: false,
+        message: `Failed to read manifest: ${String(error)}`,
+        fix: 'Check manifest file format and permissions',
+      });
+    }
   }
   
   return findings;
