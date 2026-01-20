@@ -1,0 +1,16 @@
+{
+  "name": "@rns/runtime",
+  "version": "0.1.0",
+  "main": "index.tsx",
+  "types": "index.tsx",
+  "private": true,
+  "dependencies": {
+    "@rns/core": "file:../core",
+    "@rns/navigation": "file:../navigation"
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0",
+    "react-native": ">=0.74.0"
+  }
+}
+

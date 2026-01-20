@@ -607,6 +607,15 @@ export class ModulatorEngine implements IModulator {
     dryRun: boolean
   ): Promise<PhaseResult> {
     try {
+      // Skip if no dependencies to install/remove
+      if (plan.dependencies.runtime.length === 0 && plan.dependencies.dev.length === 0) {
+        return {
+          phase: 'link',
+          success: true,
+          action: 'skipped',
+        };
+      }
+      
       if (plan.dependencies.runtime.length > 0) {
         const runtimeResult = addRuntimeDependencies(
           context.projectRoot,
@@ -639,18 +648,21 @@ export class ModulatorEngine implements IModulator {
         }
       }
 
-      // Install dependencies (from lockfile)
-      const installResult = installDependencies(
-        context.projectRoot,
-        { scope: plan.dependencies.scope, dryRun, verbose: context.runtimeContext.flags.verbose }
-      );
-      if (!installResult.success) {
-        return {
-          phase: 'link',
-          success: false,
-          action: 'error',
-          error: installResult.error,
-        };
+      // Only install dependencies if we added any (for install operations)
+      // For remove operations or NO-OP, skip installation
+      if (plan.operation === 'install' && (plan.dependencies.runtime.length > 0 || plan.dependencies.dev.length > 0)) {
+        const installResult = installDependencies(
+          context.projectRoot,
+          { scope: plan.dependencies.scope, dryRun, verbose: context.runtimeContext.flags.verbose }
+        );
+        if (!installResult.success) {
+          return {
+            phase: 'link',
+            success: false,
+            action: 'error',
+            error: installResult.error,
+          };
+        }
       }
 
       return {
@@ -780,7 +792,16 @@ export class ModulatorEngine implements IModulator {
           });
         }
       } else if (plan.operation === 'remove') {
-        removePluginFromManifest(context.projectRoot, plan.capabilityId);
+        // Only remove if plugin exists (NO-OP if not found)
+        const removed = removePluginFromManifest(context.projectRoot, plan.capabilityId);
+        if (!removed) {
+          // Plugin not found - that's OK for NO-OP remove
+          return {
+            phase: 'manifest',
+            success: true,
+            action: 'skipped',
+          };
+        }
       }
 
       return {

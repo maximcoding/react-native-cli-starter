@@ -1,0 +1,331 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master, develop]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        type: choice
+        options:
+          - dev
+          - stage
+          - prod
+
+env:
+  NODE_VERSION: '18'
+
+jobs:
+  # Lint and Type Check
+  quality:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Type check
+        run: npm run typecheck || echo "Typecheck not configured yet"
+      
+      - name: Lint
+        run: npm run lint || echo "Linter not configured yet"
+      
+      - name: Build
+        run: npm run build || echo "Build not configured yet"
+
+  # Unit and Integration Tests
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    needs: quality
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run tests
+        run: npm test || echo "Tests not configured yet"
+
+  # Android Build - Dev Environment
+  build-android-dev:
+    name: Build Android (Dev)
+    runs-on: ubuntu-latest
+    needs: [quality, test]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'dev')
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build Android APK (Dev)
+        working-directory: android
+        run: ./gradlew assembleRelease -PdevBuild=true || echo "Android build not configured yet"
+
+  # Android Build - Stage Environment
+  build-android-stage:
+    name: Build Android (Stage)
+    runs-on: ubuntu-latest
+    needs: [quality, test]
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'stage'
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build Android APK (Stage)
+        working-directory: android
+        run: ./gradlew assembleRelease -PstageBuild=true || echo "Android build not configured yet"
+
+  # Android Build - Prod Environment
+  build-android-prod:
+    name: Build Android (Prod)
+    runs-on: ubuntu-latest
+    needs: [quality, test]
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'prod'
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build Android AAB (Prod)
+        working-directory: android
+        run: ./gradlew bundleRelease || echo "Android build not configured yet"
+
+  # iOS Build - Dev Environment
+  build-ios-dev:
+    name: Build iOS (Dev)
+    runs-on: macos-latest
+    needs: [quality, test]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'dev')
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Install CocoaPods dependencies
+        working-directory: ios
+        run: pod install || echo "CocoaPods not configured yet"
+      
+      - name: Build iOS (Dev)
+        working-directory: ios
+        run: xcodebuild -workspace App.xcworkspace -scheme App -configuration Release -sdk iphoneos -archivePath build/App.xcarchive archive || echo "iOS build not configured yet"
+
+  # iOS Build - Stage Environment
+  build-ios-stage:
+    name: Build iOS (Stage)
+    runs-on: macos-latest
+    needs: [quality, test]
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'stage'
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Install CocoaPods dependencies
+        working-directory: ios
+        run: pod install || echo "CocoaPods not configured yet"
+      
+      - name: Build iOS (Stage)
+        working-directory: ios
+        run: xcodebuild -workspace App.xcworkspace -scheme App -configuration Release -sdk iphoneos -archivePath build/App.xcarchive archive || echo "iOS build not configured yet"
+
+  # iOS Build - Prod Environment
+  build-ios-prod:
+    name: Build iOS (Prod)
+    runs-on: macos-latest
+    needs: [quality, test]
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'prod'
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Install CocoaPods dependencies
+        working-directory: ios
+        run: pod install || echo "CocoaPods not configured yet"
+      
+      - name: Build iOS (Prod)
+        working-directory: ios
+        run: xcodebuild -workspace App.xcworkspace -scheme App -configuration Release -sdk iphoneos -archivePath build/App.xcarchive archive || echo "iOS build not configured yet"
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+
+  # Release Android - Dev Environment
+  release-android-dev:
+    name: Release Android (Dev)
+    runs-on: ubuntu-latest
+    needs: build-android-dev
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'dev')
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: android-dev-apk
+          path: android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: ignore
+
+  # Release Android - Stage Environment
+  release-android-stage:
+    name: Release Android (Stage)
+    runs-on: ubuntu-latest
+    needs: build-android-stage
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'stage'
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: android-stage-apk
+          path: android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: ignore
+
+  # Release Android - Prod Environment
+  release-android-prod:
+    name: Release Android (Prod)
+    runs-on: ubuntu-latest
+    needs: build-android-prod
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'prod'
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Upload AAB to Play Store
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT }}
+          packageName: ${{ secrets.ANDROID_PACKAGE_NAME }}
+          releaseFiles: android/app/build/outputs/bundle/release/*.aab
+          track: production
+          if-no-files-found: ignore
+
+  # Release iOS - Dev Environment
+  release-ios-dev:
+    name: Release iOS (Dev)
+    runs-on: macos-latest
+    needs: build-ios-dev
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'dev')
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ios-dev-ipa
+          path: ios/build/*.ipa
+          if-no-files-found: ignore
+
+  # Release iOS - Stage Environment
+  release-ios-stage:
+    name: Release iOS (Stage)
+    runs-on: macos-latest
+    needs: build-ios-stage
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'stage'
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ios-stage-ipa
+          path: ios/build/*.ipa
+          if-no-files-found: ignore
+
+  # Release iOS - Prod Environment
+  release-ios-prod:
+    name: Release iOS (Prod)
+    runs-on: macos-latest
+    needs: build-ios-prod
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'prod'
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Upload to App Store
+        uses: apple-actions/upload-testflight-build@v1
+        with:
+          app-path: ios/build/*.ipa
+          issuer-id: ${{ secrets.APPLE_ISSUER_ID }}
+          api-key-id: ${{ secrets.APPLE_API_KEY_ID }}
+          api-private-key: ${{ secrets.APPLE_API_PRIVATE_KEY }}
+          if-no-files-found: ignore

@@ -372,9 +372,16 @@ function checkGradle(): DoctorFinding {
 
 /**
  * Checks iOS toolchain
+ * Only runs on macOS - skips on other platforms
  */
 function checkIosToolchain(): DoctorFinding[] {
   const findings: DoctorFinding[] = [];
+  
+  // iOS toolchain checks only apply on macOS
+  if (process.platform !== 'darwin') {
+    // Skip iOS checks on non-macOS platforms
+    return findings;
+  }
   
   // Check Xcode
   findings.push(checkXcode());

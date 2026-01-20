@@ -28,8 +28,9 @@ export function configureImportAliases(
 
   // Always ensure @rns/* is configured (required for workspace packages)
   // This is critical even if alias toggle is disabled
+  // Also ensure @/* and @assets/* when alias toggle is enabled and src exists
   if (inputs.language === 'ts') {
-    ensureRnsAliasInTsConfig(appRoot, userSrcExists);
+    ensureAliasesInTsConfig(appRoot, userSrcExists, inputs.coreToggles.alias);
   }
 
   // Config files are provided by templates/base via attachment engine
@@ -43,12 +44,21 @@ export function configureImportAliases(
       adjustTsConfigForNoSrc(appRoot, userSrcExists, aliasEnabled);
     }
   }
+
+  // Section 26: Ensure react-native-reanimated/plugin is added if React Navigation is selected
+  ensureReanimatedPlugin(appRoot, inputs);
 }
 
 /**
- * Ensures @rns/* alias is always present in tsconfig.json (required for workspace packages)
+ * Ensures all required aliases are present in tsconfig.json
+ * - @rns/* is always present (required for workspace packages)
+ * - @/* and @assets/* are present when alias toggle is enabled and src exists
  */
-function ensureRnsAliasInTsConfig(appRoot: string, userSrcExists: boolean): void {
+function ensureAliasesInTsConfig(
+  appRoot: string,
+  userSrcExists: boolean,
+  aliasEnabled: boolean
+): void {
   const tsconfigPath = join(appRoot, 'tsconfig.json');
   if (!pathExists(tsconfigPath)) {
     return; // Should exist from templates, but if not, skip
@@ -66,14 +76,30 @@ function ensureRnsAliasInTsConfig(appRoot: string, userSrcExists: boolean): void
     tsconfig.compilerOptions.paths = {};
   }
   
+  // Determine baseUrl (should match template, but ensure it's correct)
+  const baseUrl = tsconfig.compilerOptions.baseUrl || (userSrcExists ? './src' : '.');
+  
   // Always ensure @rns/* is present (required for workspace packages)
   // Path is relative to baseUrl
-  const baseUrl = tsconfig.compilerOptions.baseUrl || (userSrcExists ? './src' : '.');
   const rnsPath = baseUrl === './src' 
     ? ['../packages/@rns/*']
     : ['packages/@rns/*'];
   
   tsconfig.compilerOptions.paths['@rns/*'] = rnsPath;
+  
+  // Add @/* and @assets/* aliases if enabled and src exists
+  if (aliasEnabled && userSrcExists) {
+    // Ensure baseUrl is set correctly for src-based aliases
+    if (tsconfig.compilerOptions.baseUrl !== './src') {
+      tsconfig.compilerOptions.baseUrl = './src';
+    }
+    
+    // @/* maps to src/* (relative to baseUrl which is ./src)
+    tsconfig.compilerOptions.paths['@/*'] = ['*'];
+    
+    // @assets/* maps to assets/* (relative to baseUrl which is ./src)
+    tsconfig.compilerOptions.paths['@assets/*'] = ['../assets/*'];
+  }
   
   writeJsonFile(tsconfigPath, tsconfig);
 }
@@ -106,6 +132,59 @@ function adjustBabelConfigForNoSrc(
       .replace(/,\s*}/g, '}') // Remove trailing comma if aliases were removed
       .replace(/alias:\s*{\s*}/g, 'alias: {\n          \'@rns\': \'./packages/@rns\',\n        }');
     
+    writeTextFile(babelConfigPath, adjusted);
+  }
+}
+
+/**
+ * Ensures react-native-reanimated/plugin is added to babel.config.js when React Navigation is selected
+ * This plugin must be the LAST plugin in the plugins array
+ */
+function ensureReanimatedPlugin(
+  appRoot: string,
+  inputs: InitInputs
+): void {
+  // Only add if React Navigation is selected
+  if (!inputs.selectedOptions?.reactNavigation) {
+    return;
+  }
+
+  const babelConfigPath = join(appRoot, 'babel.config.js');
+  if (!pathExists(babelConfigPath)) {
+    return; // Config should exist from templates
+  }
+
+  const content = readTextFile(babelConfigPath);
+  
+  // Check if reanimated plugin is already present
+  if (content.includes('react-native-reanimated/plugin')) {
+    return; // Already present
+  }
+
+  // Add the plugin as the last item in the plugins array
+  // Pattern: plugins: [\n  [...],\n],\n}
+  // We need to insert before the closing ], of plugins array
+  const pluginToAdd = `    // Required by @react-navigation/drawer (react-native-reanimated)
+    'react-native-reanimated/plugin',`;
+  
+  // Match the closing ], of the plugins array (before the closing } of module.exports)
+  // Pattern: ],\n],\n} or ],\n  ],\n}
+  let adjusted = content.replace(
+    /(\],\s*\n\s*)(\],\s*\n\s*\})/,
+    `$1${pluginToAdd}\n$2`
+  );
+  
+  // If that didn't work, try matching just before the closing bracket
+  if (!adjusted.includes('react-native-reanimated/plugin')) {
+    // Try matching: plugins: [\n  [...],\n]\n}
+    adjusted = content.replace(
+      /(\],\s*\n\s*)(\n\s*\})/,
+      `$1${pluginToAdd}\n$2`
+    );
+  }
+  
+  // Only write if we successfully added the plugin
+  if (adjusted.includes('react-native-reanimated/plugin')) {
     writeTextFile(babelConfigPath, adjusted);
   }
 }
@@ -312,12 +391,14 @@ module.exports = (async () => {
 
 /**
  * Configures Babel module-resolver for runtime alias resolution
+ * Also adds react-native-reanimated/plugin if React Navigation is selected
  */
 function configureBabelResolver(
   appRoot: string,
   target: 'expo' | 'bare',
   aliasEnabled: boolean,
-  userSrcExists: boolean
+  userSrcExists: boolean,
+  inputs: InitInputs
 ): void {
   const babelConfigPath = join(appRoot, 'babel.config.js');
   
@@ -374,6 +455,17 @@ function configureBabelResolver(
   // Set root - match blueprint: root points to src if it exists, otherwise '.'
   const root = userSrcExists ? ['./src'] : ['.'];
   moduleResolverPlugin[1].root = root;
+
+  // Section 26: Add react-native-reanimated/plugin if React Navigation is selected
+  // This plugin must be the LAST plugin in the array
+  if (inputs.selectedOptions?.reactNavigation) {
+    const hasReanimatedPlugin = babelConfig.plugins.some(
+      (p: any) => p === 'react-native-reanimated/plugin' || (typeof p === 'string' && p.includes('react-native-reanimated'))
+    );
+    if (!hasReanimatedPlugin) {
+      babelConfig.plugins.push('react-native-reanimated/plugin');
+    }
+  }
 
   // Write babel.config.js
   const babelConfigContent = `module.exports = ${JSON.stringify(babelConfig, null, 2).replace(
@@ -899,6 +991,13 @@ export function configureBaseScripts(
     'check:icons': 'node scripts/check-icons-stale.js',
     'check:imports': 'node scripts/check-import-paths.js',
   };
+  
+  // I18n scripts (section 28 - CORE) - only if I18n is selected
+  if (inputs.selectedOptions?.i18n) {
+    baseScripts['i18n:extract'] = 'i18next "src/**/*.{ts,tsx}" --config packages/@rns/core/i18n/i18next-parser.config.cjs';
+    baseScripts['i18n:types'] = 'node packages/@rns/core/i18n/generate-i18n-types.cjs';
+    baseScripts['i18n:all'] = 'npm run i18n:extract && npm run i18n:types';
+  }
 
   // Target-specific scripts
   if (inputs.target === 'expo') {
@@ -913,17 +1012,37 @@ export function configureBaseScripts(
       'reset': 'npm run cache:clean && npm run clean && npm run clean:watchman',
     });
   } else {
-    // Bare React Native
+    // Bare React Native - enhanced scripts from reference
     Object.assign(baseScripts, {
-      'start': 'react-native start',
-      'start:clear': 'react-native start --reset-cache',
+      'start': 'react-native start --reset-cache',
       'ios': 'react-native run-ios',
       'android': 'react-native run-android',
+      'npx:ios': 'npx react-native run-ios',
+      'npx:android': 'npx react-native run-android',
       'doctor': 'npx react-native doctor',
-      'clean': 'rm -rf node_modules && npm install',
+      'pod-install': 'npx pod-install ios',
+      'cache:clean': 'npm cache clean --force',
       'clean:watchman': 'watchman watch-del-all 2>/dev/null || true',
-      'clean:metro': 'rm -rf /tmp/metro-* /tmp/haste-map-* 2>/dev/null || true',
-      'reset': 'npm run cache:clean && npm run clean && npm run clean:watchman && npm run clean:metro',
+      'watchman:shutdown': 'watchman shutdown-server',
+      'watchman:delete': 'watchman watch-del-all',
+      'clean': 'rm -rf node_modules && npm install',
+      'reset': 'npm run cache:clean && npm run clean && npm run clean:watchman',
+      // Android build scripts
+      'android:build:debug': 'cd android && ./gradlew assembleDebug && cd .. && open android/app/build/outputs/apk/debug/',
+      'android:build:release': 'cd android && ./gradlew assembleRelease && cd .. && open android/app/build/outputs/apk/release/',
+      'android:build:release:store': 'npx react-native build-android --mode=release',
+      'android:build:bundle': 'react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res/',
+      'android:clean': 'cd android && ./gradlew clean && rm -rf app/.cxx && cd ..',
+      'android:rebuild': 'rm -rf android/app/build android/app/.cxx android/.gradle && cd android && ./gradlew :app:assembleDebug && cd .. && npx react-native run-android',
+      // Gradle management
+      'gradle:wrapper': 'cd android && gradle wrapper && cd ..',
+      'gradle:debug': 'cd android && ./gradlew assembleDebug && cd ..',
+      'gradle:stop': 'cd android && ./gradlew --stop && cd ..',
+      'gradle:clean': 'cd android && ./gradlew clean && cd ..',
+      'gradle:clean:build': 'cd android && ./gradlew cleanBuildCache && cd ..',
+      // Android utilities
+      'debug:key': 'cd android && ./gradlew signingReport && cd ..',
+      'adb': 'adb reverse tcp:9090 tcp:9090 && adb reverse tcp:3000 tcp:3000 && adb reverse tcp:9001 tcp:9001 && adb reverse tcp:8081 tcp:8081',
     });
   }
 

@@ -121,6 +121,9 @@ export function createManifest(
     language: inputs.language,
     packageManager: inputs.packageManager,
     reactNativeVersion: inputs.reactNativeVersion,
+    navigationPreset: inputs.navigationPreset,
+    locales: inputs.locales,
+    selectedOptions: inputs.selectedOptions,
     coreToggles: inputs.coreToggles,
     plugins: [],
     modules: [],
@@ -151,12 +154,12 @@ export function validateManifest(
     warnings.push(`Schema version ${manifest.schemaVersion} is not current (${CURRENT_MANIFEST_SCHEMA_VERSION})`);
   }
 
-  // Check required fields
-  if (!manifest.workspaceModel || manifest.workspaceModel !== 'Option A') {
-    errors.push('Missing or invalid workspaceModel (must be "Option A")');
+  // Check required fields (only if present - allow partial validation)
+  if (manifest.workspaceModel !== undefined && manifest.workspaceModel !== 'Option A') {
+    errors.push('Invalid workspaceModel (must be "Option A")');
   }
 
-  if (!manifest.identity || !manifest.identity.name) {
+  if (manifest.identity !== undefined && (!manifest.identity.name)) {
     errors.push('Missing identity.name');
   }
 
@@ -257,7 +260,7 @@ export function validateProjectInitialized(projectRoot: string): RnsProjectManif
 export function addPluginToManifest(
   projectRoot: string,
   plugin: InstalledPluginRecord
-): void {
+): boolean {
   const manifest = validateProjectInitialized(projectRoot);
   
   // Check if plugin already exists
@@ -275,8 +278,13 @@ export function addPluginToManifest(
     manifest.plugins.push(plugin);
   }
   
+  // Write manifest back
+  writeManifest(projectRoot, manifest);
+  
   // Update aggregated permissions
   updateAggregatedPermissions(projectRoot);
+  
+  return existingIndex < 0; // Return true if added (not updated)
 }
 
 /**
@@ -288,13 +296,20 @@ export function addPluginToManifest(
 export function removePluginFromManifest(
   projectRoot: string,
   pluginId: string
-): void {
+): boolean {
   const manifest = validateProjectInitialized(projectRoot);
   
+  const initialLength = manifest.plugins.length;
   manifest.plugins = manifest.plugins.filter(p => p.id !== pluginId);
+  const removed = initialLength > manifest.plugins.length;
+  
+  // Write manifest back
+  writeManifest(projectRoot, manifest);
   
   // Update aggregated permissions
   updateAggregatedPermissions(projectRoot);
+  
+  return removed; // Return true if plugin was removed
 }
 
 /**

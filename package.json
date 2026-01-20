@@ -10,7 +10,12 @@
     "build": "tsc",
     "cli": "ts-node src/cli.ts",
     "init": "ts-node src/cli.ts init",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "vitest run --exclude 'src/smoke/**'",
+    "test:watch": "vitest --exclude 'src/smoke/**'",
+    "test:ui": "vitest --ui --exclude 'src/smoke/**'",
+    "test:smoke": "vitest run src/smoke",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo \"Linter not configured yet\""
   },
   "author": "maximcoding",
   "license": "ISC",
@@ -25,7 +30,9 @@
   "devDependencies": {
     "@types/node": "^20.0.0",
     "@types/prompts": "^2.4.9",
+    "@vitest/ui": "^2.1.9",
     "ts-node": "^10.9.0",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "vitest": "^2.1.9"
   }
 }

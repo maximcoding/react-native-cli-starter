@@ -18,6 +18,7 @@
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { initCore } from './core-init';
+import { ThemeProvider } from '@rns/core/theme';
 
 // @rns-marker:imports:start
 // Plugin imports will be injected here
@@ -33,11 +34,16 @@ function RootProvider({ children }: { children: React.ReactNode }): React.ReactE
     initCore();
   }, []);
 
-  // @rns-marker:providers:start
-  // Plugin providers will wrap children here
-  // @rns-marker:providers:end
-
-  return <>{children}</>;
+  // Wrap with ThemeProvider (CORE - section 29)
+  // ThemeProvider must wrap all UI components to provide theme context
+  return (
+    <ThemeProvider>
+      {/* @rns-marker:providers:start */}
+      {/* Plugin providers will wrap children here */}
+      {/* @rns-marker:providers:end */}
+      {children}
+    </ThemeProvider>
+  );
 }
 
 /**

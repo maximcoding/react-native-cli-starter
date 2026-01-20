@@ -119,8 +119,12 @@ export function resolvePackageManager(
       }
       return manifest.packageManager;
     }
-  } catch {
-    // Manifest not found, continue with detection
+  } catch (error) {
+    // Re-throw CliError (validation/conflict errors)
+    if (error instanceof CliError) {
+      throw error;
+    }
+    // Manifest not found or invalid, continue with detection
   }
 
   // Use override if provided

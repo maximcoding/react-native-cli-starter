@@ -10,6 +10,9 @@
  */
 
 import { logger, initNetInfoBridge } from '@rns/core';
+// Initialize I18n early (section 28 - CORE)
+// Import ensures i18n instance is initialized on app startup
+import '@rns/core/i18n';
 
 let initialized = false;
 
@@ -27,6 +30,8 @@ export function initCore(): void {
 
   // Initialize network monitoring (stub by default, plugins can wire NetInfo)
   initNetInfoBridge();
+
+  // I18n is initialized via import above (section 28)
 
   // @rns-marker:init-steps:start
   // Plugin initialization steps will be injected here

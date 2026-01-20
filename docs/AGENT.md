@@ -23,12 +23,13 @@ Treat the agent like a fast junior maintainer. It can work only if the rules are
 - Work **top-to-bottom** in `docs/TODO.md`. Unit of work is **ONE section**.
 - **Do not break what already works.** No regressions in init/build/run.
 - No scope creep, no drive-by refactors, no “cleanup while here”.
-- Never edit generated app **USER ZONE** (`src/**`). Integration must happen only via SYSTEM ZONE (`packages/@rns/**` + `.rns/**`) and declarative ops.
+- Never edit generated app **USER ZONE** (`src/**`). `App.tsx` is user-editable but CLI generates initial structure with providers and marker-based injection points. Plugin integration happens via markers in `App.tsx` (User Zone) and `packages/@rns/runtime/core-init.ts` (System Zone).
 - Runtime wiring is **AST-only** (ts-morph), **symbol-based**. No regex injection, no raw code strings.
 - Native/config edits must be **patch ops**: anchored, idempotent, backed up.
 - Dependency installs must go through the **dependency layer** (pm-aware). Never run `npm install` ad-hoc inside plugin logic.
 - Idempotency is mandatory: re-run `plugin add` / re-run apply → no duplicates.
 - Update docs only when they diverge from reality; do not shrink intent by deleting content. Move long lists to dedicated docs instead of removing them.
+- **NEVER modify `templates/plugins/example/`** — This directory is a reference implementation for developers and AI agents. It must remain untouched and serve as the canonical example of plugin structure, manifest format, and implementation patterns.
 
 ## Task format (the only format you should give the agent)
 

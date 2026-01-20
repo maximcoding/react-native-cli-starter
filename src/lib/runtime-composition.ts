@@ -17,16 +17,32 @@ export function generateRuntimeComposition(runtimeDir: string, inputs: InitInput
   const ext = inputs.language === 'ts' ? 'ts' : 'js';
   
   // Generate CORE init function
-  const coreInitContent = generateCoreInit(ext);
+  const coreInitContent = generateCoreInit(ext, inputs);
   writeTextFile(join(runtimeDir, `core-init.${ext}`), coreInitContent);
 
-  // Generate main runtime index with RnsApp component
-  const runtimeIndexContent = generateRuntimeIndex(ext);
-  writeTextFile(join(runtimeDir, `index.${ext}`), runtimeIndexContent);
+  // Generate main runtime index (simplified - App.tsx now contains providers directly)
+  const runtimeIndexContent = generateRuntimeIndex(ext, inputs);
+  // Bare projects use .tsx/.jsx for JSX, Expo uses .ts/.js
+  const runtimeIndexExt = inputs.target === 'bare' 
+    ? (ext === 'ts' ? 'tsx' : 'jsx')
+    : ext;
+  writeTextFile(join(runtimeDir, `index.${runtimeIndexExt}`), runtimeIndexContent);
 }
 
-function generateCoreInit(ext: 'ts' | 'js'): string {
+function generateCoreInit(ext: 'ts' | 'js', inputs: InitInputs): string {
   const corePackageName = CORE_PACKAGE_NAME;
+  const i18nImport = inputs.selectedOptions?.i18n 
+    ? `// Initialize I18n early (section 28 - CORE)
+// Import ensures i18n instance is initialized on app startup
+import '@rns/core/i18n';
+`
+    : '';
+  const i18nComment = inputs.selectedOptions?.i18n 
+    ? `  // I18n is initialized via import above (section 28)
+
+`
+    : '';
+  
   if (ext === 'ts') {
     return `/**
  * FILE: packages/@rns/runtime/core-init.ts
@@ -41,7 +57,7 @@ function generateCoreInit(ext: 'ts' | 'js'): string {
 
 import { logger } from '${corePackageName}';
 import { initNetInfoBridge } from '${corePackageName}';
-
+${i18nImport}
 let initialized = false;
 
 /**
@@ -58,7 +74,7 @@ export function initCore(): void {
 
   // Initialize network monitoring (stub by default, plugins can wire NetInfo)
   initNetInfoBridge();
-
+${i18nComment}
   // @rns-marker:init-steps:start
   // Plugin initialization steps will be injected here
   // @rns-marker:init-steps:end
@@ -80,7 +96,7 @@ export function initCore(): void {
 
 import { logger } from '${corePackageName}';
 import { initNetInfoBridge } from '${corePackageName}';
-
+${i18nImport}
 let initialized = false;
 
 /**
@@ -97,7 +113,7 @@ export function initCore() {
 
   // Initialize network monitoring (stub by default, plugins can wire NetInfo)
   initNetInfoBridge();
-
+${i18nComment}
   // @rns-marker:init-steps:start
   // Plugin initialization steps will be injected here
   // @rns-marker:init-steps:end
@@ -113,202 +129,92 @@ export function initCore() {
   }
 }
 
-function generateRuntimeIndex(ext: 'ts' | 'js'): string {
+function generateRuntimeIndex(ext: 'ts' | 'js', inputs: InitInputs): string {
   if (ext === 'ts') {
-    return `/**
- * FILE: packages/@rns/runtime/index.ts
- * PURPOSE: Runtime composition layer that wires CORE into the app
+    // For Bare projects, generate a runtime index that exports initCore and provides RnsApp as deprecated wrapper
+    // For Expo projects, generate minimal runtime index
+    if (inputs.target === 'bare') {
+      return `/**
+ * FILE: packages/@rns/runtime/index.tsx
+ * PURPOSE: Runtime utilities and deprecated RnsApp wrapper
  * OWNERSHIP: CORE
  * 
- * PLUGIN-FREE GUARANTEE:
- * - Only imports React Native core (react, react-native)
- * - No navigation, i18n, query, auth dependencies
- * - MinimalUI renders without any plugins
- * - Plugins integrate via RootProvider composition/extensions, NOT direct modification
+ * NOTE: App.tsx now contains all providers and navigation directly.
+ * RnsApp is kept for backward compatibility but is deprecated.
+ * New projects should use App.tsx directly.
  * 
- * PLUGIN INTEGRATION PATTERN:
- * - Plugins should extend RootProvider via HOC/wrapper components
- * - Plugins register via runtime registries (not direct imports in CORE)
- * - Plugins can replace MinimalUI but must maintain RnsApp export contract
+ * Navigation is provided via @rns/navigation (imported in App.tsx).
  */
 
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { initCore } from './core-init';
-
-// @rns-marker:imports:start
-// Plugin imports will be injected here
-// @rns-marker:imports:end
+import React from 'react';
+export { initCore } from './core-init';
+// Reference to @rns/navigation for verification (actual usage is in App.tsx)
+export type { RouteName } from '@rns/navigation';
 
 /**
- * Minimal root composition provider (stable for future plugin integration)
- * Plugins can extend this via registries/hooks without modifying CORE
- */
-function RootProvider({ children }: { children: React.ReactNode }): React.ReactElement {
-  // Initialize CORE exactly once when provider mounts
-  useEffect(() => {
-    initCore();
-  }, []);
-
-  // @rns-marker:providers:start
-  // Plugin providers will wrap children here
-  // @rns-marker:providers:end
-
-  return <>{children}</>;
-}
-
-/**
- * Minimal UI component (not blank, renders basic status)
- * No navigation/i18n/query/auth required - all optional via plugins
- */
-function MinimalUI(): React.ReactElement {
-  return (
-    <View style={styles.container}>
-      <View style={styles.content}>
-        <Text style={styles.title}>React Native CLI</Text>
-        <Text style={styles.subtitle}>CORE runtime initialized</Text>
-        <Text style={styles.hint}>Ready for plugin integration</Text>
-      </View>
-    </View>
-  );
-}
-
-/**
- * Runtime app component - bootable without plugins
- * Provides minimal composition that can be extended via plugins
+ * @deprecated Use App.tsx directly instead. RnsApp is kept for backward compatibility only.
+ * App.tsx now contains all providers and navigation directly visible.
  */
 export function RnsApp(): React.ReactElement {
-  // @rns-marker:root:start
-  return (
-    <RootProvider>
-      <MinimalUI />
-    </RootProvider>
+  // This is a deprecated wrapper - App.tsx should be used directly
+  throw new Error(
+    'RnsApp is deprecated. Use App.tsx directly - it now contains all providers and navigation.'
   );
-  // @rns-marker:root:end
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  content: {
-    alignItems: 'center',
-    padding: 20,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#000000',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#666666',
-    marginBottom: 4,
-  },
-  hint: {
-    fontSize: 12,
-    color: '#999999',
-    marginTop: 8,
-  },
-});
 `;
-  } else {
-    return `/**
- * FILE: packages/@rns/runtime/index.js
- * PURPOSE: Runtime composition layer that wires CORE into the app
+    } else {
+      // Expo projects - minimal runtime
+      return `/**
+ * FILE: packages/@rns/runtime/index.ts
+ * PURPOSE: Runtime utilities for Expo projects
  * OWNERSHIP: CORE
  */
 
-import React, { useEffect } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { initCore } from './core-init';
-
-// @rns-marker:imports:start
-// Plugin imports will be injected here
-// @rns-marker:imports:end
-
-/**
- * Minimal root composition provider (stable for future plugin integration)
- * Plugins can extend this via registries/hooks without modifying CORE
+export { initCore } from './core-init';
+`;
+    }
+  } else {
+    // JavaScript version
+    if (inputs.target === 'bare') {
+      return `/**
+ * FILE: packages/@rns/runtime/index.jsx
+ * PURPOSE: Runtime utilities and deprecated RnsApp wrapper
+ * OWNERSHIP: CORE
+ * 
+ * NOTE: App.js now contains all providers and navigation directly.
+ * RnsApp is kept for backward compatibility but is deprecated.
+ * New projects should use App.js directly.
+ * 
+ * Navigation is provided via @rns/navigation (imported in App.js).
  */
-function RootProvider({ children }) {
-  // Initialize CORE exactly once when provider mounts
-  useEffect(() => {
-    initCore();
-  }, []);
 
-  // @rns-marker:providers:start
-  // Plugin providers will wrap children here
-  // @rns-marker:providers:end
-
-  return React.createElement(React.Fragment, null, children);
-}
+export { initCore } from './core-init';
+// Reference to @rns/navigation for verification (actual usage is in App.js)
+// eslint-disable-next-line no-unused-vars
+import '@rns/navigation';
 
 /**
- * Minimal UI component (not blank, renders basic status)
- * No navigation/i18n/query/auth required - all optional via plugins
- */
-function MinimalUI() {
-  return React.createElement(
-    View,
-    { style: styles.container },
-    React.createElement(
-      View,
-      { style: styles.content },
-      React.createElement(Text, { style: styles.title }, 'React Native CLI'),
-      React.createElement(Text, { style: styles.subtitle }, 'CORE runtime initialized'),
-      React.createElement(Text, { style: styles.hint }, 'Ready for plugin integration')
-    )
-  );
-}
-
-/**
- * Runtime app component - bootable without plugins
- * Provides minimal composition that can be extended via plugins
+ * @deprecated Use App.js directly instead. RnsApp is kept for backward compatibility only.
+ * App.js now contains all providers and navigation directly visible.
  */
 export function RnsApp() {
-  // @rns-marker:root:start
-  return React.createElement(
-    RootProvider,
-    null,
-    React.createElement(MinimalUI)
+  // This is a deprecated wrapper - App.js should be used directly
+  throw new Error(
+    'RnsApp is deprecated. Use App.js directly - it now contains all providers and navigation.'
   );
-  // @rns-marker:root:end
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  content: {
-    alignItems: 'center',
-    padding: 20,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#000000',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#666666',
-    marginBottom: 4,
-  },
-  hint: {
-    fontSize: 12,
-    color: '#999999',
-    marginTop: 8,
-  },
-});
 `;
+    } else {
+      // Expo projects - minimal runtime
+      return `/**
+ * FILE: packages/@rns/runtime/index.js
+ * PURPOSE: Runtime utilities for Expo projects
+ * OWNERSHIP: CORE
+ */
+
+export { initCore } from './core-init';
+`;
+    }
   }
 }
 

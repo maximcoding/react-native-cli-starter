@@ -35,7 +35,7 @@ CliMobile is a **React Native project generator + expander** built around a stri
 
 React Native projects become brittle when infrastructure is added manually:
 
-- "paste this provider into App.tsx"
+- "paste this provider into App.tsx" (now handled automatically via marker-based injection)
 - "edit AndroidManifest / Info.plist / Gradle / Podfile"
 - "this package conflicts with that package"
 - "upgrade broke wiring again"
@@ -110,6 +110,124 @@ pnpm ios
 pnpm android
 ```
 
+---
+
+## 📊 Init Options: Expo vs Bare
+
+During `rns init`, you'll be prompted to select features. The available options depend on your target:
+
+```
+rns init
+│
+├── 🎯 Target: EXPO
+│   │
+│   ├── 📱 Expo-specific options
+│   │   ├── ✅ Expo Router (optional) — **Currently implemented**
+│   │   │   └── Includes: expo-router, expo-linking, expo-constants
+│   │   │   └── Stack by default, optional Tab/Drawer
+│   │   ├── 🔜 Expo Linking (optional) — **Future option**
+│   │   │   └── URL handling and deep linking
+│   │   ├── 🔜 Expo Status Bar (optional) — **Future option**
+│   │   │   └── Status bar customization
+│   │   ├── 🔜 Expo System UI (optional) — **Future option**
+│   │   │   └── System UI customization
+│   │   ├── 🔜 Expo Web Browser (optional) — **Future option**
+│   │   │   └── Open links in browser
+│   │   ├── 🔜 Expo Dev Client (optional) — **Future option**
+│   │   │   └── Custom development client for native modules
+│   │   ├── 🔜 @expo/vector-icons (optional) — **Future option**
+│   │   │   └── Vector icon library (Ionicons, MaterialIcons, etc.)
+│   │   ├── 🔜 Expo Image (optional) — **Future option**
+│   │   │   └── Optimized image component with caching
+│   │   ├── 🔜 Expo Linear Gradient (optional) — **Future option**
+│   │   │   └── Linear gradient component
+│   │   ├── 🔜 Expo Haptics (optional) — **Future option**
+│   │   │   └── Haptic feedback (vibrations)
+│   │   └── 🔜 Expo Device (optional) — **Future option**
+│   │       └── Device information utilities
+│   │
+│   └── 🔄 Common options (available for both targets)
+│       ├── ✅ Internationalization (i18next) — **Selected by default**
+│       ├── ✅ Theming (light/dark support) — Optional
+│       ├── ✅ React Navigation — Optional
+│       │   └── Presets: stack-only, tabs-only, stack-tabs, stack-tabs-modals, drawer
+│       │   └── Auto-includes: react-native-screens
+│       ├── ✅ Styling Library — Optional
+│       │   └── Choose: NativeWind, Unistyles, Tamagui, Restyle, or StyleSheet (default)
+│       ├── 🔜 React Native Screens — Optional — **Future option**
+│       │   └── Native screen management (currently auto-included with React Navigation)
+│       ├── 🔜 React Native Paper (Material Design) — Optional — **Future option**
+│       │   └── Material Design component library
+│       ├── 🔜 React Native Elements / UI Kitten — Optional — **Future option**
+│       │   └── Component libraries (React Native Elements or UI Kitten)
+│       ├── 🔜 Styled Components — Optional — **Future option**
+│       │   └── CSS-in-JS styling library
+│       └── 🔜 React Native Web — Optional — **Future option**
+│           └── Web support for React Native apps
+│
+└── 🎯 Target: BARE
+    │
+    ├── 🔧 Bare-specific options
+    │   ├── 🔜 React Native Keychain (optional) — **Future option**
+    │   │   └── Secure keychain/keystore storage
+    │   ├── 🔜 React Native FS (optional) — **Future option**
+    │   │   └── Native file system access
+    │   ├── 🔜 React Native Permissions (optional) — **Future option**
+    │   │   └── Unified permissions API for native modules
+    │   ├── 🔜 React Native Fast Image (optional) — **Future option**
+    │   │   └── Optimized image loading with native caching
+    │   └── 🔜 Native Modules Support (optional) — **Future option**
+    │       └── Provider SDKs and native configuration support
+    │
+    └── 🔄 Common options (available for both targets)
+        ├── ✅ Internationalization (i18next) — **Selected by default**
+        ├── ✅ Theming (light/dark support) — Optional
+        ├── ✅ React Navigation — **Selected by default**
+        │   └── Presets: stack-only, tabs-only, stack-tabs, stack-tabs-modals, drawer
+        │   └── Auto-includes: react-native-screens
+        ├── ✅ Styling Library — Optional
+        │   └── Choose: NativeWind, Unistyles, Tamagui, Restyle, or StyleSheet (default)
+        ├── 🔜 React Native Screens — Optional — **Future option**
+        │   └── Native screen management (currently auto-included with React Navigation)
+        ├── 🔜 React Native Paper (Material Design) — Optional — **Future option**
+        │   └── Material Design component library
+        ├── 🔜 React Native Elements / UI Kitten — Optional — **Future option**
+        │   └── Component libraries (React Native Elements or UI Kitten)
+        ├── 🔜 Styled Components — Optional — **Future option**
+        │   └── CSS-in-JS styling library
+        └── 🔜 React Native Web — Optional — **Future option**
+            └── Web support for React Native apps
+```
+
+**Legend:**
+- ✅ = Currently implemented and available
+- 🔜 = Potential future option (not yet implemented)
+
+**Bare-specific features available via plugins** (not init options):
+- 📦 **Image Picker** → `rns plugin add media.picker` or `media.vision-camera`
+- 📦 **Error Tracking** → `rns plugin add obs.sentry`
+- 📦 **Secure Storage** → `rns plugin add storage.secure`
+- 📦 **File System** → `rns plugin add storage.filesystem`
+
+**Expo-specific features available via plugins** (not init options):
+- 📦 **Camera** → `rns plugin add media.camera` or `media.vision-camera`
+- 📦 **Location** → `rns plugin add geo.location`
+- 📦 **Notifications** → `rns plugin add notify.expo`
+- 📦 **Authentication** → `rns plugin add auth.firebase` or `auth.supabase`
+- 📦 **Secure Storage** → `rns plugin add storage.secure`
+- 📦 **File System** → `rns plugin add storage.filesystem`
+- 📦 **Error Tracking** → `rns plugin add obs.sentry`
+
+**Not available during init** (add via plugin system after project generation):
+- ❌ **Authentication** → Use: `rns plugin add auth.firebase` or `auth.supabase`
+- ❌ **Analytics** → Use: `rns plugin add analytics.firebase` or `analytics.amplitude`
+- ❌ **Firebase** → Use: `rns plugin add firebase.*`
+- ❌ **Supabase** → Use: `rns plugin add supabase.*`
+
+**Note:** Safe Area Context is automatically included as a base dependency and doesn't require selection. EAS CLI is a build tool and should be installed separately: `npm install -g eas-cli`.
+
+---
+
 ### 4) Add capabilities (Plugins)
 
 ```bash
@@ -128,8 +246,9 @@ rns doctor
 The Base App is designed to be a stable foundation for **any app archetype** (online, offline-first, marketplace, chat, real-estate, etc.):
 
 - **Ownership zones** (System vs User) enforced
+- **App.tsx structure**: Standard React Native pattern with providers directly visible (user-editable, CLI generates initial structure)
 - **Workspace packages layout** under `packages/@rns/**`
-- **Runtime composition layer** under `packages/@rns/runtime/**`
+- **Runtime utilities** under `packages/@rns/runtime/**` (initCore, deprecated RnsApp)
 - **Kernel contracts + safe defaults** under `packages/@rns/core/**`
 - **DX baseline**: aliases (`@/`), SVG, fonts, env pipeline (no manual setup)
 - **Project manifest** `.rns/rn-init.json` (single source of truth)
@@ -166,16 +285,144 @@ Each plugin is a **declarative blueprint** (descriptor) that can express:
 MyApp/
 ├── .rns/                       # SYSTEM: manifest, logs, backups
 │   └── rn-init.json            # Project Manifest (source of truth)
+├── App.tsx                     # USER: app entrypoint (user-editable, CLI generates initial structure)
+│                                #      Contains providers directly (standard React Native pattern)
+│                                #      Plugin injection via @rns-marker:providers:start/end
+├── app/                        # USER: Expo Router layout (if Expo Router selected)
+│   └── _layout.tsx             #      Root layout with providers (user-editable, CLI generates initial)
 ├── src/                        # USER: your business code (CLI must not edit)
 ├── packages/                   # SYSTEM: CLI-managed workspace packages
 │   └── @rns/
 │       ├── core/               # kernel contracts + safe defaults
-│       ├── runtime/            # runtime composition + wiring targets
+│       ├── runtime/            # runtime utilities (initCore, deprecated RnsApp)
 │       └── plugin-*/           # installed plugins as local packages
 └── ...                         # Expo/Bare native scaffolding (target-specific)
 ```
 
-**Key principle:** plugins integrate via `packages/@rns/runtime/**`, not by patching your `src/**`.
+**Key principle:** plugins integrate via marker-based injection in `App.tsx`/`app/_layout.tsx` (User Zone, CLI generates initial structure) and `packages/@rns/runtime/core-init.ts` (System Zone). `App.tsx` is user-editable but CLI generates initial structure with providers and injection markers. Plugins do not patch `src/**` directly.
+
+### App.tsx Structure
+
+`App.tsx` follows standard React Native patterns with all providers directly visible:
+
+**Bare RN with React Navigation:**
+```tsx
+import React, { useEffect } from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { initCore } from '@rns/runtime/core-init';
+// @rns-marker:imports:start
+// Plugin imports will be injected here
+// @rns-marker:imports:end
+import { ThemeProvider } from '@rns/core/theme'; // If theming selected
+import { RnsNavigationRoot } from '@rns/navigation'; // If React Navigation selected
+
+export default function App() {
+  useEffect(() => {
+    initCore();
+  }, []);
+
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        {/* @rns-marker:providers:start */}
+        {/* Plugin providers will wrap children here */}
+        {/* @rns-marker:providers:end */}
+        <ThemeProvider>
+          <RnsNavigationRoot />
+        </ThemeProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
+  );
+}
+```
+
+**Expo with Expo Router:**
+- `App.tsx` is minimal (Expo Router uses `app/_layout.tsx`)
+- `app/_layout.tsx` contains providers and Expo Router Stack
+
+**Ownership:**
+- `App.tsx` is in **User Zone** (user-editable)
+- CLI generates initial structure with providers and marker-based injection points
+- Plugins inject providers at `@rns-marker:providers:start/end` markers
+- Users can customize providers, add custom logic, or modify the structure
+
+---
+
+## 🪝 Hooks Architecture (Hybrid Approach)
+
+CliMobile uses a **hybrid hooks architecture** that combines discoverability with stability:
+
+### Structure
+
+```
+packages/@rns/core/          (System Zone - CLI-managed, source of truth)
+  ├── i18n/
+  │   └── useT.ts           ← Source implementation (stable, updatable)
+  └── theme/
+      └── useTheme.ts       ← Source implementation (stable, updatable)
+
+src/hooks/                   (User Zone - convenience re-exports, user-editable)
+  ├── useT.ts               ← Re-exports from @rns/core/i18n
+  ├── useTheme.ts           ← Re-exports from @rns/core/theme
+  └── index.ts              ← Central export point
+```
+
+### Benefits
+
+1. **Discoverable**: Hooks are visible in `src/hooks/` where developers expect them
+2. **Stable**: Source of truth in System Zone (CLI-managed, updatable via CLI/plugins)
+3. **Customizable**: Users can override User Zone re-exports with custom implementations
+4. **Consistent**: Both import paths work (`@rns/core/i18n` and `@/hooks/useT`)
+
+### Usage
+
+**Both import paths work:**
+
+```typescript
+// Convenience import (recommended for discoverability)
+import { useT } from '@/hooks/useT';
+import { useTheme } from '@/hooks/useTheme';
+
+// Direct import (System Zone)
+import { useT } from '@rns/core/i18n';
+import { useTheme } from '@rns/core/theme';
+
+// Central export
+import { useT, useTheme } from '@/hooks';
+```
+
+### Customization
+
+To customize a hook, replace the re-export in `src/hooks/` with your own implementation:
+
+```typescript
+// src/hooks/useTheme.ts
+import { useContext } from 'react';
+import { ThemeContext } from '@rns/core/theme';
+
+// Your custom implementation
+export function useTheme() {
+  const ctx = useContext(ThemeContext);
+  // Add your custom logic here
+  return {
+    ...ctx,
+    // Your custom properties/methods
+  };
+}
+```
+
+**Note:** Custom implementations override the System Zone hook for your project. The System Zone hook remains unchanged and can still be accessed directly via `@rns/core/theme`.
+
+### Available Hooks
+
+- **`useT()`** - Translation hook (if i18n selected)
+  - Returns translation function `t` from react-i18next
+  - Usage: `const t = useT(); <Text>{t('home.title')}</Text>`
+
+- **`useTheme()`** - Theme context hook (if theming selected)
+  - Returns `{ theme, mode, setTheme }`
+  - Usage: `const { theme, mode, setTheme } = useTheme();`
 
 ---
 
@@ -186,12 +433,21 @@ MyApp/
 | Capability | Targets | Notes |
 |---|---|---|
 | Workspace packages (`packages/@rns/**`) | Expo + Bare | Isolation and maintainability |
-| Runtime composition (`@rns/runtime`) | Expo + Bare | Single wiring hub |
+| Runtime utilities (`@rns/runtime`) | Expo + Bare | initCore() utility, deprecated RnsApp wrapper |
 | Kernel contracts (`@rns/core`) | Expo + Bare | Stable, additive contracts + defaults |
 | Ownership zones | Expo + Bare | CLI edits System Zone only |
 | Manifest (`.rns/rn-init.json`) | Expo + Bare | Project passport + migrations |
 | Doctor (`doctor --env`, `doctor`) | Expo + Bare | Safety gate for changes |
 | DX baseline (alias/SVG/fonts/env) | Expo + Bare | Zero manual setup |
+| CI/CD Workflows (GitHub Actions templates) | Expo + Bare | ⚠️ PLANNED - Implementation in TODO Section 24 |
+| Theme System (dark/light) | Expo + Bare | Theme provider + tokens |
+| Splash Screen | Expo + Bare | Boot splash screen |
+| Feature Flags Registry | Expo + Bare | Local feature flags (extendable by plugins) |
+| Code Quality Tools (Prettier, Husky, ESLint) | Expo + Bare | Formatting, git hooks, linting |
+| Navigation Infrastructure | Expo + Bare | Bootstrap routing (Onboarding/Auth/App) |
+| Cache Engine | Expo + Bare | Snapshot cache contract + in-memory default |
+| UI Components | Expo + Bare | App.tsx structure with direct providers/navigation (MinimalUI deprecated) |
+| Development Scripts | Expo + Bare | Clean, and other dev scripts (beyond doctor) |
 
 ### Plugins (Optional - Full Catalog)
 
@@ -201,18 +457,28 @@ MyApp/
 |---|---|---|
 | Navigation root | `nav.react-navigation`, `nav.expo-router` | **single** |
 | UI framework | `ui.paper`, `ui.tamagui`, `ui.nativebase` | **single** |
-| State | `state.zustand`, `state.redux-toolkit`, `state.xstate` | multi |
+| Animations | `animation.reanimated`, `animation.lottie` | multi |
+| State | `state.zustand`, `state.xstate`, `state.mobx` | multi |
 | Data fetching / cache | `data.react-query`, `data.apollo`, `data.swr` | multi |
-| Network transport | `transport.axios`, `transport.graphql`, `transport.ws`, `transport.sse` | **multi** |
+| Network transport | `transport.axios`, `transport.fetch`, `transport.graphql`, `transport.websocket`, `transport.firebase` | **multi** |
 | Auth | `auth.firebase`, `auth.cognito`, `auth.auth0`, `auth.custom-jwt` | multi |
+| AWS Services | `aws.amplify`, `aws.appsync`, `aws.dynamodb`, `aws.s3` | multi |
 | Storage | `storage.mmkv`, `storage.sqlite`, `storage.secure`, `storage.filesystem` | multi |
+| Firebase Products | `firebase.firestore`, `firebase.realtime-database`, `firebase.storage`, `firebase.remote-config` | multi |
 | Offline-first | `offline.netinfo`, `offline.outbox`, `offline.sync` | multi |
 | Notifications | `notify.expo`, `notify.fcm`, `notify.onesignal` | multi |
 | Maps / location | `geo.location`, `maps.mapbox`, `maps.google` | multi |
 | Camera / media | `media.camera`, `media.vision-camera`, `media.picker` | multi |
 | Payments | `pay.stripe` | multi |
+| Subscriptions / IAP | `iap.revenuecat`, `iap.adapty`, `iap.app-store`, `iap.play-billing` | **single** |
 | Analytics / observability | `analytics.firebase`, `analytics.amplitude`, `obs.sentry`, `obs.bugsnag` | multi |
 | i18n | `i18n.i18next`, `i18n.lingui` | multi |
+| Search | `search.algolia`, `search.local-index` | multi |
+| OTA Updates | `ota.expo-updates`, `ota.code-push` | **single** |
+| Background Tasks | `background.tasks`, `background.geofencing`, `background.fetch` | multi |
+| Privacy & Consent | `privacy.att`, `privacy.consent`, `privacy.gdpr` | multi |
+| Device / Hardware | `device.biometrics`, `device.bluetooth` | multi |
+| Testing | `test.detox` | multi |
 
 ---
 

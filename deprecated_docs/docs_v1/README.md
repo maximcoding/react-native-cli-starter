@@ -1,7 +1,16 @@
 <!--
-FILE: README.md
-PURPOSE: Single-source, professional specification for CliMobile (RNS Starter CLI)
+FILE: README.md (DEPRECATED - Reference Only)
+PURPOSE: Historical reference document - preserved for context. Canonical docs are in root `README.md` and `docs/README.md`
 OWNERSHIP: CLI
+
+⚠️ **DEPRECATED - REFERENCE ONLY**: This document is preserved for historical context and reference purposes only.
+The canonical, up-to-date documentation is in:
+- `README.md` (root) - Main product documentation
+- `docs/README.md` - Canonical documentation version
+- `docs/ALIGNMENT.md` - All alignment decisions and rationale
+
+This deprecated document may contain outdated plugin names and catalog information.
+See `docs/ALIGNMENT.md` for canonical naming conventions and plugin catalog decisions.
 -->
 
 <div align="center">
@@ -638,42 +647,74 @@ featureFlagsRegistry.register('auth-core', {
 
 ### CORE (Always Installed)
 
-| Capability | Targets | Setup |
-|-----------|---------|-------|
-| 📦 Workspace Packages | Expo Framework + Bare React Native | ✅ FULL_AUTO |
-| 🔌 Runtime Composition | Expo Framework + Bare React Native | ✅ FULL_AUTO |
-| 📝 Contracts (Logging, Error, Storage, Network Interface, Offline) | Expo Framework + Bare React Native | ✅ FULL_AUTO |
-| 🎨 DX Baseline (Aliases, SVG, Fonts, Env) | Expo Framework + Bare React Native | ✅ FULL_AUTO |
-| 🛠️ Native Utilities | Expo Framework + Bare React Native | ✅ FULL_AUTO |
-| ⚙️ Config System (Constants, Feature Flags) | Expo Framework + Bare React Native | ✅ FULL_AUTO |
-| 🧭 Navigation Infrastructure | Expo Framework + Bare React Native | ✅ FULL_AUTO |
-| 🗄️ State Management (Zustand + MMKV) | Expo Framework + Bare React Native | ✅ FULL_AUTO |
-| 💾 Cache Engine | Expo Framework + Bare React Native | ✅ FULL_AUTO |
-| 🎨 UI Components | Expo Framework + Bare React Native | ✅ FULL_AUTO |
-| 🚀 CI/CD Workflows | Expo Framework + Bare React Native | ✅ FULL_AUTO |
-| 📜 Development Scripts | Expo Framework + Bare React Native | ✅ FULL_AUTO |
+> ⚠️ **DEPRECATED - REFERENCE ONLY**: This CORE matrix contains historical information.  
+> **Canonical CORE matrix** is in `README.md` (root) lines 185-201 and `docs/README.md` lines 184-200.  
+> **Key Changes**: State Management moved to Plugin (Zustand is plugin, not CORE). See `docs/ALIGNMENT.md` TASK 1.
+
+| Capability | Targets | Setup | Canonical Status |
+|-----------|---------|-------|------------------|
+| 📦 Workspace Packages | Expo Framework + Bare React Native | ✅ FULL_AUTO | ✅ Same in canonical |
+| 🔌 Runtime Composition | Expo Framework + Bare React Native | ✅ FULL_AUTO | ✅ Same in canonical |
+| 📝 Contracts (Logging, Error, Storage, Network Interface, Offline) | Expo Framework + Bare React Native | ✅ FULL_AUTO | ✅ Same in canonical (as "Kernel contracts") |
+| 🎨 DX Baseline (Aliases, SVG, Fonts, Env) | Expo Framework + Bare React Native | ✅ FULL_AUTO | ✅ Same in canonical |
+| 🛠️ Native Utilities | Expo Framework + Bare React Native | ✅ FULL_AUTO | ✅ Implied in canonical (part of Kernel contracts) |
+| ⚙️ Config System (Constants, Feature Flags) | Expo Framework + Bare React Native | ✅ FULL_AUTO | ✅ Same in canonical (as "Feature Flags Registry") |
+| 🧭 Navigation Infrastructure | Expo Framework + Bare React Native | ✅ FULL_AUTO | ✅ Added to canonical (TASK 9) |
+| 🗄️ State Management (Zustand + MMKV) | Expo Framework + Bare React Native | ✅ FULL_AUTO | ❌ **CHANGED**: Now Plugin (TASK 1) - `state.zustand` is plugin, not CORE |
+| 💾 Cache Engine | Expo Framework + Bare React Native | ✅ FULL_AUTO | ✅ Added to canonical (TASK 9) |
+| 🎨 UI Components | Expo Framework + Bare React Native | ✅ FULL_AUTO | ✅ Added to canonical (TASK 9) |
+| 🚀 CI/CD Workflows | Expo Framework + Bare React Native | ✅ FULL_AUTO | ✅ Added to canonical (TASK 2) |
+| 📜 Development Scripts | Expo Framework + Bare React Native | ✅ FULL_AUTO | ✅ Added to canonical (TASK 9) |
+
+**Additional CORE capabilities in canonical (not in this deprecated doc):**
+- Theme System (dark/light) - Added as CORE (TASK 5)
+- Splash Screen - Added as CORE (TASK 5)
+- Code Quality Tools (Prettier, Husky, ESLint) - Added as CORE DX baseline (TASK 6)
 
 **Note:** 
 - **Targets:** Expo Framework (Expo) or Bare React Native (React Native without Expo)
 - **Network Interface:** Contract defined in CORE. Plugins provide adapters (REST/GraphQL/WebSocket/Firebase) that implement this interface.
+- **State Management:** Zustand + MMKV is now a **Plugin** (`state.zustand`), not CORE. See `docs/ALIGNMENT.md` TASK 1 for decision rationale.
 
 ### Plugins (Optional - Full Catalog)
 
-| Category | Plugins | Setup |
-|----------|---------|-------|
-| 🌐 **Network Adapters** | `adapter.rest`, `adapter.graphql`, `adapter.websocket`, `adapter.firebase`, `adapter.mock` | ✅ FULL_AUTO |
-| 🔐 **Auth** | `auth.cognito`, `auth.auth0`, `auth.firebase`, `auth.custom` | ✅ FULL_AUTO |
-| 🧭 **Navigation** | `nav.core`, `nav.flows`, `nav.typed-routes` | ✅ FULL_AUTO |
-| 💾 **Storage** | `storage.mmkv`, `storage.sqlite`, `storage.secure`, `storage.files` | ✅ FULL_AUTO |
-| 📊 **Data** | `data.react-query`, `data.query-persist`, `data.pagination` | ✅ FULL_AUTO |
-| 🗄️ **State Management** | `state.zustand`, `state.redux`, `state.mobx` | ✅ FULL_AUTO |
-| 🌍 **i18n** | `i18n.core` | ✅ FULL_AUTO |
-| 🎨 **UI** | `ui.theme`, `ui.reanimated`, `ui.splash.bootsplash`, `ui.lottie` | ✅ FULL_AUTO |
-| 📱 **Offline** | `offline.netinfo`, `offline.outbox`, `offline.sync` | ✅ FULL_AUTO |
-| 🔔 **Notifications** | `notify.fcm`, `notify.onesignal` | ✅ FULL_AUTO |
-| 💳 **Payments** | `pay.stripe` | ✅ FULL_AUTO |
-| 📈 **Analytics** | `analytics.firebase` | ✅ FULL_AUTO |
-| 🐛 **Observability** | `obs.sentry` | ✅ FULL_AUTO |
+> ⚠️ **DEPRECATED CATALOG - REFERENCE ONLY**: This plugin catalog contains historical/outdated plugin IDs.  
+> **Canonical plugin catalog** is in `README.md` (root) and `docs/README.md`.  
+> **Naming convention mappings**: See `docs/ALIGNMENT.md` TASK 4 for canonical naming decisions.
+
+**Historical Plugin Names (Deprecated) → Canonical Names:**
+- `adapter.rest` → `transport.axios`, `transport.fetch` (see canonical catalog)
+- `adapter.graphql` → `transport.graphql` (same)
+- `adapter.websocket` → `transport.websocket` (not `transport.ws`)
+- `adapter.firebase` → `transport.firebase` (added to canonical catalog)
+- `nav.core` → `nav.react-navigation` (canonical name)
+- `storage.files` → `storage.filesystem` (canonical name)
+- `auth.custom` → `auth.custom-jwt` (canonical name)
+- `state.redux` → Not needed (Zustand is plugin, no Redux)
+- `ui.theme`, `ui.splash.bootsplash` → CORE features (not plugins)
+- `ui.reanimated`, `ui.lottie` → `animation.reanimated`, `animation.lottie` (new category)
+- `data.query-persist`, `data.pagination` → Features of data plugins (not separate)
+
+| Category | Plugins (Historical - Reference Only) | Canonical Status |
+|----------|--------------------------------------|------------------|
+| 🌐 **Network Adapters** | `adapter.rest`, `adapter.graphql`, `adapter.websocket`, `adapter.firebase`, `adapter.mock` | See canonical: `transport.*` (TASK 4) |
+| 🔐 **Auth** | `auth.cognito`, `auth.auth0`, `auth.firebase`, `auth.custom` | `auth.custom` → `auth.custom-jwt` |
+| 🧭 **Navigation** | `nav.core`, `nav.flows`, `nav.typed-routes` | `nav.core` → `nav.react-navigation` |
+| 💾 **Storage** | `storage.mmkv`, `storage.sqlite`, `storage.secure`, `storage.files` | `storage.files` → `storage.filesystem` |
+| 📊 **Data** | `data.react-query`, `data.query-persist`, `data.pagination` | `query-persist`, `pagination` are features, not separate plugins |
+| 🗄️ **State Management** | `state.zustand`, `state.redux`, `state.mobx` | `state.redux` → Not needed (TASK 1, TASK 5) |
+| 🌍 **i18n** | `i18n.core` | `i18n.core` → Use `i18n.i18next` or `i18n.lingui` |
+| 🎨 **UI** | `ui.theme`, `ui.reanimated`, `ui.splash.bootsplash`, `ui.lottie` | Theme/splash → CORE; animations → `animation.*` category |
+| 📱 **Offline** | `offline.netinfo`, `offline.outbox`, `offline.sync` | ✅ Same in canonical |
+| 🔔 **Notifications** | `notify.fcm`, `notify.onesignal` | ✅ Same in canonical (add `notify.expo`) |
+| 💳 **Payments** | `pay.stripe` | ✅ Same in canonical |
+| 📈 **Analytics** | `analytics.firebase` | ✅ Same in canonical (expanded catalog) |
+| 🐛 **Observability** | `obs.sentry` | ✅ Same in canonical (expanded catalog) |
+
+**For up-to-date plugin catalog, see:**
+- `README.md` (root) - Lines 197-216 (canonical plugin catalog)
+- `docs/README.md` - Lines 196-215 (canonical documentation version)
+- `docs/ALIGNMENT.md` - All naming decisions and catalog updates
 
 ---
 

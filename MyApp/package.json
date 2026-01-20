@@ -1,0 +1,62 @@
+{
+  "name": "myapp",
+  "version": "1.0.0",
+  "main": "index.ts",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
+    "cache:clean": "npm cache clean --force",
+    "gen:icons": "node scripts/generate-icons.js",
+    "check:icons": "node scripts/check-icons-stale.js",
+    "check:imports": "node scripts/check-import-paths.js",
+    "i18n:extract": "i18next \"src/**/*.{ts,tsx}\" --config packages/@rns/core/i18n/i18next-parser.config.cjs",
+    "i18n:types": "node packages/@rns/core/i18n/generate-i18n-types.cjs",
+    "i18n:all": "npm run i18n:extract && npm run i18n:types",
+    "start:clear": "expo start --clear",
+    "doctor": "npx expo-doctor",
+    "clean": "rm -rf .expo node_modules && npm install",
+    "clean:watchman": "watchman watch-del-all 2>/dev/null || true",
+    "reset": "npm run cache:clean && npm run clean && npm run clean:watchman"
+  },
+  "dependencies": {
+    "@react-navigation/bottom-tabs": "^7.10.1",
+    "@react-navigation/drawer": "^7.7.13",
+    "@react-navigation/native": "^7.1.28",
+    "@react-navigation/native-stack": "^7.10.1",
+    "expo": "~54.0.31",
+    "expo-dev-client": "^6.0.20",
+    "expo-device": "^8.0.10",
+    "expo-image": "^3.0.11",
+    "expo-status-bar": "~3.0.9",
+    "expo-web-browser": "^15.0.10",
+    "i18next": "^25.8.0",
+    "react": "19.1.0",
+    "react-i18next": "^16.5.3",
+    "react-native": "0.81.5",
+    "react-native-elements": "^3.4.3",
+    "react-native-gesture-handler": "^2.30.0",
+    "react-native-paper": "^5.14.5",
+    "react-native-reanimated": "^4.2.1",
+    "react-native-safe-area-context": "^5.6.2",
+    "react-native-screens": "^4.20.0",
+    "react-native-svg": "^15.15.1",
+    "react-native-svg-transformer": "^1.5.2",
+    "react-native-unistyles": "^3.0.21",
+    "react-native-web": "^0.21.2",
+    "react-native-worklets": "^0.7.2"
+  },
+  "devDependencies": {
+    "@types/react": "~19.1.0",
+    "@types/react-native": "^0.73.0",
+    "babel-plugin-module-resolver": "^5.0.2",
+    "i18next-parser": "^9.3.0",
+    "typescript": "~5.9.2"
+  },
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "packages/@rns/*"
+  ]
+}

@@ -9,6 +9,7 @@ import { ParsedArgs } from '../lib/args';
 import { runInit } from '../lib/init';
 import { handlePlugin } from './plugin';
 import { handleModule } from './module';
+import { handleComponent } from './component';
 
 /**
  * Init command - creates a new React Native app with CORE baseline
@@ -34,3 +35,9 @@ export { handlePlugin as plugin };
  * This is a thin entrypoint; all logic lives in src/lib/module.ts
  */
 export { handleModule as module };
+
+/**
+ * Component command - generates UI components
+ * This is a thin entrypoint; all logic lives in src/lib/component.ts
+ */
+export { handleComponent as component };
