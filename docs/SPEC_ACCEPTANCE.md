@@ -354,5 +354,80 @@ This document maps test files to TODO sections 1-22, ensuring each section's con
 
 ---
 
-**Last Updated:** 2024-12-19  
-**Status:** Section 23 Spec Acceptance Assertions Complete
+---
+
+## Section 24: CI/CD Workflow Generation ✅
+
+**Contract:** CI/CD workflow generation as CORE capability, GitHub Actions templates for Expo and Bare targets.
+
+**Tests:**
+- ✅ **Smoke Tests** (`src/smoke/cicd-workflows.smoke.test.ts`) - CI/CD workflow generation
+
+**Acceptance Criteria:**
+- ✅ Workflows generated for Expo and Bare targets
+- ✅ Workflows placed in `.github/workflows/`
+- ✅ Templates stored in `templates/base/.github/workflows/`
+- ✅ Idempotent (regenerating doesn't duplicate)
+
+---
+
+## Section 25: Component Generation ✅
+
+**Contract:** Component generation capability (`rns component add <component-name>`).
+
+**Tests:**
+- ✅ **Smoke Tests** (`src/smoke/component.smoke.test.ts`) - Component generation
+
+**Acceptance Criteria:**
+- ✅ Components generated in USER ZONE
+- ✅ Adapts to installed UI framework plugin if available
+- ✅ Generates generic components otherwise
+
+---
+
+## Section 26: Bare Init React Navigation Presets ✅
+
+**Contract:** Bare init includes React Navigation by default with preset selection.
+
+**Tests:**
+- ✅ **Smoke Tests** (`src/smoke/init.smoke.test.ts`) - Bare init with navigation presets
+
+**Acceptance Criteria:**
+- ✅ Navigation presets available (stack-only, tabs-only, stack-tabs, stack-tabs-modals, drawer)
+- ✅ Preset stored in manifest
+- ✅ Navigation structure matches selected preset
+
+---
+
+## Section 27: Navigation Registry ✅
+
+**Contract:** Registry-based system for user screens from User Zone.
+
+**Tests:**
+- ✅ **Smoke Tests** (`src/smoke/init.smoke.test.ts`) - Navigation registry generation
+
+**Acceptance Criteria:**
+- ✅ Registry file generated at `src/app/navigation/registry.ts`
+- ✅ System Zone reads from registry
+- ✅ Falls back to placeholder screens if registry missing
+
+---
+
+## Section 30: Expanded Init Options ✅
+
+**Contract:** Comprehensive option selection for Expo-specific, Bare-specific, and common options.
+
+**Tests:**
+- ✅ **Smoke Tests** (`src/smoke/init.smoke.test.ts`) - Init with various options
+
+**Acceptance Criteria:**
+- ✅ All Expo-specific options available for Expo target
+- ✅ All Bare-specific options available for Bare target
+- ✅ Common options available for both targets
+- ✅ Target-aware filtering (Expo-only hidden for Bare, Bare-only hidden for Expo)
+- ✅ Selected options stored in manifest
+
+---
+
+**Last Updated:** 2026-01-20  
+**Status:** Sections 1-30 Spec Acceptance Assertions Complete

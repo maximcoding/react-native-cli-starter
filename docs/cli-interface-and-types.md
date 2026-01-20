@@ -101,9 +101,16 @@ The project manifest (`.rns/rn-init.json`) is the single source of truth for wha
 - `language` — language (ts/js)
 - `packageManager` — package manager (npm/pnpm/yarn)
 - `reactNativeVersion` — React Native version
+- `navigationPreset` — navigation preset (stack-only, tabs-only, stack-tabs, stack-tabs-modals, drawer) — section 26
+- `locales` — selected locales for I18n (only if i18n option is selected) — section 28
+- `selectedOptions` — selected project feature options (section 29, 30):
+  - Common: `i18n`, `theming`, `reactNavigation`, `styling`, `reactNativeScreens`, `reactNativePaper`, `reactNativeElements`, `uiKitten`, `styledComponents`, `reactNativeWeb`
+  - Expo-specific: `expoRouter`, `expoLinking`, `expoStatusBar`, `expoSystemUI`, `expoWebBrowser`, `expoDevClient`, `expoVectorIcons`, `expoImage`, `expoLinearGradient`, `expoHaptics`, `expoDevice`
+  - Bare-specific: `reactNativeKeychain`, `reactNativeFS`, `reactNativePermissions`, `reactNativeFastImage`, `nativeModulesSupport`
 - `coreToggles` — CORE feature toggles from init
 - `plugins` — installed plugins array
 - `modules` — installed modules array
+- `permissions` — aggregated permissions (all installed plugins)
 - `createdAt` — creation timestamp
 - `updatedAt` — last update timestamp
 
