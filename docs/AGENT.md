@@ -10,13 +10,19 @@ Treat the agent like a fast junior maintainer. It can work only if the rules are
 
 ## Required reading (always)
 
-**Canonical Docs Contract:** These six docs form the canonical, non-duplicated set (see `README.md` → Documentation).
+**Canonical Docs Contract:** These docs form the canonical, non-duplicated set (see `README.md` → Documentation).
 
+**Core Canonical Docs:**
 1. `README.md`
 2. `docs/TODO.md` (single work-order)
 3. `docs/WORKFLOW.md`
 4. `docs/cli-interface-and-types.md`
 5. `docs/plugins-permissions.md` (when touching permissions/plugins)
+
+**Additional Reference Docs:**
+- `docs/navigation.md` (when working with navigation)
+- `docs/ALIGNMENT.md` (architectural decisions)
+- `docs/SPEC_ACCEPTANCE.md` (test mapping)
 
 ## Non-negotiable rules
 

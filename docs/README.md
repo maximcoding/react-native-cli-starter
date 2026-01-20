@@ -122,28 +122,28 @@ rns init
 ├── 🎯 Target: EXPO
 │   │
 │   ├── 📱 Expo-specific options
-│   │   ├── ✅ Expo Router (optional) — **Currently implemented**
+│   │   ├── ✅ Expo Router (optional) — **Implemented**
 │   │   │   └── Includes: expo-router, expo-linking, expo-constants
 │   │   │   └── Stack by default, optional Tab/Drawer
-│   │   ├── 🔜 Expo Linking (optional) — **Future option**
+│   │   ├── ✅ Expo Linking (optional) — **Implemented**
 │   │   │   └── URL handling and deep linking
-│   │   ├── 🔜 Expo Status Bar (optional) — **Future option**
+│   │   ├── ✅ Expo Status Bar (optional) — **Implemented**
 │   │   │   └── Status bar customization
-│   │   ├── 🔜 Expo System UI (optional) — **Future option**
+│   │   ├── ✅ Expo System UI (optional) — **Implemented**
 │   │   │   └── System UI customization
-│   │   ├── 🔜 Expo Web Browser (optional) — **Future option**
+│   │   ├── ✅ Expo Web Browser (optional) — **Implemented**
 │   │   │   └── Open links in browser
-│   │   ├── 🔜 Expo Dev Client (optional) — **Future option**
+│   │   ├── ✅ Expo Dev Client (optional) — **Implemented**
 │   │   │   └── Custom development client for native modules
-│   │   ├── 🔜 @expo/vector-icons (optional) — **Future option**
+│   │   ├── ✅ @expo/vector-icons (optional) — **Implemented**
 │   │   │   └── Vector icon library (Ionicons, MaterialIcons, etc.)
-│   │   ├── 🔜 Expo Image (optional) — **Future option**
+│   │   ├── ✅ Expo Image (optional) — **Implemented**
 │   │   │   └── Optimized image component with caching
-│   │   ├── 🔜 Expo Linear Gradient (optional) — **Future option**
+│   │   ├── ✅ Expo Linear Gradient (optional) — **Implemented**
 │   │   │   └── Linear gradient component
-│   │   ├── 🔜 Expo Haptics (optional) — **Future option**
+│   │   ├── ✅ Expo Haptics (optional) — **Implemented**
 │   │   │   └── Haptic feedback (vibrations)
-│   │   └── 🔜 Expo Device (optional) — **Future option**
+│   │   └── ✅ Expo Device (optional) — **Implemented**
 │   │       └── Device information utilities
 │   │
 │   └── 🔄 Common options (available for both targets)
@@ -154,29 +154,31 @@ rns init
 │       │   └── Auto-includes: react-native-screens
 │       ├── ✅ Styling Library — Optional
 │       │   └── Choose: NativeWind, Unistyles, Tamagui, Restyle, or StyleSheet (default)
-│       ├── 🔜 React Native Screens — Optional — **Future option**
+│       ├── ✅ React Native Screens — Optional — **Implemented**
 │       │   └── Native screen management (currently auto-included with React Navigation)
-│       ├── 🔜 React Native Paper (Material Design) — Optional — **Future option**
+│       ├── ✅ React Native Paper (Material Design) — Optional — **Implemented**
 │       │   └── Material Design component library
-│       ├── 🔜 React Native Elements / UI Kitten — Optional — **Future option**
-│       │   └── Component libraries (React Native Elements or UI Kitten)
-│       ├── 🔜 Styled Components — Optional — **Future option**
+│       ├── ✅ React Native Elements — Optional — **Implemented**
+│       │   └── Component library (React Native Elements)
+│       ├── ✅ UI Kitten — Optional — **Implemented**
+│       │   └── Component library with Eva Design
+│       ├── ✅ Styled Components — Optional — **Implemented**
 │       │   └── CSS-in-JS styling library
-│       └── 🔜 React Native Web — Optional — **Future option**
+│       └── ✅ React Native Web — Optional — **Implemented**
 │           └── Web support for React Native apps
 │
 └── 🎯 Target: BARE
     │
     ├── 🔧 Bare-specific options
-    │   ├── 🔜 React Native Keychain (optional) — **Future option**
+    │   ├── ✅ React Native Keychain (optional) — **Implemented**
     │   │   └── Secure keychain/keystore storage
-    │   ├── 🔜 React Native FS (optional) — **Future option**
+    │   ├── ✅ React Native FS (optional) — **Implemented**
     │   │   └── Native file system access
-    │   ├── 🔜 React Native Permissions (optional) — **Future option**
+    │   ├── ✅ React Native Permissions (optional) — **Implemented**
     │   │   └── Unified permissions API for native modules
-    │   ├── 🔜 React Native Fast Image (optional) — **Future option**
+    │   ├── ✅ React Native Fast Image (optional) — **Implemented**
     │   │   └── Optimized image loading with native caching
-    │   └── 🔜 Native Modules Support (optional) — **Future option**
+    │   └── ✅ Native Modules Support (optional) — **Implemented**
     │       └── Provider SDKs and native configuration support
     │
     └── 🔄 Common options (available for both targets)
@@ -201,7 +203,6 @@ rns init
 
 **Legend:**
 - ✅ = Currently implemented and available
-- 🔜 = Potential future option (not yet implemented)
 
 **Bare-specific features available via plugins** (not init options):
 - 📦 **Image Picker** → `rns plugin add media.picker` or `media.vision-camera`
@@ -439,7 +440,7 @@ export function useTheme() {
 | Manifest (`.rns/rn-init.json`) | Expo + Bare | Project passport + migrations |
 | Doctor (`doctor --env`, `doctor`) | Expo + Bare | Safety gate for changes |
 | DX baseline (alias/SVG/fonts/env) | Expo + Bare | Zero manual setup |
-| CI/CD Workflows (GitHub Actions templates) | Expo + Bare | ⚠️ PLANNED - Implementation in TODO Section 24 |
+| CI/CD Workflows (GitHub Actions templates) | Expo + Bare | ✅ **Implemented** (section 24) |
 | Theme System (dark/light) | Expo + Bare | Theme provider + tokens |
 | Splash Screen | Expo + Bare | Boot splash screen |
 | Feature Flags Registry | Expo + Bare | Local feature flags (extendable by plugins) |
@@ -549,9 +550,8 @@ rns plugin add offline.netinfo offline.outbox storage.sqlite
 ## 🗺️ Project Status
 
 - ✅ **Core Features**: Base app generation (Expo/Bare), plugin system foundation, CORE baseline
-- ✅ **Completed**: CLI foundation, init pipeline, DX baseline, docs contract
-- 🚧 **In Progress**: Template packs system, dynamic attachment engine, marker patcher
-- 📋 **Roadmap**: See `docs/TODO.md` for detailed work order (23 sections total)
+- ✅ **Completed**: CLI foundation, init pipeline, DX baseline, docs contract, template packs, attachment engine, marker patcher, runtime wiring, patch operations, state system, dependency layer, modulator engine, permissions model, environment doctor, project doctor, plugin framework, plugin commands, module framework, module commands, verification & smoke tests, CI/CD workflows, component generation, navigation presets, navigation registry, i18n integration, expanded init options
+- 📋 **Roadmap**: See `docs/TODO.md` for detailed work order (sections 1-30 completed, remaining sections pending)
 
 ---
 
@@ -565,18 +565,25 @@ All canonical documentation lives under `docs/`:
 - **`docs/AGENT.md`** — AI agent rules (scope control + acceptance checks)
 - **`docs/cli-interface-and-types.md`** — canonical contracts/types (**no duplicated schema elsewhere**)
 - **`docs/plugins-permissions.md`** — permission IDs dataset + platform mapping
+- **`docs/navigation.md`** — navigation registry system documentation (React Navigation)
 
 <details>
 <summary><b>📋 Canonical Docs Contract</b> (for maintainers)</summary>
 
-The following six documents form the **canonical, non-duplicated** documentation set. This contract ensures work can be delegated safely without schema duplication or intent loss.
+The following documents form the **canonical, non-duplicated** documentation set. This contract ensures work can be delegated safely without schema duplication or intent loss.
 
+**Core Canonical Docs:**
 1. **`README.md`** (this file) — high-level product model + quick start
 2. **`docs/TODO.md`** — single work-order (execute top-to-bottom)
 3. **`docs/WORKFLOW.md`** — repo execution rules (run/verify/commit/no regressions)
 4. **`docs/AGENT.md`** — AI agent rules (scope control + acceptance checks)
 5. **`docs/cli-interface-and-types.md`** — canonical type names/shapes index (**no duplicated schema elsewhere**)
 6. **`docs/plugins-permissions.md`** — permission IDs dataset + platform mapping
+
+**Additional Reference Docs:**
+- **`docs/navigation.md`** — navigation registry system documentation (React Navigation)
+- **`docs/ALIGNMENT.md`** — architectural decisions and alignment tasks
+- **`docs/SPEC_ACCEPTANCE.md`** — test mapping to TODO sections
 
 **Documentation Rules:**
 - **Do not shrink or delete intent** — if content is too long, move it to a dedicated doc instead of removing it

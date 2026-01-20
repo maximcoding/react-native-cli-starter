@@ -106,6 +106,12 @@ export function getTabScreens(): NavScreen[] {
 
 **Note**: Tabs work even if your preset was "stack-only" - they'll be added to the navigation structure automatically.
 
+**Default Behavior:**
+- If you don't register tab screens, placeholder tabs are used (TAB_HOME, TAB_SETTINGS)
+- Placeholder tabs have default emoji icons (🏠 for Home, ⚙️ for Settings)
+- Tab labels are automatically translated via i18n if available (using `navigation.tabs.tab_home`, `navigation.tabs.tab_settings`)
+- You can override icons and labels by providing `options` in your registry
+
 ### 3. Register Modal Screens
 
 ```typescript
