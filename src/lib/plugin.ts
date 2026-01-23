@@ -259,14 +259,17 @@ export async function addPlugins(
       
       if (result.success) {
         const descriptor = registry.getPlugin(pluginId);
-        const packPath = `packages/@rns/plugin-${pluginId}`;
+        // Use resolvePackDestinationPath to get category-based path
+        const { resolvePackDestinationPath } = await import('./pack-locations');
+        const packPath = resolvePackDestinationPath('plugin', pluginId, context.resolvedRoot);
+        const relativePackPath = packPath.replace(context.resolvedRoot + '/', '');
         
         results.push({
           pluginId,
           success: true,
           skipped: false,
           summary: {
-            packAttached: packPath,
+            packAttached: relativePackPath,
             dependenciesInstalled: {
               runtime: plan.dependencies.runtime.length,
               dev: plan.dependencies.dev.length,
@@ -407,7 +410,11 @@ export async function removePlugins(
         });
         context.logger.info(`✓ ${pluginId} removed successfully`);
         if (options.verbose) {
-          context.logger.info(`  - Pack removed: packages/@rns/plugin-${pluginId}`);
+          // Use resolvePackDestinationPath to get category-based path
+          const { resolvePackDestinationPath } = await import('./pack-locations');
+          const packPath = resolvePackDestinationPath('plugin', pluginId, context.resolvedRoot);
+          const relativePackPath = packPath.replace(context.resolvedRoot + '/', '');
+          context.logger.info(`  - Pack removed: ${relativePackPath}`);
         }
       } else {
         results.push({
@@ -533,13 +540,15 @@ export async function runPluginDoctor(
   const { pathExists } = await import('./fs');
   const { join } = await import('path');
   
+  const { resolvePackDestinationPath } = await import('./pack-locations');
   for (const plugin of installed) {
-    const pluginPackagePath = join(context.resolvedRoot, 'packages', '@rns', `plugin-${plugin.id}`);
+    const pluginPackagePath = resolvePackDestinationPath('plugin', plugin.id, context.resolvedRoot);
+    const relativePackPath = pluginPackagePath.replace(context.resolvedRoot + '/', '');
     if (!pathExists(pluginPackagePath)) {
       issues.push(`Plugin package for "${plugin.id}" not found at ${pluginPackagePath}`);
-      context.logger.error(`✗ Plugin package missing: ${pluginPackagePath}`);
+      context.logger.error(`✗ Plugin package missing: ${relativePackPath}`);
     } else {
-      context.logger.info(`✓ Plugin package exists: packages/@rns/plugin-${plugin.id}`);
+      context.logger.info(`✓ Plugin package exists: ${relativePackPath}`);
     }
   }
 

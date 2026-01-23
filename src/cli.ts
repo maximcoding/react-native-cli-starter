@@ -89,6 +89,9 @@ Usage:
 
 Commands:
   init        Create a new React Native app with CORE baseline
+              Usage: rns init <name> [--target expo|bare] [--lang ts|js] [--pm npm|pnpm|yarn] [--platforms ios,android] [--rn-version <version>] [--locales en,ru,de] [--yes]
+              Note: Use --yes to skip all prompts and use defaults for features, locales, plugins, and dependencies
+              Note: Use --locales to specify which locales to use for i18n (e.g., --locales en,ru,de). English is always included.
   plugin      Manage plugins (list, add, remove, status, doctor)
   module      Manage modules (list, add, status, doctor)
   component   Generate UI components (add)

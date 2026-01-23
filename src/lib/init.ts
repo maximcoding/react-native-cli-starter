@@ -41,6 +41,12 @@ import { generateCiCdWorkflows } from './cicd-workflows';
 export interface InitOptions {
   projectName?: string;
   destination?: string;
+  target?: 'expo' | 'bare';
+  language?: 'ts' | 'js';
+  packageManager?: 'npm' | 'pnpm' | 'yarn';
+  reactNativeVersion?: string;
+  platforms?: string[];
+  locales?: string[];
   context: RuntimeContext;
 }
 
@@ -177,41 +183,64 @@ export async function collectInitInputs(options: InitOptions): Promise<InitInput
   }
 
   // 3. Target: Expo or Bare
-  const target = isNonInteractive
-    ? DEFAULT_TARGET
-    : await promptSelect('Select target', [
-        { label: String(DEFAULT_TARGET) === 'expo' ? 'Expo (default)' : 'Expo', value: 'expo' as const },
-        { label: String(DEFAULT_TARGET) === 'bare' ? 'Bare React Native (default)' : 'Bare React Native', value: 'bare' as const },
-      ], DEFAULT_TARGET);
+  let target: 'expo' | 'bare';
+  if (options.target) {
+    // Use provided target from command-line flag
+    target = options.target;
+  } else if (isNonInteractive) {
+    target = DEFAULT_TARGET;
+  } else {
+    target = await promptSelect('Select target', [
+      { label: String(DEFAULT_TARGET) === 'expo' ? 'Expo (default)' : 'Expo', value: 'expo' as const },
+      { label: String(DEFAULT_TARGET) === 'bare' ? 'Bare React Native (default)' : 'Bare React Native', value: 'bare' as const },
+    ], DEFAULT_TARGET);
+  }
 
   // 4. Language: TS or JS
-  const language = isNonInteractive
-    ? DEFAULT_LANGUAGE
-    : await promptSelect('Select language', [
-        { label: String(DEFAULT_LANGUAGE) === 'ts' ? 'TypeScript (default)' : 'TypeScript', value: 'ts' as const },
-        { label: String(DEFAULT_LANGUAGE) === 'js' ? 'JavaScript (default)' : 'JavaScript', value: 'js' as const },
-      ], DEFAULT_LANGUAGE);
+  let language: 'ts' | 'js';
+  if (options.language) {
+    // Use provided language from command-line flag
+    language = options.language;
+  } else if (isNonInteractive) {
+    language = DEFAULT_LANGUAGE;
+  } else {
+    language = await promptSelect('Select language', [
+      { label: String(DEFAULT_LANGUAGE) === 'ts' ? 'TypeScript (default)' : 'TypeScript', value: 'ts' as const },
+      { label: String(DEFAULT_LANGUAGE) === 'js' ? 'JavaScript (default)' : 'JavaScript', value: 'js' as const },
+    ], DEFAULT_LANGUAGE);
+  }
 
   // 5. Package manager
-  const packageManager = isNonInteractive
-    ? DEFAULT_PACKAGE_MANAGER
-    : await promptSelect('Select package manager', [
-        { label: String(DEFAULT_PACKAGE_MANAGER) === 'npm' ? 'npm (default)' : 'npm', value: 'npm' as const },
-        { label: String(DEFAULT_PACKAGE_MANAGER) === 'pnpm' ? 'pnpm (default)' : 'pnpm', value: 'pnpm' as const },
-        { label: String(DEFAULT_PACKAGE_MANAGER) === 'yarn' ? 'yarn (default)' : 'yarn', value: 'yarn' as const },
-      ], DEFAULT_PACKAGE_MANAGER);
+  let packageManager: 'npm' | 'pnpm' | 'yarn';
+  if (options.packageManager) {
+    // Use provided package manager from command-line flag
+    packageManager = options.packageManager;
+  } else if (isNonInteractive) {
+    packageManager = DEFAULT_PACKAGE_MANAGER;
+  } else {
+    packageManager = await promptSelect('Select package manager', [
+      { label: String(DEFAULT_PACKAGE_MANAGER) === 'npm' ? 'npm (default)' : 'npm', value: 'npm' as const },
+      { label: String(DEFAULT_PACKAGE_MANAGER) === 'pnpm' ? 'pnpm (default)' : 'pnpm', value: 'pnpm' as const },
+      { label: String(DEFAULT_PACKAGE_MANAGER) === 'yarn' ? 'yarn (default)' : 'yarn', value: 'yarn' as const },
+    ], DEFAULT_PACKAGE_MANAGER);
+  }
 
   // 6. RN version (only for Bare)
   let reactNativeVersion: string | undefined;
   if (target === 'bare') {
-    reactNativeVersion = isNonInteractive
-      ? DEFAULT_RN_VERSION
-      : await promptSelect('Select React Native version', [
-          { label: String(DEFAULT_RN_VERSION) === 'latest' ? 'Latest stable (default)' : 'Latest stable', value: 'latest' },
-          { label: String(DEFAULT_RN_VERSION) === '0.74' ? '0.74.x (default)' : '0.74.x', value: '0.74' },
-          { label: String(DEFAULT_RN_VERSION) === '0.73' ? '0.73.x (default)' : '0.73.x', value: '0.73' },
-          { label: String(DEFAULT_RN_VERSION) === '0.72' ? '0.72.x (default)' : '0.72.x', value: '0.72' },
-        ], DEFAULT_RN_VERSION);
+    if (options.reactNativeVersion) {
+      // Use provided React Native version from command-line flag
+      reactNativeVersion = options.reactNativeVersion;
+    } else if (isNonInteractive) {
+      reactNativeVersion = DEFAULT_RN_VERSION;
+    } else {
+      reactNativeVersion = await promptSelect('Select React Native version', [
+        { label: String(DEFAULT_RN_VERSION) === 'latest' ? 'Latest stable (default)' : 'Latest stable', value: 'latest' },
+        { label: String(DEFAULT_RN_VERSION) === '0.74' ? '0.74.x (default)' : '0.74.x', value: '0.74' },
+        { label: String(DEFAULT_RN_VERSION) === '0.73' ? '0.73.x (default)' : '0.73.x', value: '0.73' },
+        { label: String(DEFAULT_RN_VERSION) === '0.72' ? '0.72.x (default)' : '0.72.x', value: '0.72' },
+      ], DEFAULT_RN_VERSION);
+    }
   }
 
   // 6.1 Multi-option selection (section 29)
@@ -364,7 +393,29 @@ export async function collectInitInputs(options: InitOptions): Promise<InitInput
   let locales: string[];
   if (!selectedOptions.i18n) {
     locales = [];
+  } else if (options.locales) {
+    // Use provided locales from --locales flag
+    const providedLocales = options.locales;
+    
+    // Validate that all provided locale codes exist in AVAILABLE_LOCALES
+    const availableCodes = AVAILABLE_LOCALES.map(l => l.code);
+    const invalidLocales = providedLocales.filter(code => !availableCodes.includes(code));
+    
+    if (invalidLocales.length > 0) {
+      throw new CliError(
+        `Invalid locale code(s): ${invalidLocales.join(', ')}. Available locales: ${availableCodes.join(', ')}`,
+        ExitCode.VALIDATION_STATE_FAILURE
+      );
+    }
+    
+    // Ensure English is always included if not already selected
+    if (!providedLocales.includes('en')) {
+      providedLocales.unshift('en');
+    }
+    
+    locales = providedLocales;
   } else if (isNonInteractive) {
+    // Use default locales when --yes is used without --locales flag
     locales = DEFAULT_LOCALES;
   } else {
     const localeChoices = AVAILABLE_LOCALES.map(locale => ({
@@ -738,54 +789,707 @@ function generateNavigationRegistry(appRoot: string, inputs: InitInputs): void {
 
   const registryFile = join(registryDir, 'registry.ts');
   
-  // Read template from bare variant
-  const bareVariantPath = resolvePackSourcePath('core', 'base');
-  const bareVariantRegistryPath = join(bareVariantPath, 'variants', 'bare', USER_SRC_DIR, 'app', 'navigation', 'registry.ts');
+  // Generate registry content with example screens based on preset
+  // Always overwrite (this is generated content, not user-owned)
+  const registryContent = generateRegistryContent(inputs);
+  writeTextFile(registryFile, registryContent);
+}
+
+/**
+ * Generates registry content with example screen registrations based on preset
+ */
+function generateRegistryContent(inputs: InitInputs): string {
+  const preset = inputs.navigationPreset || 'stack-only';
+  const fileExt = inputs.language === 'ts' ? 'tsx' : 'jsx';
   
-  if (pathExists(bareVariantRegistryPath)) {
-    // Copy registry template from bare variant
-    const registryContent = readTextFile(bareVariantRegistryPath);
-    writeTextFile(registryFile, registryContent);
-  } else {
-    // Fallback: generate basic registry if template doesn't exist
-    const registryContent = `/**
+  // Build imports based on what screens are generated
+  let imports = `import type { NavScreen, CustomNavigator } from '@rns/navigation';
+import { ROUTES, createRoute } from '@rns/navigation';
+`;
+  
+  imports += `import HomeScreen from '@/screens/HomeScreen';
+import SettingsScreen from '@/screens/SettingsScreen';
+`;
+
+  const hasStackNav = preset === 'stack-tabs' || preset === 'stack-tabs-modals' || preset === 'stack-only';
+  if (hasStackNav) {
+    imports += `import DetailScreen from '@/screens/DetailScreen';
+`;
+  }
+
+  if (preset === 'stack-tabs-modals') {
+    imports += `import InfoModal from '@/screens/InfoModal';
+`;
+  }
+
+  // Build registry functions based on preset
+  let stackScreens = '';
+  let tabScreens = '';
+  let modalScreens = '';
+  let drawerScreens = '';
+
+  if (preset === 'stack-only') {
+    stackScreens = `  return [
+    { name: ROUTES.SCREEN_HOME, component: HomeScreen, order: 10 },
+    { name: ROUTES.SCREEN_SETTINGS, component: SettingsScreen, order: 20 },
+    { name: createRoute('SCREEN_DETAIL'), component: DetailScreen, order: 30 },
+  ];`;
+  } else if (preset === 'tabs-only') {
+    tabScreens = `  return [
+    { name: ROUTES.TAB_HOME, component: HomeScreen, order: 10 },
+    { name: ROUTES.TAB_SETTINGS, component: SettingsScreen, order: 20 },
+  ];`;
+  } else if (preset === 'stack-tabs') {
+    stackScreens = `  return [
+    { name: ROUTES.SCREEN_HOME, component: HomeScreen, order: 10 },
+    { name: ROUTES.SCREEN_SETTINGS, component: SettingsScreen, order: 20 },
+    { name: createRoute('SCREEN_DETAIL'), component: DetailScreen, order: 30 },
+  ];`;
+    tabScreens = `  return [
+    { name: ROUTES.TAB_HOME, component: HomeScreen, order: 10 },
+    { name: ROUTES.TAB_SETTINGS, component: SettingsScreen, order: 20 },
+  ];`;
+  } else if (preset === 'stack-tabs-modals') {
+    stackScreens = `  return [
+    { name: ROUTES.SCREEN_HOME, component: HomeScreen, order: 10 },
+    { name: ROUTES.SCREEN_SETTINGS, component: SettingsScreen, order: 20 },
+    { name: createRoute('SCREEN_DETAIL'), component: DetailScreen, order: 30 },
+  ];`;
+    tabScreens = `  return [
+    { name: ROUTES.TAB_HOME, component: HomeScreen, order: 10 },
+    { name: ROUTES.TAB_SETTINGS, component: SettingsScreen, order: 20 },
+  ];`;
+    modalScreens = `  return [
+    { name: ROUTES.MODAL_INFO, component: InfoModal, order: 10 },
+  ];`;
+  } else if (preset === 'drawer') {
+    drawerScreens = `  return [
+    { name: ROUTES.SCREEN_HOME, component: HomeScreen, order: 10 },
+    { name: ROUTES.SCREEN_SETTINGS, component: SettingsScreen, order: 20 },
+  ];`;
+  }
+
+  // Default empty returns for functions not used by preset
+  if (!stackScreens) stackScreens = '  return [];';
+  if (!tabScreens) tabScreens = '  return [];';
+  if (!modalScreens) modalScreens = '  return [];';
+  if (!drawerScreens) drawerScreens = '  return [];';
+
+  return `/**
  * FILE: src/app/navigation/registry.ts
  * PURPOSE: Navigation screen registry (User Zone).
  * OWNERSHIP: USER
  *
  * Register your screens here to extend or replace the CORE navigation structure.
  * All functions are optional - if not provided, placeholder screens are used.
+ *
+ * The preset you chose during init (${preset}) is just a starting point.
+ * You can extend beyond it by registering screens here.
+ *
+ * Example screens have been pre-registered based on your preset.
+ * You can edit or remove these registrations as needed.
  */
 
-import type { NavScreen, CustomNavigator } from '@rns/navigation';
-import { ROUTES, createRoute } from '@rns/navigation';
-
+${imports}
+/**
+ * Register stack screens.
+ * These appear in stack navigators (root stack, nested stacks).
+ */
 export function getStackScreens(): NavScreen[] {
-  return [];
+${stackScreens}
 }
 
+/**
+ * Register tab screens.
+ * These appear in bottom tab navigators.
+ * Works even if your preset was "stack-only" - tabs will be added to the structure.
+ */
 export function getTabScreens(): NavScreen[] {
-  return [];
+${tabScreens}
 }
 
+/**
+ * Register modal screens.
+ * These appear as modal presentations.
+ * Works regardless of preset - modals can always be added.
+ */
 export function getModalScreens(): NavScreen[] {
-  return [];
+${modalScreens}
 }
 
+/**
+ * Register drawer screens.
+ * These appear in drawer navigators (if drawer preset was chosen).
+ * You can also add drawer screens even if preset wasn't "drawer" - drawer will be added.
+ */
 export function getDrawerScreens(): NavScreen[] {
-  return [];
+${drawerScreens}
 }
 
+/**
+ * Register custom navigators.
+ * Maximum flexibility - register entire navigator components.
+ * These can be custom stacks, tabs, drawers, or any React Navigation navigator.
+ */
 export function getCustomNavigators(): CustomNavigator[] {
   return [];
 }
 
+/**
+ * Register root stack screens.
+ * These appear at the root level of the stack navigator.
+ * Useful for complex hierarchies (e.g., onboarding → auth → app).
+ */
 export function getRootStackScreens(): NavScreen[] {
   return [];
 }
 `;
-    writeTextFile(registryFile, registryContent);
+}
+
+/**
+ * Section 27, 29: Generates example screens in User Zone based on navigation preset.
+ * Creates screens in src/screens/ and updates registry to use them.
+ */
+function generateExampleScreens(appRoot: string, inputs: InitInputs): void {
+  if (!inputs.selectedOptions.reactNavigation || !inputs.navigationPreset) {
+    return;
   }
+
+  const screensDir = join(appRoot, USER_SRC_DIR, 'screens');
+  ensureDir(screensDir);
+
+  const fileExt = inputs.language === 'ts' ? 'tsx' : 'jsx';
+  const hasI18n = inputs.selectedOptions.i18n === true;
+  const hasTheming = inputs.selectedOptions.theming === true;
+
+  // Always generate HomeScreen and SettingsScreen
+  const homeScreenContent = generateHomeScreen(inputs.language, hasI18n, hasTheming, inputs.navigationPreset);
+  writeTextFile(join(screensDir, `HomeScreen.${fileExt}`), homeScreenContent);
+
+  const settingsScreenContent = generateSettingsScreen(inputs.language, hasI18n, hasTheming);
+  writeTextFile(join(screensDir, `SettingsScreen.${fileExt}`), settingsScreenContent);
+
+  // Generate additional screens based on preset
+  if (inputs.navigationPreset === 'stack-tabs' || inputs.navigationPreset === 'stack-tabs-modals' || inputs.navigationPreset === 'stack-only') {
+    const detailScreenContent = generateDetailScreen(inputs.language, hasI18n, hasTheming);
+    writeTextFile(join(screensDir, `DetailScreen.${fileExt}`), detailScreenContent);
+  }
+
+  if (inputs.navigationPreset === 'stack-tabs-modals') {
+    const modalContent = generateInfoModal(inputs.language, hasI18n, hasTheming);
+    writeTextFile(join(screensDir, `InfoModal.${fileExt}`), modalContent);
+  }
+}
+
+/**
+ * Generates HomeScreen component
+ */
+function generateHomeScreen(
+  language: 'ts' | 'js',
+  hasI18n: boolean,
+  hasTheming: boolean,
+  preset: string
+): string {
+  const hasStackNav = preset === 'stack-tabs' || preset === 'stack-tabs-modals' || preset === 'stack-only';
+
+  let imports = `import React from 'react';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { ROUTES, createRoute } from '@rns/navigation';
+`;
+
+  if (hasI18n) {
+    imports += `import { useT } from '@/hooks/useT';
+`;
+  }
+
+  if (hasTheming) {
+    imports += `import { useTheme } from '@rns/core/theme';
+`;
+  }
+
+  const themeHook = hasTheming ? '  const { theme } = useTheme();' : '';
+  const tHook = hasI18n ? '  const t = useT();' : '';
+  const navigationHook = '  const navigation = useNavigation();';
+
+  const titleText = hasI18n ? '{t(\'screens.home.title\')}' : '\'Home\'';
+  const subtitleText = hasI18n ? '{t(\'screens.home.subtitle\')}' : '\'Welcome to your app!\'';
+  const settingsButtonText = hasI18n ? '{t(\'screens.home.go_settings\')}' : '\'Go to Settings\'';
+  const detailButtonText = hasI18n ? '{t(\'screens.home.view_details\')}' : '\'View Details\'';
+
+  const styles = hasTheming
+    ? `  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      padding: theme.spacing.lg,
+      backgroundColor: theme.colors.background,
+      gap: theme.spacing.md,
+    },
+    title: {
+      fontSize: 24,
+      fontWeight: 'bold',
+      color: theme.colors.textPrimary,
+      marginBottom: theme.spacing.sm,
+    },
+    subtitle: {
+      fontSize: 16,
+      color: theme.colors.textSecondary,
+      marginBottom: theme.spacing.lg,
+    },
+    button: {
+      backgroundColor: theme.colors.primary || '#007AFF',
+      padding: theme.spacing.md,
+      borderRadius: theme.radius.md || 8,
+      marginBottom: theme.spacing.sm,
+    },
+    buttonText: {
+      color: theme.colors.textPrimary || '#FFFFFF',
+      textAlign: 'center',
+      fontSize: 16,
+      fontWeight: '600',
+    },
+  });`
+    : `  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      padding: 20,
+      backgroundColor: '#FFFFFF',
+      gap: 16,
+    },
+    title: {
+      fontSize: 24,
+      fontWeight: 'bold',
+      color: '#000000',
+      marginBottom: 8,
+    },
+    subtitle: {
+      fontSize: 16,
+      color: '#666666',
+      marginBottom: 24,
+    },
+    button: {
+      backgroundColor: '#007AFF',
+      padding: 16,
+      borderRadius: 8,
+      marginBottom: 12,
+    },
+    buttonText: {
+      color: '#FFFFFF',
+      textAlign: 'center',
+      fontSize: 16,
+      fontWeight: '600',
+    },
+  });`;
+
+  const detailButton = hasStackNav
+    ? `
+      <Pressable
+        style={styles.button}
+        onPress={() => navigation.navigate(createRoute('SCREEN_DETAIL') as never)}
+      >
+        <Text style={styles.buttonText}>${detailButtonText}</Text>
+      </Pressable>`
+    : '';
+
+  return `${imports}
+/**
+ * FILE: src/screens/HomeScreen.tsx
+ * PURPOSE: Example home screen (User Zone).
+ * OWNERSHIP: USER
+ * 
+ * This is an example screen demonstrating navigation patterns.
+ * You can edit or remove this file as needed.
+ */
+export default function HomeScreen() {
+${themeHook}
+${tHook}
+${navigationHook}
+
+${styles}
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>${titleText}</Text>
+      <Text style={styles.subtitle}>${subtitleText}</Text>
+
+      <Pressable
+        style={styles.button}
+        onPress={() => navigation.navigate(ROUTES.TAB_SETTINGS as never)}
+      >
+        <Text style={styles.buttonText}>${settingsButtonText}</Text>
+      </Pressable>
+${detailButton}
+    </View>
+  );
+}
+`;
+}
+
+/**
+ * Generates SettingsScreen component
+ */
+function generateSettingsScreen(
+  language: 'ts' | 'js',
+  hasI18n: boolean,
+  hasTheming: boolean
+): string {
+  const isTS = language === 'ts';
+  const typeAnnotation = isTS ? ': React.FC' : '';
+
+  let imports = `import React from 'react';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
+`;
+
+  if (hasI18n) {
+    imports += `import { useT } from '@/hooks/useT';
+import i18n from '@rns/core/i18n';
+`;
+  }
+
+  if (hasTheming) {
+    imports += `import { useTheme } from '@rns/core/theme';
+`;
+  }
+
+  const themeHook = hasTheming ? '  const { theme, mode, setTheme } = useTheme();' : '';
+  const tHook = hasI18n ? '  const t = useT();' : '';
+
+  const styles = hasTheming
+    ? `  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      padding: theme.spacing.lg,
+      backgroundColor: theme.colors.background,
+      gap: theme.spacing.md,
+    },
+    title: {
+      fontSize: 24,
+      fontWeight: 'bold',
+      color: theme.colors.textPrimary,
+      marginBottom: theme.spacing.lg,
+    },
+    button: {
+      backgroundColor: theme.colors.surface || '#F5F5F5',
+      padding: theme.spacing.md,
+      borderRadius: theme.radius.md || 8,
+      marginBottom: theme.spacing.sm,
+      borderWidth: 1,
+      borderColor: theme.colors.border || '#E0E0E0',
+    },
+    buttonText: {
+      color: theme.colors.textPrimary,
+      textAlign: 'center',
+      fontSize: 16,
+    },
+  });`
+    : `  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      padding: 20,
+      backgroundColor: '#FFFFFF',
+      gap: 16,
+    },
+    title: {
+      fontSize: 24,
+      fontWeight: 'bold',
+      color: '#000000',
+      marginBottom: 24,
+    },
+    button: {
+      backgroundColor: '#F5F5F5',
+      padding: 16,
+      borderRadius: 8,
+      marginBottom: 12,
+      borderWidth: 1,
+      borderColor: '#E0E0E0',
+    },
+    buttonText: {
+      color: '#000000',
+      textAlign: 'center',
+      fontSize: 16,
+    },
+  });`;
+
+  const languageSwitcher = hasI18n
+    ? `
+      <Text style={styles.title}>${hasI18n ? '{t(\'screens.settings.language\')}' : '\'Language\''}</Text>
+      <Pressable
+        style={styles.button}
+        onPress={() => i18n.changeLanguage('en')}
+      >
+        <Text style={styles.buttonText}>English</Text>
+      </Pressable>
+      <Pressable
+        style={styles.button}
+        onPress={() => i18n.changeLanguage('ru')}
+      >
+        <Text style={styles.buttonText}>Русский</Text>
+      </Pressable>
+      <Pressable
+        style={styles.button}
+        onPress={() => i18n.changeLanguage('de')}
+      >
+        <Text style={styles.buttonText}>Deutsch</Text>
+      </Pressable>`
+    : '';
+
+  const themeSwitcher = hasTheming
+    ? `
+      <Text style={styles.title}>${hasI18n ? '{t(\'screens.settings.theme\')}' : '\'Theme\''}</Text>
+      <Pressable
+        style={styles.button}
+        onPress={() => {
+          const next = mode === 'light' ? 'dark' : mode === 'dark' ? 'system' : 'light';
+          setTheme(next);
+        }}
+      >
+        <Text style={styles.buttonText}>${hasI18n ? '{t(\'screens.settings.theme_current\')}' : '\'Theme: \''} {mode}</Text>
+      </Pressable>`
+    : '';
+
+  return `${imports}
+/**
+ * FILE: src/screens/SettingsScreen.tsx
+ * PURPOSE: Example settings screen (User Zone).
+ * OWNERSHIP: USER
+ * 
+ * This is an example screen demonstrating settings patterns.
+ * You can edit or remove this file as needed.
+ */
+export default function SettingsScreen() {
+${themeHook}
+${tHook}
+
+${styles}
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>${hasI18n ? '{t(\'screens.settings.title\')}' : '\'Settings\''}</Text>
+${languageSwitcher}
+${themeSwitcher}
+    </View>
+  );
+}
+`;
+}
+
+/**
+ * Generates DetailScreen component (for stack navigation)
+ */
+function generateDetailScreen(
+  language: 'ts' | 'js',
+  hasI18n: boolean,
+  hasTheming: boolean
+): string {
+  const isTS = language === 'ts';
+  const typeAnnotation = isTS ? ': React.FC' : '';
+
+  let imports = `import React from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+`;
+
+  if (hasI18n) {
+    imports += `import { useT } from '@/hooks/useT';
+`;
+  }
+
+  if (hasTheming) {
+    imports += `import { useTheme } from '@rns/core/theme';
+`;
+  }
+
+  const themeHook = hasTheming ? '  const { theme } = useTheme();' : '';
+  const tHook = hasI18n ? '  const t = useT();' : '';
+
+  const styles = hasTheming
+    ? `  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      padding: theme.spacing.lg,
+      backgroundColor: theme.colors.background,
+    },
+    title: {
+      fontSize: 24,
+      fontWeight: 'bold',
+      color: theme.colors.textPrimary,
+      marginBottom: theme.spacing.md,
+    },
+    text: {
+      fontSize: 16,
+      color: theme.colors.textSecondary,
+    },
+  });`
+    : `  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      padding: 20,
+      backgroundColor: '#FFFFFF',
+    },
+    title: {
+      fontSize: 24,
+      fontWeight: 'bold',
+      color: '#000000',
+      marginBottom: 16,
+    },
+    text: {
+      fontSize: 16,
+      color: '#666666',
+    },
+  });`;
+
+  return `${imports}
+/**
+ * FILE: src/screens/DetailScreen.tsx
+ * PURPOSE: Example detail screen demonstrating stack navigation (User Zone).
+ * OWNERSHIP: USER
+ * 
+ * This screen is navigated to from HomeScreen to demonstrate stack navigation.
+ * You can edit or remove this file as needed.
+ */
+export default function DetailScreen() {
+${themeHook}
+${tHook}
+
+${styles}
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>${hasI18n ? '{t(\'screens.detail.title\')}' : '\'Detail Screen\''}</Text>
+      <Text style={styles.text}>${hasI18n ? '{t(\'screens.detail.description\')}' : '\'This is an example detail screen that demonstrates stack navigation.\''}</Text>
+    </View>
+  );
+}
+`;
+}
+
+/**
+ * Generates InfoModal component (for modal presentation)
+ */
+function generateInfoModal(
+  language: 'ts' | 'js',
+  hasI18n: boolean,
+  hasTheming: boolean
+): string {
+  const isTS = language === 'ts';
+  const typeAnnotation = isTS ? ': React.FC' : '';
+
+  let imports = `import React from 'react';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+`;
+
+  if (hasI18n) {
+    imports += `import { useT } from '@/hooks/useT';
+`;
+  }
+
+  if (hasTheming) {
+    imports += `import { useTheme } from '@rns/core/theme';
+`;
+  }
+
+  const themeHook = hasTheming ? '  const { theme } = useTheme();' : '';
+  const tHook = hasI18n ? '  const t = useT();' : '';
+  const navigationHook = '  const navigation = useNavigation();';
+
+  const styles = hasTheming
+    ? `  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      padding: theme.spacing.lg,
+      backgroundColor: theme.colors.background,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    title: {
+      fontSize: 24,
+      fontWeight: 'bold',
+      color: theme.colors.textPrimary,
+      marginBottom: theme.spacing.md,
+    },
+    text: {
+      fontSize: 16,
+      color: theme.colors.textSecondary,
+      textAlign: 'center',
+      marginBottom: theme.spacing.xl,
+    },
+    button: {
+      backgroundColor: theme.colors.primary || '#007AFF',
+      padding: theme.spacing.md,
+      borderRadius: theme.radius.md || 8,
+      minWidth: 120,
+    },
+    buttonText: {
+      color: theme.colors.textPrimary || '#FFFFFF',
+      textAlign: 'center',
+      fontSize: 16,
+      fontWeight: '600',
+    },
+  });`
+    : `  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      padding: 20,
+      backgroundColor: '#FFFFFF',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    title: {
+      fontSize: 24,
+      fontWeight: 'bold',
+      color: '#000000',
+      marginBottom: 16,
+    },
+    text: {
+      fontSize: 16,
+      color: '#666666',
+      textAlign: 'center',
+      marginBottom: 32,
+    },
+    button: {
+      backgroundColor: '#007AFF',
+      padding: 16,
+      borderRadius: 8,
+      minWidth: 120,
+    },
+    buttonText: {
+      color: '#FFFFFF',
+      textAlign: 'center',
+      fontSize: 16,
+      fontWeight: '600',
+    },
+  });`;
+
+  return `${imports}
+/**
+ * FILE: src/screens/InfoModal.tsx
+ * PURPOSE: Example modal screen demonstrating modal presentation (User Zone).
+ * OWNERSHIP: USER
+ * 
+ * This is an example modal screen that demonstrates modal presentation.
+ * You can edit or remove this file as needed.
+ */
+export default function InfoModal() {
+${themeHook}
+${tHook}
+${navigationHook}
+
+${styles}
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>${hasI18n ? '{t(\'screens.modal.title\')}' : '\'Info Modal\''}</Text>
+      <Text style={styles.text}>${hasI18n ? '{t(\'screens.modal.description\')}' : '\'This is an example modal screen.\''}</Text>
+      <Pressable
+        style={styles.button}
+        onPress={() => navigation.goBack()}
+      >
+        <Text style={styles.buttonText}>${hasI18n ? '{t(\'screens.modal.close\')}' : '\'Close\''}</Text>
+      </Pressable>
+    </View>
+  );
+}
+`;
 }
 
 /**
@@ -1702,7 +2406,6 @@ function configureExpoRouter(appRoot: string, inputs: InitInputs): void {
       const hasTheming = inputs.selectedOptions?.theming === true;
       
       let layoutImports = `import { useEffect } from 'react';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Stack } from 'expo-router';
 import { initCore } from '@rns/runtime/core-init';
@@ -1742,14 +2445,12 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
-        {/* @rns-marker:providers:start */}
-        {/* Plugin providers will wrap children here */}
-        {/* @rns-marker:providers:end */}
+    <SafeAreaProvider>
+      {/* @rns-marker:providers:start */}
+      {/* Plugin providers will wrap children here */}
+      {/* @rns-marker:providers:end */}
 ${layoutProviders}
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+    </SafeAreaProvider>
   );
 }
 `
@@ -1765,14 +2466,12 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
-        {/* @rns-marker:providers:start */}
-        {/* Plugin providers will wrap children here */}
-        {/* @rns-marker:providers:end */}
+    <SafeAreaProvider>
+      {/* @rns-marker:providers:start */}
+      {/* Plugin providers will wrap children here */}
+      {/* @rns-marker:providers:end */}
 ${layoutProviders}
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+    </SafeAreaProvider>
   );
 }
 `;
@@ -1870,6 +2569,11 @@ function ensureMinimalAppEntrypoint(
   
   // Write the App.tsx (create or replace)
   writeTextFile(appEntryPath, appContent);
+  
+  // For Expo projects (without Expo Router), ensure index.ts uses registerRootComponent
+  if (inputs.target === 'expo' && !hasExpoRouter) {
+    ensureExpoEntryPoint(appRoot, inputs);
+  }
 }
 
 /**
@@ -1903,6 +2607,42 @@ import 'expo-router/entry';
 }
 
 /**
+ * Ensures index.ts uses registerRootComponent for Expo projects (without Expo Router)
+ */
+function ensureExpoEntryPoint(
+  appRoot: string,
+  inputs: InitInputs
+): void {
+  const indexPath = inputs.language === 'ts'
+    ? join(appRoot, 'index.ts')
+    : join(appRoot, 'index.js');
+  
+  // Create index.ts/js that uses registerRootComponent(App)
+  // This is the correct entry point for Expo projects with React Navigation
+  const entryContent = inputs.language === 'ts'
+    ? `import { registerRootComponent } from 'expo';
+
+import App from './App';
+
+// registerRootComponent calls AppRegistry.registerComponent('main', () => App);
+// It also ensures that whether you load the app in Expo Go or in a native build,
+// the environment is set up appropriately
+registerRootComponent(App);
+`
+    : `import { registerRootComponent } from 'expo';
+
+import App from './App';
+
+// registerRootComponent calls AppRegistry.registerComponent('main', () => App);
+// It also ensures that whether you load the app in Expo Go or in a native build,
+// the environment is set up appropriately
+registerRootComponent(App);
+`;
+  
+  writeTextFile(indexPath, entryContent);
+}
+
+/**
  * Generates App.tsx content with all providers and navigation visible
  */
 function generateAppTsxContent(inputs: InitInputs): string {
@@ -1912,10 +2652,17 @@ function generateAppTsxContent(inputs: InitInputs): string {
   
   // Base imports
   let imports = `import React, { useEffect } from 'react';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { initCore } from '@rns/runtime/core-init';
-// @rns-marker:imports:start
+`;
+  
+  // Only include gesture handler and safe area provider if React Navigation is enabled
+  if (hasReactNavigation) {
+    imports += `import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+`;
+  }
+  
+  imports += `// @rns-marker:imports:start
 // Plugin imports will be injected here
 // @rns-marker:imports:end
 `;
@@ -1926,7 +2673,7 @@ import { initCore } from '@rns/runtime/core-init';
 `;
   }
   
-  if (hasReactNavigation && inputs.target === 'bare') {
+  if (hasReactNavigation) {
     imports += `import { RnsNavigationRoot } from '@rns/navigation';
 `;
   }
@@ -1952,8 +2699,8 @@ export default function App() {
   return null;
 }
 `;
-  } else if (inputs.target === 'bare' && hasReactNavigation) {
-    // Bare RN with React Navigation
+  } else if (hasReactNavigation) {
+    // React Navigation (both Expo and Bare)
     let providers = '';
     if (hasTheming) {
       providers = `        <ThemeProvider>
@@ -1997,6 +2744,24 @@ ${providers}
       content = `        {/* Your app content here */}`;
     }
     
+    // Wrap with providers only if React Navigation is enabled
+    let wrapper = '';
+    if (hasReactNavigation) {
+      wrapper = `    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        {/* @rns-marker:providers:start */}
+        {/* Plugin providers will wrap children here */}
+        {/* @rns-marker:providers:end */}
+${content}
+      </SafeAreaProvider>
+    </GestureHandlerRootView>`;
+    } else {
+      wrapper = `    {/* @rns-marker:providers:start */}
+      {/* Plugin providers will wrap children here */}
+      {/* @rns-marker:providers:end */}
+${content}`;
+    }
+    
     return `${imports}
 /**
  * App entrypoint with all providers directly visible.
@@ -2009,14 +2774,7 @@ export default function App() {
   }, []);
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
-        {/* @rns-marker:providers:start */}
-        {/* Plugin providers will wrap children here */}
-        {/* @rns-marker:providers:end */}
-${content}
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+${wrapper}
   );
 }
 `;
@@ -2033,10 +2791,17 @@ function generateAppJsContent(inputs: InitInputs): string {
   
   // Base imports
   let imports = `import React, { useEffect } from 'react';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { initCore } from '@rns/runtime/core-init';
-// @rns-marker:imports:start
+`;
+  
+  // Only include gesture handler and safe area provider if React Navigation is enabled
+  if (hasReactNavigation) {
+    imports += `import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+`;
+  }
+  
+  imports += `// @rns-marker:imports:start
 // Plugin imports will be injected here
 // @rns-marker:imports:end
 `;
@@ -2047,7 +2812,7 @@ import { initCore } from '@rns/runtime/core-init';
 `;
   }
   
-  if (hasReactNavigation && inputs.target === 'bare') {
+  if (hasReactNavigation) {
     imports += `import { RnsNavigationRoot } from '@rns/navigation';
 `;
   }
@@ -2073,8 +2838,8 @@ export default function App() {
   return null;
 }
 `;
-  } else if (inputs.target === 'bare' && hasReactNavigation) {
-    // Bare RN with React Navigation
+  } else if (hasReactNavigation) {
+    // React Navigation (both Expo and Bare)
     let providers = '';
     if (hasTheming) {
       providers = `        <ThemeProvider>
@@ -2118,6 +2883,24 @@ ${providers}
       content = `        {/* Your app content here */}`;
     }
     
+    // Wrap with providers only if React Navigation is enabled
+    let wrapper = '';
+    if (hasReactNavigation) {
+      wrapper = `    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        {/* @rns-marker:providers:start */}
+        {/* Plugin providers will wrap children here */}
+        {/* @rns-marker:providers:end */}
+${content}
+      </SafeAreaProvider>
+    </GestureHandlerRootView>`;
+    } else {
+      wrapper = `    {/* @rns-marker:providers:start */}
+      {/* Plugin providers will wrap children here */}
+      {/* @rns-marker:providers:end */}
+${content}`;
+    }
+    
     return `${imports}
 /**
  * App entrypoint with all providers directly visible.
@@ -2130,14 +2913,7 @@ export default function App() {
   }, []);
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
-        {/* @rns-marker:providers:start */}
-        {/* Plugin providers will wrap children here */}
-        {/* @rns-marker:providers:end */}
-${content}
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+${wrapper}
   );
 }
 `;
@@ -2268,24 +3044,47 @@ function installCoreDependencies(
 
   // Section 26: React Navigation dependencies - only if React Navigation is selected
   if (inputs.selectedOptions.reactNavigation) {
-    const navDeps = [
-      '@react-navigation/native@latest',
-      '@react-navigation/native-stack@latest',
-      '@react-navigation/bottom-tabs@latest',
-      '@react-navigation/drawer@latest',
-      'react-native-gesture-handler@latest',
-      'react-native-safe-area-context@latest',
-      'react-native-screens@latest',
-      // Required for drawer and common in RN navigation stacks
-      'react-native-reanimated@latest',
-      // Required by react-native-reanimated 4.2+ (peer dependency)
-      'react-native-worklets@^0.7.1'
-    ];
-    for (const dep of navDeps) {
-      const pkgName = extractPackageName(dep);
-      if (!installedPackages.has(pkgName)) {
-        depsToInstall.push(dep);
-        installedPackages.add(pkgName);
+    // For Expo projects, use expo install to get SDK-compatible versions
+    // For Bare projects, use latest versions
+    if (inputs.target === 'expo') {
+      // Expo-compatible packages - will be installed via expo install
+      const expoNavDeps = [
+        '@react-navigation/native',
+        '@react-navigation/native-stack',
+        '@react-navigation/bottom-tabs',
+        '@react-navigation/drawer',
+        'react-native-gesture-handler',
+        'react-native-safe-area-context',
+        'react-native-screens',
+        'react-native-reanimated',
+        'react-native-svg', // Also needs to match Expo SDK
+      ];
+      for (const dep of expoNavDeps) {
+        if (!installedPackages.has(dep)) {
+          depsToInstall.push(dep);
+          installedPackages.add(dep);
+        }
+      }
+      // react-native-worklets is a peer dependency of react-native-reanimated
+      // Expo will install the correct version automatically via expo install
+    } else {
+      // Bare React Native - use latest versions
+      const navDeps = [
+        '@react-navigation/native@latest',
+        '@react-navigation/native-stack@latest',
+        '@react-navigation/bottom-tabs@latest',
+        '@react-navigation/drawer@latest',
+        'react-native-gesture-handler@latest',
+        'react-native-safe-area-context@latest',
+        'react-native-screens@latest',
+        'react-native-reanimated@latest',
+      ];
+      for (const dep of navDeps) {
+        const pkgName = extractPackageName(dep);
+        if (!installedPackages.has(pkgName)) {
+          depsToInstall.push(dep);
+          installedPackages.add(pkgName);
+        }
       }
     }
   }
@@ -2340,7 +3139,15 @@ function installCoreDependencies(
   // Section 29, 30: Expo-specific dependencies (only if target is Expo)
   if (inputs.target === 'expo') {
     if (inputs.selectedOptions.expoRouter) {
-      const expoRouterDeps = ['expo-router@latest', 'expo-linking@latest', 'expo-constants@latest'];
+      // Expo Router requires these peer dependencies
+      const expoRouterDeps = [
+        'expo-router@latest',
+        'expo-linking@latest',
+        'expo-constants@latest',
+        // Required peer dependencies for expo-router
+        'react-native-safe-area-context',
+        'react-native-screens',
+      ];
       for (const dep of expoRouterDeps) {
         const pkgName = extractPackageName(dep);
         if (!installedPackages.has(pkgName)) {
@@ -2457,19 +3264,113 @@ function installCoreDependencies(
   }
   
   // Install dependencies via package manager
-  // Use --legacy-peer-deps for npm to handle peer dependency conflicts (common with React Native/Expo)
-  // This is necessary when packages like Tamagui require different React versions than Expo provides
-  if (depsToInstall.length > 0) {
-    const installArgs = inputs.packageManager === 'yarn' 
-      ? ['add', ...depsToInstall]
-      : inputs.packageManager === 'pnpm'
-      ? ['add', ...depsToInstall]
-      : ['install', ...depsToInstall, '--legacy-peer-deps'];
-    
-    execPackageManager(inputs.packageManager, installArgs, {
-      cwd: appRoot,
-      stdio: verbose ? 'inherit' : 'pipe',
-    });
+  // For Expo projects, use 'expo install' for Expo-compatible packages to get SDK-matched versions
+  // For Bare projects, use regular package manager
+  if (depsToInstall.length > 0 || inputs.target === 'expo') {
+    if (inputs.target === 'expo') {
+      // For Expo projects, we need to install base dependencies (expo, react, react-native) first
+      // because 'expo install' requires expo to be installed to determine SDK version.
+      // These are already in package.json from create-expo-app, but not installed due to --no-install.
+      const packageJsonPath = join(appRoot, 'package.json');
+      let needsBaseInstall = false;
+      if (pathExists(packageJsonPath)) {
+        try {
+          const packageJson = readJsonFile<any>(packageJsonPath);
+          const deps = { ...packageJson.dependencies, ...packageJson.devDependencies };
+          // Check if expo is in package.json but might not be installed
+          if (deps.expo || deps.react || deps['react-native']) {
+            needsBaseInstall = true;
+          }
+        } catch {
+          // If we can't read package.json, continue with normal flow
+        }
+      }
+      
+      // Step 1: Install base dependencies from package.json first (expo, react, react-native)
+      // This is required because 'expo install' needs expo to be installed to determine SDK version
+      if (needsBaseInstall) {
+        const installArgs = inputs.packageManager === 'npm'
+          ? ['install', '--legacy-peer-deps']
+          : ['install'];
+        
+        execPackageManager(inputs.packageManager, installArgs, {
+          cwd: appRoot,
+          stdio: verbose ? 'inherit' : 'pipe',
+        });
+      }
+      
+      // Separate Expo-compatible packages from others
+      const expoCompatiblePackages = [
+        '@react-navigation/native',
+        '@react-navigation/native-stack',
+        '@react-navigation/bottom-tabs',
+        '@react-navigation/drawer',
+        'react-native-gesture-handler',
+        'react-native-safe-area-context',
+        'react-native-screens',
+        'react-native-reanimated',
+        'react-native-svg',
+        'expo-router',
+        'expo-linking',
+        'expo-constants',
+        'expo-status-bar',
+        'expo-system-ui',
+        'expo-web-browser',
+        'expo-dev-client',
+        '@expo/vector-icons',
+        'expo-image',
+        'expo-linear-gradient',
+        'expo-haptics',
+        'expo-device',
+      ];
+      
+      const expoDeps: string[] = [];
+      const regularDeps: string[] = [];
+      
+      for (const dep of depsToInstall) {
+        const pkgName = extractPackageName(dep);
+        if (expoCompatiblePackages.includes(pkgName)) {
+          expoDeps.push(pkgName);
+        } else {
+          regularDeps.push(dep);
+        }
+      }
+      
+      // Step 2: Install Expo-compatible packages via expo install (ensures SDK-compatible versions)
+      // Now that expo is installed, expo install can determine the SDK version
+      if (expoDeps.length > 0) {
+        execCommand(`npx --yes expo install ${expoDeps.join(' ')}`, {
+          cwd: appRoot,
+          stdio: verbose ? 'inherit' : 'pipe',
+        });
+      }
+      
+      // Step 3: Install other packages via regular package manager
+      if (regularDeps.length > 0) {
+        const installArgs = inputs.packageManager === 'yarn' 
+          ? ['add', ...regularDeps]
+          : inputs.packageManager === 'pnpm'
+          ? ['add', ...regularDeps]
+          : ['install', ...regularDeps, '--legacy-peer-deps'];
+        
+        execPackageManager(inputs.packageManager, installArgs, {
+          cwd: appRoot,
+          stdio: verbose ? 'inherit' : 'pipe',
+        });
+      }
+    } else {
+      // Bare React Native - use regular package manager
+      const installArgs = inputs.packageManager === 'yarn' 
+        ? ['add', ...depsToInstall]
+        : inputs.packageManager === 'pnpm'
+        ? ['add', ...depsToInstall]
+        : ['install', ...depsToInstall, '--legacy-peer-deps'];
+      
+      execPackageManager(inputs.packageManager, installArgs, {
+        cwd: appRoot,
+        stdio: verbose ? 'inherit' : 'pipe',
+      });
+    }
   }
   
   if (devDepsToInstall.length > 0) {
@@ -2734,6 +3635,11 @@ export async function runInit(options: InitOptions): Promise<void> {
       stepRunner.start('Generate navigation registry');
       generateNavigationRegistry(appRoot, inputs);
       stepRunner.ok('Generate navigation registry');
+      
+      // Section 27, 29: Generate example screens (User Zone) - for both Expo and Bare
+      stepRunner.start('Generate example screens');
+      generateExampleScreens(appRoot, inputs);
+      stepRunner.ok('Generate example screens');
     } else {
       stepRunner.start('Configure navigation preset');
       stepRunner.ok('Configure navigation preset (skipped - React Navigation not selected)');

@@ -96,7 +96,20 @@ rns doctor --env
 Expo:
 
 ```bash
+# Using the built CLI (after npm run build)
 rns init MyApp --target expo --lang ts --pm pnpm
+
+# Using npm scripts (local development)
+npm run cli -- init MyApp --target expo --lang ts --pm npm
+# OR (using the init script directly)
+npm run init -- MyApp --target expo --lang ts --pm npm
+
+# To skip ALL prompts (use defaults for features, locales, plugins, dependencies):
+npm run init -- MyApp --target expo --lang ts --pm npm --yes
+
+# To specify locales for i18n (English is always included):
+npm run init -- MyApp --target expo --lang ts --pm npm --locales en,ru,de --yes
+
 cd MyApp
 pnpm start
 ```
@@ -104,7 +117,20 @@ pnpm start
 Bare RN:
 
 ```bash
+# Using the built CLI (after npm run build)
 rns init MyApp --target bare --lang ts --pm pnpm --platforms ios,android
+
+# Using npm scripts (local development)
+npm run cli -- init MyApp --target bare --lang ts --pm pnpm --platforms ios,android
+# OR
+npm run init -- MyApp --target bare --lang ts --pm pnpm --platforms ios,android
+
+# To skip ALL prompts (use defaults):
+npm run init -- MyApp --target bare --lang ts --pm pnpm --platforms ios,android --yes
+
+# To specify locales for i18n (English is always included):
+npm run init -- MyApp --target bare --lang ts --pm pnpm --platforms ios,android --locales en,ru,de --yes
+
 cd MyApp
 pnpm ios
 pnpm android
@@ -427,6 +453,114 @@ export function useTheme() {
 
 ---
 
+## 🔌 Plugin Architecture (Hybrid Approach)
+
+CliMobile uses a **hybrid plugin architecture** that combines discoverability with stability, organized by category:
+
+### Structure
+
+```
+packages/@rns/               (System Zone - CLI-managed, source of truth)
+  ├── state/                 ← Category-based packages
+  │   └── zustand/           ← Plugin implementation (supports multiple plugins per category)
+  │       └── index.ts       ← Source implementation (stable, updatable)
+  ├── auth/
+  │   └── firebase/
+  │       └── index.ts       ← Source implementation (stable, updatable)
+  └── storage/
+      └── mmkv/
+          └── index.ts       ← Source implementation (stable, updatable)
+
+src/                          (User Zone - convenience re-exports with examples, user-editable)
+  ├── state/                 ← State plugins (created when state plugins installed)
+  │   └── zustand.ts        ← Re-exports + example stores (session, settings, UI)
+  ├── auth/                  ← Auth plugins (created when auth plugins installed)
+  │   └── firebase.ts       ← Re-exports from @rns/auth
+  └── storage/               ← Storage plugins (created when storage plugins installed)
+      └── mmkv.ts            ← Re-exports from @rns/storage
+```
+
+### Benefits
+
+1. **Discoverable**: Plugins are visible in `src/{category}/` where developers expect them, organized by domain
+2. **Stable**: Source of truth in System Zone (CLI-managed, updatable via CLI/plugins)
+3. **Customizable**: Users can override User Zone re-exports with custom implementations
+4. **Consistent**: Both import paths work (`@rns/plugin-*` and `@/{category}/*`)
+5. **Clean organization**: Category directories only created when plugins are installed (no empty directories)
+
+### Usage
+
+**Both import paths work:**
+
+```typescript
+// Convenience import (recommended for discoverability)
+import { createPersistedStore, useSessionStore, useSettingsStore } from '@/state/zustand';
+import { FirebaseAuthProvider } from '@/auth/firebase';
+import { MMKVStorage } from '@/storage/mmkv';
+
+// Direct import (System Zone - category-based packages)
+import { createPersistedStore } from '@rns/state';
+import { FirebaseAuthProvider } from '@rns/auth';
+import { MMKVStorage } from '@rns/storage';
+```
+
+### Category Organization
+
+Plugins are organized by category based on their ID prefix:
+
+- **`state.*`** → `src/state/` (e.g., `state.zustand` → `src/state/zustand.ts`)
+- **`auth.*`** → `src/auth/` (e.g., `auth.firebase` → `src/auth/firebase.ts`)
+- **`storage.*`** → `src/storage/` (e.g., `storage.mmkv` → `src/storage/mmkv.ts`)
+- **`nav.*`** → `src/nav/` (e.g., `nav.react-navigation` → `src/nav/react-navigation.ts`)
+- **Plugins without prefix** → `src/plugins/` (fallback)
+
+### State Stores Directory
+
+When state plugins are installed, `src/state/stores/` is automatically created for you to create your Zustand stores:
+
+```typescript
+// src/state/stores/session.store.ts
+import { createPersistedStore, createStorageAdapter } from '@/state/zustand';
+import { kvStorage } from '@rns/core/contracts/storage';
+
+interface SessionState {
+  token: string | null;
+  setToken: (token: string) => void;
+}
+
+export const useSessionStore = createPersistedStore<SessionState>(
+  (set) => ({
+    token: null,
+    setToken: (token) => set({ token }),
+  }),
+  {
+    name: 'session-store',
+    version: 1,
+    storage: createStorageAdapter(kvStorage),
+  }
+);
+```
+
+### Customization
+
+To customize a plugin re-export, replace the re-export in `src/{category}/` with your own implementation:
+
+```typescript
+// src/state/zustand.ts
+import { create } from 'zustand';
+import { createStorageAdapter } from '@rns/state';
+import { kvStorage } from '@rns/core/contracts/storage';
+
+// Your custom wrapper
+export function createPersistedStore<T>(...) {
+  // Your custom implementation
+}
+```
+
+**Note:** Custom implementations override the System Zone plugin for your project. The System Zone plugin remains unchanged and can still be accessed directly via `@rns/{category}` (e.g., `@rns/state`).
+
+---
+
 ## 📋 Capabilities Matrix
 
 ### CORE (Always Installed)
@@ -602,7 +736,9 @@ Canonical dev runner (must behave like released CLI):
 ```bash
 npm run cli -- --help
 npm run cli -- doctor --env
-npm run cli -- init MyApp --target expo
+npm run cli -- init MyApp --target expo --lang ts --pm npm
+# OR (using the init script directly)
+npm run init -- MyApp --target expo --lang ts --pm npm
 ```
 
 Workflow rules (mandatory):

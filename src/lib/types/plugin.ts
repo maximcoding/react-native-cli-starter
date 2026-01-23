@@ -33,6 +33,7 @@ export type PluginCategory =
   | 'media'
   | 'hardware'
   | 'data'
+  | 'state'
   | 'other';
 
 /**

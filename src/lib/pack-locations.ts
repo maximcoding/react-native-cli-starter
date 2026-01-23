@@ -56,6 +56,9 @@ export function resolveCliRoot(): string {
 
 /**
  * Resolves the template pack source directory path for a given pack type and ID
+ * 
+ * Note: Plugin and module IDs may contain dots (e.g., "state.zustand"), but directory names
+ * use dashes (e.g., "state-zustand"). This function normalizes the ID for path resolution.
  */
 export function resolvePackSourcePath(packType: PackType, packId: string): string {
   const cliRoot = resolveCliRoot();
@@ -65,12 +68,39 @@ export function resolvePackSourcePath(packType: PackType, packId: string): strin
       // CORE base pack is at templates/base (no packId subdirectory)
       return join(cliRoot, CORE_BASE_DIR);
     case 'plugin':
-      return join(cliRoot, PLUGIN_PACKS_DIR, packId);
+      // Normalize plugin ID: dots -> dashes (e.g., "state.zustand" -> "state-zustand")
+      const normalizedPluginId = packId.replace(/\./g, '-');
+      return join(cliRoot, PLUGIN_PACKS_DIR, normalizedPluginId);
     case 'module':
-      return join(cliRoot, MODULE_PACKS_DIR, packId);
+      // Normalize module ID: dots -> dashes (e.g., "user.auth" -> "user-auth")
+      const normalizedModuleId = packId.replace(/\./g, '-');
+      return join(cliRoot, MODULE_PACKS_DIR, normalizedModuleId);
     default:
       throw new Error(`Unknown pack type: ${packType}`);
   }
+}
+
+/**
+ * Extracts category from plugin ID (e.g., "state.zustand" -> "state")
+ */
+function getPluginCategory(pluginId: string): string {
+  const dotIndex = pluginId.indexOf('.');
+  if (dotIndex === -1) {
+    // No category prefix, use fallback
+    return 'plugins';
+  }
+  return pluginId.substring(0, dotIndex);
+}
+
+/**
+ * Extracts plugin name from plugin ID (e.g., "state.zustand" -> "zustand")
+ */
+function getPluginName(pluginId: string): string {
+  const dotIndex = pluginId.indexOf('.');
+  if (dotIndex === -1) {
+    return pluginId;
+  }
+  return pluginId.substring(dotIndex + 1);
 }
 
 /**
@@ -78,7 +108,7 @@ export function resolvePackSourcePath(packType: PackType, packId: string): strin
  * 
  * Rules (section 5.1):
  * - CORE packs: packages/@rns/<packId>
- * - Plugin packs: packages/@rns/plugin-<pluginId>
+ * - Plugin packs: packages/@rns/<category>/<pluginName> (category-based, supports multiple plugins per category)
  * - Module packs: src/modules/<moduleId> (user-owned business code)
  */
 export function resolvePackDestinationPath(
@@ -91,8 +121,11 @@ export function resolvePackDestinationPath(
       // CORE packs attach as workspace packages under packages/@rns/*
       return join(appRoot, APP_WORKSPACE_PACKAGES_DIR, packId);
     case 'plugin':
-      // Plugin packs attach as workspace packages: packages/@rns/plugin-<pluginId>
-      return join(appRoot, APP_WORKSPACE_PACKAGES_DIR, `plugin-${packId}`);
+      // Plugin packs attach as category-based packages: packages/@rns/<category>/<pluginName>
+      // This allows multiple plugins in the same category (e.g., state/zustand, state/redux-toolkit)
+      const category = getPluginCategory(packId);
+      const pluginName = getPluginName(packId);
+      return join(appRoot, APP_WORKSPACE_PACKAGES_DIR, category, pluginName);
     case 'module':
       // Module packs attach as user-owned business code: src/modules/<moduleId>
       // Note: Could be src/features/<moduleId> based on CLI policy, but default is modules

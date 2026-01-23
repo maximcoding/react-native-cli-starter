@@ -71,6 +71,31 @@ function ensureAliasesInTsConfig(
     tsconfig.compilerOptions = {};
   }
   
+  // Always ensure JSX is configured for React Native
+  if (!tsconfig.compilerOptions.jsx) {
+    tsconfig.compilerOptions.jsx = 'react-native';
+  }
+  if (tsconfig.compilerOptions.jsx !== 'react-native') {
+    tsconfig.compilerOptions.jsx = 'react-native';
+  }
+  
+  // Ensure essential compiler options for React Native
+  if (!tsconfig.compilerOptions.moduleResolution) {
+    tsconfig.compilerOptions.moduleResolution = 'bundler';
+  }
+  if (tsconfig.compilerOptions.esModuleInterop === undefined) {
+    tsconfig.compilerOptions.esModuleInterop = true;
+  }
+  if (tsconfig.compilerOptions.allowSyntheticDefaultImports === undefined) {
+    tsconfig.compilerOptions.allowSyntheticDefaultImports = true;
+  }
+  if (tsconfig.compilerOptions.skipLibCheck === undefined) {
+    tsconfig.compilerOptions.skipLibCheck = true;
+  }
+  if (tsconfig.compilerOptions.resolveJsonModule === undefined) {
+    tsconfig.compilerOptions.resolveJsonModule = true;
+  }
+  
   // Ensure paths exists
   if (!tsconfig.compilerOptions.paths) {
     tsconfig.compilerOptions.paths = {};
@@ -272,6 +297,28 @@ function configureTypeScriptPaths(
   // Ensure compilerOptions exists
   if (!tsconfig.compilerOptions) {
     tsconfig.compilerOptions = {};
+  }
+
+  // Always ensure JSX is configured for React Native
+  if (!tsconfig.compilerOptions.jsx) {
+    tsconfig.compilerOptions.jsx = 'react-native';
+  }
+  
+  // Ensure essential compiler options for React Native
+  if (tsconfig.compilerOptions.jsx !== 'react-native') {
+    tsconfig.compilerOptions.jsx = 'react-native';
+  }
+  if (!tsconfig.compilerOptions.moduleResolution) {
+    tsconfig.compilerOptions.moduleResolution = 'bundler';
+  }
+  if (tsconfig.compilerOptions.esModuleInterop === undefined) {
+    tsconfig.compilerOptions.esModuleInterop = true;
+  }
+  if (tsconfig.compilerOptions.allowSyntheticDefaultImports === undefined) {
+    tsconfig.compilerOptions.allowSyntheticDefaultImports = true;
+  }
+  if (tsconfig.compilerOptions.skipLibCheck === undefined) {
+    tsconfig.compilerOptions.skipLibCheck = true;
   }
 
   // Configure baseUrl and paths (match blueprint pattern)
@@ -979,6 +1026,14 @@ export function configureBaseScripts(
 
   const packageJson = readJsonFile<any>(packageJsonPath);
   
+  // Ensure main field is set correctly for Expo projects
+  if (inputs.target === 'expo') {
+    const mainFile = inputs.language === 'ts' ? 'index.ts' : 'index.js';
+    if (!packageJson.main || packageJson.main !== mainFile) {
+      packageJson.main = mainFile;
+    }
+  }
+  
   if (!packageJson.scripts) {
     packageJson.scripts = {};
   }
@@ -990,6 +1045,8 @@ export function configureBaseScripts(
     'gen:icons': 'node scripts/generate-icons.js',
     'check:icons': 'node scripts/check-icons-stale.js',
     'check:imports': 'node scripts/check-import-paths.js',
+    // Local CLI wrapper for running RNS commands from within generated projects
+    'cli': 'node scripts/rns-cli.js',
   };
   
   // I18n scripts (section 28 - CORE) - only if I18n is selected
