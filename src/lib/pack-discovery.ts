@@ -135,11 +135,17 @@ export function listPacks(packType: PackType): DiscoveredPack[] {
       }
       
       // Validate manifest id matches directory name (for plugins/modules)
-      if ((packType === 'plugin' || packType === 'module') && manifest.id !== entry.name) {
-        throw new CliError(
-          `Pack manifest id "${manifest.id}" does not match directory name "${entry.name}" at ${packPath}`,
-          ExitCode.VALIDATION_STATE_FAILURE
-        );
+      // Allow dots in pack ID (canonical format) while directory uses dashes (filesystem-safe)
+      // Directory: state-zustand -> Pack ID: state.zustand
+      if (packType === 'plugin' || packType === 'module') {
+        const normalizedPackId = manifest.id.replace(/\./g, '-');
+        const normalizedDirName = entry.name;
+        if (normalizedPackId !== normalizedDirName) {
+          throw new CliError(
+            `Pack manifest id "${manifest.id}" (normalized: "${normalizedPackId}") does not match directory name "${entry.name}" at ${packPath}`,
+            ExitCode.VALIDATION_STATE_FAILURE
+          );
+        }
       }
       
       packs.push({

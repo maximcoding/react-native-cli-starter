@@ -63,10 +63,13 @@ export class PluginRegistry {
       try {
         const descriptor = await this.loadPluginDescriptor(descriptorPath, entry.name);
         
-        // Validate plugin ID matches directory name
-        if (descriptor.id !== entry.name) {
+        // Validate plugin ID matches directory name (allowing dots in ID, dashes in directory)
+        // Directory names use dashes (filesystem-safe), plugin IDs use dots (canonical)
+        const normalizedId = descriptor.id.replace(/\./g, '-');
+        const normalizedDirName = entry.name;
+        if (normalizedId !== normalizedDirName) {
           throw new CliError(
-            `Plugin descriptor id "${descriptor.id}" does not match directory name "${entry.name}"`,
+            `Plugin descriptor id "${descriptor.id}" (normalized: "${normalizedId}") does not match directory name "${entry.name}"`,
             ExitCode.VALIDATION_STATE_FAILURE
           );
         }
@@ -103,7 +106,10 @@ export class PluginRegistry {
     expectedId: string
   ): Promise<PluginDescriptor> {
     const raw = readJsonFile<any>(descriptorPath);
-    return this.validatePluginDescriptor(raw, descriptorPath, expectedId);
+    // Convert directory name (dashes) to expected plugin ID format (dots) for validation
+    // Directory: state-zustand -> Expected ID: state.zustand
+    const expectedPluginId = expectedId.replace(/-/g, '.');
+    return this.validatePluginDescriptor(raw, descriptorPath, expectedPluginId);
   }
 
   /**
@@ -136,7 +142,7 @@ export class PluginRegistry {
     } else {
       const validCategories: PluginCategory[] = [
         'auth', 'storage', 'network', 'ui', 'navigation', 'analytics',
-        'notifications', 'camera', 'location', 'media', 'hardware', 'data', 'other'
+        'notifications', 'camera', 'location', 'media', 'hardware', 'data', 'state', 'other'
       ];
       if (!validCategories.includes(raw.category)) {
         errors.push(`Invalid category "${raw.category}". Must be one of: ${validCategories.join(', ')}`);

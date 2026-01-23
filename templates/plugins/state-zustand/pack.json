@@ -1,0 +1,7 @@
+{
+  "id": "state.zustand",
+  "type": "plugin",
+  "delivery": "workspace",
+  "supportedTargets": ["expo", "bare"],
+  "supportedLanguages": ["ts", "js"]
+}

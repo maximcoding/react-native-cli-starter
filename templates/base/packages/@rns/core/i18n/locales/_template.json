@@ -2,6 +2,29 @@
   "app": {
     "title": "My App"
   },
+  "screens": {
+    "home": {
+      "title": "Home",
+      "subtitle": "Welcome!",
+      "go_settings": "Go to Settings",
+      "view_details": "View Details"
+    },
+    "settings": {
+      "title": "Settings",
+      "language": "Language",
+      "theme": "Theme",
+      "theme_current": "Theme: "
+    },
+    "detail": {
+      "title": "Detail Screen",
+      "description": "This is an example detail screen that demonstrates stack navigation."
+    },
+    "modal": {
+      "title": "Info Modal",
+      "description": "This is an example modal screen.",
+      "close": "Close"
+    }
+  },
   "home": {
     "title": "Home",
     "subtitle": "Welcome!",

@@ -26,6 +26,7 @@ import { listPacks } from './pack-discovery';
 import { resolvePackVariant, normalizeOptionsKey } from './pack-variants';
 import { loadPackManifest } from './pack-manifest';
 import { CliError, ExitCode } from './errors';
+import { generatePluginReExport, removePluginReExport } from './plugin-reexports';
 import type {
   ModulatorContext,
   ModulatorPlan,
@@ -448,6 +449,13 @@ export class ModulatorEngine implements IModulator {
         errors.push(patchResult.error || 'Patch phase failed');
       }
 
+      // Phase 5.5: Generate plugin re-exports (User Zone convenience re-exports)
+      const reexportResult = await this.executeReExport(context, plan, dryRun);
+      phases.push(reexportResult);
+      if (!reexportResult.success) {
+        warnings.push(reexportResult.error || 'Re-export generation failed');
+      }
+
       // Phase 6: Update manifest
       const manifestResult = await this.executeManifestUpdate(context, plan, dryRun);
       phases.push(manifestResult);
@@ -757,6 +765,48 @@ export class ModulatorEngine implements IModulator {
     } catch (error) {
       return {
         phase: 'patch',
+        success: false,
+        action: 'error',
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+  }
+
+  /**
+   * Executes re-export phase (generates User Zone convenience re-exports)
+   */
+  private async executeReExport(
+    context: ModulatorContext,
+    plan: ModulatorPlan,
+    dryRun: boolean
+  ): Promise<PhaseResult> {
+    try {
+      if (dryRun) {
+        return {
+          phase: 'reexport',
+          success: true,
+          action: 'skipped',
+        };
+      }
+
+      const language = context.manifest.language || 'ts';
+
+      if (plan.operation === 'install') {
+        // Generate re-export file for installed plugin
+        generatePluginReExport(context.projectRoot, plan.capabilityId, language);
+      } else if (plan.operation === 'remove') {
+        // Remove re-export file for removed plugin
+        removePluginReExport(context.projectRoot, plan.capabilityId, language);
+      }
+
+      return {
+        phase: 'reexport',
+        success: true,
+        action: 'executed',
+      };
+    } catch (error) {
+      return {
+        phase: 'reexport',
         success: false,
         action: 'error',
         error: error instanceof Error ? error.message : String(error),

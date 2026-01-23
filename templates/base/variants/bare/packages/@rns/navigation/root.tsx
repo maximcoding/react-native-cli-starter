@@ -57,8 +57,10 @@ function getUserRegistry(): NavigationRegistry | undefined {
     };
   } catch (error) {
     // Registry doesn't exist or has errors - use placeholders
-    // This is expected and fine - users may not have created registry yet
-    // Silently fallback (no console.error to avoid noise in production)
+    // Log error in development to help debug
+    if (__DEV__) {
+      console.warn('[@rns/navigation] Failed to load registry, using placeholders:', error);
+    }
     return undefined;
   }
 }
@@ -102,9 +104,11 @@ function getScreens(
 type RootStackParamList = {
   [ROUTES.ROOT_STACK]: undefined;
   [ROUTES.ROOT_TABS]: undefined;
+  [ROUTES.ROOT_DRAWER]: undefined;
   [ROUTES.MODAL_INFO]: undefined;
   [ROUTES.SCREEN_HOME]: undefined;
   [ROUTES.SCREEN_SETTINGS]: undefined;
+  SCREEN_DETAIL: undefined;
 };
 
 type TabsParamList = {
@@ -185,6 +189,25 @@ function TabsNavigator(): React.ReactElement {
   
   const tabs = getScreens(registry?.getTabScreens, placeholderTabs);
   
+  // Safety check: ensure we have at least one tab
+  if (tabs.length === 0) {
+    if (__DEV__) {
+      console.warn('[@rns/navigation] No tabs found, using placeholders');
+    }
+    return (
+      <Tabs.Navigator screenOptions={{ headerShown: false }}>
+        {placeholderTabs.map(screen => (
+          <Tabs.Screen
+            key={screen.name}
+            name={screen.name as any}
+            component={screen.component}
+            options={{ title: screen.name }}
+          />
+        ))}
+      </Tabs.Navigator>
+    );
+  }
+  
   return (
     <Tabs.Navigator
       screenOptions={{
@@ -260,12 +283,25 @@ function RootStackNavigator(): React.ReactElement {
   const presetDrawer = preset === 'drawer';
   
   // Maximum flexibility: check if user registered screens regardless of preset
-  const hasUserTabs = (registry?.getTabScreens?.() || []).length > 0;
-  const hasUserModals = (registry?.getModalScreens?.() || []).length > 0;
-  const hasUserDrawer = (registry?.getDrawerScreens?.() || []).length > 0;
-  const hasUserStack = (registry?.getStackScreens?.() || []).length > 0;
-  const hasCustomNavigators = (registry?.getCustomNavigators?.() || []).length > 0;
-  const hasRootStackScreens = (registry?.getRootStackScreens?.() || []).length > 0;
+  let hasUserTabs = false;
+  let hasUserModals = false;
+  let hasUserDrawer = false;
+  let hasUserStack = false;
+  let hasCustomNavigators = false;
+  let hasRootStackScreens = false;
+  
+  try {
+    hasUserTabs = (registry?.getTabScreens?.() || []).length > 0;
+    hasUserModals = (registry?.getModalScreens?.() || []).length > 0;
+    hasUserDrawer = (registry?.getDrawerScreens?.() || []).length > 0;
+    hasUserStack = (registry?.getStackScreens?.() || []).length > 0;
+    hasCustomNavigators = (registry?.getCustomNavigators?.() || []).length > 0;
+    hasRootStackScreens = (registry?.getRootStackScreens?.() || []).length > 0;
+  } catch (error) {
+    if (__DEV__) {
+      console.warn('[@rns/navigation] Error checking registry screens:', error);
+    }
+  }
   
   // Determine what to render (preset OR user extensions)
   const shouldRenderTabs = presetTabsOnly || presetHasTabs || hasUserTabs;
@@ -304,8 +340,34 @@ function RootStackNavigator(): React.ReactElement {
   }
   
   // Root stack navigator (most flexible)
+  // Set initial route: for stack-tabs, show tabs first (tabs take priority)
+  let initialRouteName: keyof RootStackParamList | undefined;
+  // Priority 1: Tabs (for stack-tabs preset, tabs should be shown first)
+  if (shouldRenderTabs) {
+    initialRouteName = ROUTES.ROOT_TABS;
+  } 
+  // Priority 2: Drawer (if no tabs)
+  else if (shouldRenderDrawer) {
+    initialRouteName = ROUTES.ROOT_DRAWER;
+  }
+  // Priority 3: Root stack screens
+  else if (hasRootStackScreens && sortedRootStackScreens.length > 0) {
+    initialRouteName = sortedRootStackScreens[0].name as keyof RootStackParamList;
+  }
+  // Priority 4: Custom navigators
+  else if (hasCustomNavigators && sortedCustomNavigators.length > 0) {
+    initialRouteName = sortedCustomNavigators[0].name as keyof RootStackParamList;
+  }
+  // Priority 5: Stack screens
+  else if (hasUserStack && stackScreens.length > 0) {
+    initialRouteName = stackScreens[0].name as keyof RootStackParamList;
+  }
+  
   return (
-    <RootStack.Navigator screenOptions={{ headerShown: false }}>
+    <RootStack.Navigator 
+      screenOptions={{ headerShown: false }}
+      initialRouteName={initialRouteName}
+    >
       {/* Root stack screens (highest priority) */}
       {sortedRootStackScreens.map(screen => (
         <RootStack.Screen
@@ -343,7 +405,11 @@ function RootStackNavigator(): React.ReactElement {
             key={screen.name}
             name={screen.name as any}
             component={screen.component}
-            options={screen.options}
+            options={{
+              headerShown: true,
+              title: screen.options?.title || screen.name,
+              ...screen.options,
+            }}
           />
         ))
       ) : null}
@@ -366,10 +432,29 @@ function RootStackNavigator(): React.ReactElement {
 }
 
 export function RnsNavigationRoot(): React.ReactElement {
-  return (
-    <NavigationContainer linking={linking}>
-      <RootStackNavigator />
-    </NavigationContainer>
-  );
+  // Add error boundary and fallback
+  try {
+    return (
+      <NavigationContainer linking={linking}>
+        <RootStackNavigator />
+      </NavigationContainer>
+    );
+  } catch (error) {
+    if (__DEV__) {
+      console.error('[@rns/navigation] Error rendering navigation root:', error);
+    }
+    // Fallback: render placeholder screen
+    return (
+      <NavigationContainer>
+        <RootStack.Navigator>
+          <RootStack.Screen 
+            name={ROUTES.SCREEN_HOME} 
+            component={HomeScreen}
+            options={{ title: 'Home' }}
+          />
+        </RootStack.Navigator>
+      </NavigationContainer>
+    );
+  }
 }
 

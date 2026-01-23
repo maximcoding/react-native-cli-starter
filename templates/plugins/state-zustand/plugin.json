@@ -1,0 +1,29 @@
+{
+  "id": "state.zustand",
+  "name": "Zustand State Management",
+  "description": "Lightweight, unopinionated state management with Zustand",
+  "version": "1.0.0",
+  "category": "state",
+  "tier": "recommended",
+  "support": {
+    "targets": ["expo", "bare"],
+    "platforms": ["ios", "android", "web"]
+  },
+  "slots": [
+    {
+      "slot": "state.management",
+      "mode": "multi"
+    }
+  ],
+  "dependencies": {
+    "runtime": [
+      {
+        "name": "zustand",
+        "version": "^5.0.0"
+      }
+    ]
+  },
+  "runtimeContributions": [],
+  "patches": [],
+  "permissions": []
+}

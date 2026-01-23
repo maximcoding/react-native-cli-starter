@@ -27,7 +27,8 @@ Treat all previously completed TODO sections (`[x]`) as **protected smoke gates*
 - Typical smoke (example set; adapt to current TODO scope):
   - `npm run cli -- --help`
   - `npm run cli -- doctor --env`
-  - `npm run cli -- init MyApp --target expo`
+  - `npm run cli -- init MyApp --target expo --lang ts --pm npm`
+  - `npm run init -- MyApp --target expo --lang ts --pm npm` (alternative)
   - `npm run cli -- plugin list`
   - `npm run cli -- plugin add <id> --dry-run`
 

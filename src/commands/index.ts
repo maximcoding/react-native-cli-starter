@@ -17,9 +17,23 @@ import { handleComponent } from './component';
  */
 export async function init(ctx: RuntimeContext, args: ParsedArgs): Promise<void> {
   // args._[0] is the command 'init', so skip it
+  // Extract flags: --target, --lang, --pm, --platforms, --rn-version, --locales
+  const target = args.target as 'expo' | 'bare' | undefined;
+  const language = args.lang as 'ts' | 'js' | undefined;
+  const packageManager = args.pm as 'npm' | 'pnpm' | 'yarn' | undefined;
+  const platforms = args.platforms ? String(args.platforms).split(',').map(p => p.trim()) : undefined;
+  const reactNativeVersion = args['rn-version'] as string | undefined;
+  const locales = args.locales ? String(args.locales).split(',').map(l => l.trim()).filter(l => l.length > 0) : undefined;
+
   await runInit({
     projectName: args._[1],
     destination: args._[2],
+    target,
+    language,
+    packageManager,
+    platforms,
+    reactNativeVersion,
+    locales,
     context: ctx,
   });
 }
