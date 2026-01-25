@@ -244,3 +244,10 @@ If you accidentally edited the wrong scope or checked the wrong TODO section:
 3) open `docs/TODO.md`
 4) continue from the first unchecked `[ ]` section
 5) complete one section → verify → mark `[x]` → commit
+
+---
+
+## 15) Local test apps and manual verification
+
+- **Generated test apps** (e.g. `MyApp/`): May be gitignored for local use. See `.gitignore`. Run `rns init <name> ...` to recreate.
+- **Manual init tests** (e.g. `rns init TestExpo`, `rns init TestBare`, `rns doctor` in generated app): Require **network** (npm registry, `create-expo-app`). Run them locally; CI/sandbox may block outbound access.

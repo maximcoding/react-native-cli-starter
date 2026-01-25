@@ -5,5 +5,5 @@
  */
 
 export { ThemeProvider } from './ThemeProvider';
-export { ThemeContext, type ThemeMode, type ThemeContextValue } from './ThemeContext';
+export { ThemeContext, type ThemeMode, type Theme, type ThemeContextValue } from './ThemeContext';
 export { useTheme } from './useTheme';

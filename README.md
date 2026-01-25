@@ -168,14 +168,17 @@ Each plugin is a **declarative blueprint** (descriptor) that can express:
 MyApp/
 ├── .rns/                       # SYSTEM: manifest, logs, backups
 │   └── rn-init.json            # Project Manifest (source of truth)
+├── index.js                    # Bare only: Metro entry (main); imports App, AppRegistry
 ├── src/                        # USER: your business code (CLI must not edit)
 ├── packages/                   # SYSTEM: CLI-managed workspace packages
 │   └── @rns/
 │       ├── core/               # kernel contracts + safe defaults
-│       ├── runtime/            # runtime composition + wiring targets
+│       ├── runtime/            # runtime composition + wiring (entry index.tsx)
 │       └── plugin-*/           # installed plugins as local packages
 └── ...                         # Expo/Bare native scaffolding (target-specific)
 ```
+
+**Bare entry:** `index.js` is the Metro entry; `package.json` has `"main": "index.js"`. Expo uses `index.ts`/`index.js` per template.
 
 **Key principle:** plugins integrate via `packages/@rns/runtime/**`, not by patching your `src/**`.
 
@@ -215,7 +218,7 @@ MyApp/
 | Navigation root | `nav.react-navigation`, `nav.expo-router` | **single** |
 | UI framework | `ui.paper`, `ui.tamagui`, `ui.nativebase` | **single** |
 | Animations | `animation.reanimated`, `animation.lottie` | multi |
-| State | `state.zustand`, `state.xstate`, `state.mobx` | multi |
+| State | **`state.zustand`**, `state.xstate`, `state.mobx` | multi |
 | Data fetching / cache | `data.react-query`, `data.apollo`, `data.swr` | multi |
 | Network transport | `transport.axios`, `transport.fetch`, `transport.graphql`, `transport.websocket`, `transport.firebase` | **multi** |
 | Auth | `auth.firebase`, `auth.cognito`, `auth.auth0`, `auth.custom-jwt` | multi |

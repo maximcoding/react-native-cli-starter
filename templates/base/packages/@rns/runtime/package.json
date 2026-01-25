@@ -1,8 +1,8 @@
 {
   "name": "@rns/runtime",
   "version": "0.1.0",
-  "main": "index.ts",
-  "types": "index.ts",
+  "main": "index.tsx",
+  "types": "index.tsx",
   "private": true,
   "dependencies": {
     "@rns/core": "file:../core"

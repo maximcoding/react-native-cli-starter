@@ -68,6 +68,20 @@ These live in `packages/@rns/core` and are intentionally stable:
 - `packages/@rns/core/src/contracts/rns-plugin.ts` — optional runtime lifecycle (`RnsPlugin`)
 - `packages/@rns/core/src/index.ts` — export surface
 
+### 1.3 Theme system (generated app)
+
+When theming is selected at init, generated apps use a typed theme context:
+
+- **`Theme`** — `typeof lightTheme | typeof darkTheme`; both schemes share the same shape (colors, spacing, radius, etc.). `ThemeContextValue.theme` is `Theme`.
+- **`ThemeMode`** — `'light' | 'dark' | 'system'`.
+- **`ThemeContextValue`** — `{ theme: Theme; mode: ThemeMode; setTheme: (m: ThemeMode) => void }`.
+
+Source: `packages/@rns/core/theme/ThemeContext.tsx`, `ThemeProvider.tsx`; theme definitions in User Zone `src/core/theme/schemes/light`, `dark`. Exported from `@rns/core/theme`.
+
+### 1.4 Env and Node types (generated app)
+
+The env pipeline (`packages/@rns/core/config/env`) uses `process.env`. Generated apps' `tsconfig.json` includes `"node"` in `compilerOptions.types` (alongside `"jest"` when present) so that `process` is typed. The CLI ensures this in `ensureAliasesInTsConfig`. `@types/node` may appear as a devDependency when the runtime needs it.
+
 ---
 
 ## 2) Core CLI schema (names + intent)

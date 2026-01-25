@@ -13,12 +13,15 @@ import { createContext } from 'react';
 // These are user-editable files
 // Use @/ alias which maps to src/ (configured in babel.config.js)
 import { lightTheme } from '@/core/theme/schemes/light';
+import { darkTheme } from '@/core/theme/schemes/dark';
 
 export type ThemeMode = 'light' | 'dark' | 'system';
 
+export type Theme = typeof lightTheme | typeof darkTheme;
+
 export interface ThemeContextValue {
   /** Resolved theme object (light or dark based on mode) */
-  theme: typeof lightTheme;
+  theme: Theme;
   /** Current theme mode (light | dark | system) */
   mode: ThemeMode;
   /** Function to switch theme mode programmatically */
