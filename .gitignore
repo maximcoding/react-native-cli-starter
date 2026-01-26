@@ -7,3 +7,5 @@ dist/
 # Verification reports (temporary)
 VERIFICATION_*.md
 
+# Generated test app (local use; run init to create)
+MyApp/

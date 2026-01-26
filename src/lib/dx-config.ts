@@ -95,6 +95,14 @@ function ensureAliasesInTsConfig(
   if (tsconfig.compilerOptions.resolveJsonModule === undefined) {
     tsconfig.compilerOptions.resolveJsonModule = true;
   }
+
+  // Env pipeline uses process (packages/@rns/core/config/env.ts); ensure Node types
+  const types = tsconfig.compilerOptions.types;
+  if (!Array.isArray(types)) {
+    tsconfig.compilerOptions.types = ['jest', 'node'];
+  } else if (!types.includes('node')) {
+    tsconfig.compilerOptions.types = [...types, 'node'];
+  }
   
   // Ensure paths exists
   if (!tsconfig.compilerOptions.paths) {
@@ -1026,11 +1034,16 @@ export function configureBaseScripts(
 
   const packageJson = readJsonFile<any>(packageJsonPath);
   
-  // Ensure main field is set correctly for Expo projects
+  // Ensure main field is set correctly (Expo: index.ts/js; Bare: index.js)
   if (inputs.target === 'expo') {
     const mainFile = inputs.language === 'ts' ? 'index.ts' : 'index.js';
     if (!packageJson.main || packageJson.main !== mainFile) {
       packageJson.main = mainFile;
+    }
+  } else {
+    // Bare: Metro entry is index.js (registerRootComponent / AppRegistry)
+    if (!packageJson.main || packageJson.main !== 'index.js') {
+      packageJson.main = 'index.js';
     }
   }
   

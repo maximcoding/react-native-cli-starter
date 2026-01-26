@@ -410,3 +410,516 @@ Verification:
 - ⏳ **Manual Testing:** PENDING — Ready for manual verification testing
 
 **Reference:** See `docs/README.md` section "📊 Init Options: Expo vs Bare" for the complete tree structure and documentation.
+
+## [ ] 31) State Management as Init Options (Phase 1: Dependencies Only)
+
+Convert state management plugin category to init options. 
+
+**Phase 1 (this section)**: Install dependencies only when options are selected during `rns init`.
+
+**Phase 2 (future)**: Add infrastructure setup, code generation, providers, hooks, and example code. Phase 2 will be implemented in a separate TODO section after all Phase 1 sections are complete.
+
+Users can select state libraries during `rns init`:
+- `state.zustand` (Zustand - lightweight)
+- `state.xstate` (XState - state machines)
+- `state.mobx` (MobX - reactive state)
+
+Implementation rules (Phase 1):
+- Add to `InitInputs.selectedOptions` interface: `state?: { zustand?: boolean; xstate?: boolean; mobx?: boolean }`
+- Add to `collectInitInputs()` prompt logic (multi-select, all work for Expo and Bare)
+- Install dependencies in `installCoreDependencies()` when selected:
+  - `zustand@^5.0.0` (use version from existing plugin)
+  - `xstate@latest`
+  - `mobx@latest` and `mobx-react-lite@latest`
+- Store selections in manifest (automatic via existing logic)
+- Ensure idempotency (use `installedPackages` Set to avoid duplicates)
+
+Verification:
+- `npm run typecheck`
+- `npm test`
+- Manual test: Run `rns init`, select state libraries, verify dependencies installed in `package.json`
+
+## [ ] 32) Data Fetching / Cache as Init Options (Phase 1: Dependencies Only)
+
+Convert data fetching plugin category to init options. **Phase 1**: Install dependencies only. **Phase 2**: Infrastructure and code generation (future).
+
+Users can select data libraries during `rns init`:
+- `data.react-query` (TanStack Query / React Query)
+- `data.apollo` (Apollo Client)
+- `data.swr` (SWR)
+
+Implementation rules (Phase 1):
+- Add to `InitInputs.selectedOptions` interface: `dataFetching?: { reactQuery?: boolean; apollo?: boolean; swr?: boolean }`
+- Add to `collectInitInputs()` prompt logic (multi-select, all work for Expo and Bare)
+- Install dependencies in `installCoreDependencies()` when selected:
+  - `@tanstack/react-query@latest`
+  - `@apollo/client@latest` and `graphql@latest`
+  - `swr@latest`
+- Store selections in manifest (automatic via existing logic)
+- Ensure idempotency (use `installedPackages` Set to avoid duplicates)
+
+Verification:
+- `npm run typecheck`
+- `npm test`
+- Manual test: Run `rns init`, select data fetching libraries, verify dependencies installed in `package.json`
+
+## [ ] 33) Network Transport as Init Options (Phase 1: Dependencies Only)
+
+Convert network transport plugin category to init options. **Phase 1**: Install dependencies only. **Phase 2**: Infrastructure and code generation (future).
+
+Users can select transport libraries during `rns init`:
+- `transport.axios` (Axios - HTTP client)
+- `transport.websocket` (WebSocket client with reconnection)
+- `transport.firebase` (Firebase SDK)
+
+**Note:** Native Fetch API is built-in and requires no package. GraphQL client is typically included with Apollo Client (see section 32).
+
+Implementation rules (Phase 1):
+- Add to `InitInputs.selectedOptions` interface: `transport?: { axios?: boolean; websocket?: boolean; firebase?: boolean }`
+- Add to `collectInitInputs()` prompt logic (multi-select, all work for Expo and Bare)
+- Install dependencies in `installCoreDependencies()` when selected:
+  - `axios@latest` (if axios selected)
+  - `react-native-reconnecting-websocket@latest` (if websocket selected)
+  - `@react-native-firebase/app@latest` (if firebase selected)
+- Store selections in manifest (automatic via existing logic)
+- Ensure idempotency (use `installedPackages` Set to avoid duplicates)
+
+Verification:
+- `npm run typecheck`
+- `npm test`
+- Manual test: Run `rns init`, select transport libraries, verify dependencies installed in `package.json`
+
+## [ ] 34) Auth as Init Options (Phase 1: Dependencies Only)
+
+Convert auth plugin category to init options. **Phase 1**: Install dependencies only. **Phase 2**: Infrastructure and code generation (future).
+
+Users can select auth providers during `rns init`:
+- `auth.firebase` (Firebase Authentication)
+- `auth.cognito` (AWS Cognito)
+- `auth.auth0` (Auth0)
+- `auth.custom-jwt` (Custom JWT - no specific package, uses standard JWT libraries)
+
+Implementation rules (Phase 1):
+- Add to `InitInputs.selectedOptions` interface: `auth?: { firebase?: boolean; cognito?: boolean; auth0?: boolean; customJwt?: boolean }`
+- Add to `collectInitInputs()` prompt logic (multi-select, all work for Expo and Bare)
+- Install dependencies in `installCoreDependencies()` when selected:
+  - `@react-native-firebase/auth@latest` (if firebase selected)
+  - `amazon-cognito-identity-js@latest` (if cognito selected)
+  - `react-native-auth0@latest` (if auth0 selected)
+  - `jwt-decode@latest` (if customJwt selected)
+- Store selections in manifest (automatic via existing logic)
+- Ensure idempotency (use `installedPackages` Set to avoid duplicates)
+
+Verification:
+- `npm run typecheck`
+- `npm test`
+- Manual test: Run `rns init`, select auth providers, verify dependencies installed in `package.json`
+
+## [ ] 35) AWS Services as Init Options (Phase 1: Dependencies Only)
+
+Convert AWS Services plugin category to init options. **Phase 1**: Install dependencies only. **Phase 2**: Infrastructure and code generation (future).
+
+Users can select AWS services during `rns init`:
+- `aws.amplify` (AWS Amplify)
+- `aws.appsync` (AWS AppSync)
+- `aws.dynamodb` (AWS DynamoDB)
+- `aws.s3` (AWS S3)
+
+Implementation rules (Phase 1):
+- Add to `InitInputs.selectedOptions` interface: `aws?: { amplify?: boolean; appsync?: boolean; dynamodb?: boolean; s3?: boolean }`
+- Add to `collectInitInputs()` prompt logic (multi-select, all work for Expo and Bare)
+- Install dependencies in `installCoreDependencies()` when selected:
+  - `aws-amplify@latest` (if amplify selected)
+  - `@aws-amplify/api@latest` and `@aws-amplify/api-graphql@latest` (if appsync selected)
+  - `@aws-sdk/client-dynamodb@latest` (if dynamodb selected)
+  - `@aws-sdk/client-s3@latest` (if s3 selected)
+- Store selections in manifest (automatic via existing logic)
+- Ensure idempotency (use `installedPackages` Set to avoid duplicates)
+
+Verification:
+- `npm run typecheck`
+- `npm test`
+- Manual test: Run `rns init`, select AWS services, verify dependencies installed in `package.json`
+
+## [ ] 36) Storage as Init Options (Phase 1: Dependencies Only)
+
+Convert storage plugin category to init options. **Phase 1**: Install dependencies only. **Phase 2**: Infrastructure and code generation (future).
+
+Users can select storage libraries during `rns init`:
+- `storage.mmkv` (MMKV - fast key-value)
+- `storage.sqlite` (SQLite database)
+- `storage.secure` (Secure storage - keychain/keystore)
+- `storage.filesystem` (File system access)
+
+**Note:** For Bare target, `react-native-keychain` and `react-native-fs` may already be installed as part of Bare-specific options (see section 30). The CLI should check for existing installation before adding duplicates.
+
+Implementation rules (Phase 1):
+- Add to `InitInputs.selectedOptions` interface: `storage?: { mmkv?: boolean; sqlite?: boolean; secure?: boolean; filesystem?: boolean }`
+- Add to `collectInitInputs()` prompt logic (multi-select, all work for Expo and Bare)
+- Install dependencies in `installCoreDependencies()` when selected:
+  - `react-native-mmkv@latest` (if mmkv selected)
+  - `react-native-sqlite-2@latest` (if sqlite selected - actively maintained, drop-in replacement for react-native-sqlite-storage)
+  - `react-native-keychain@latest` (if secure selected, check if already installed for Bare target)
+  - `react-native-fs@latest` (if filesystem selected, check if already installed for Bare target)
+- Store selections in manifest (automatic via existing logic)
+- Ensure idempotency (use `installedPackages` Set to avoid duplicates)
+
+Verification:
+- `npm run typecheck`
+- `npm test`
+- Manual test: Run `rns init`, select storage libraries, verify dependencies installed in `package.json`
+
+## [ ] 37) Firebase Products as Init Options (Phase 1: Dependencies Only)
+
+Convert Firebase Products plugin category to init options. **Phase 1**: Install dependencies only. **Phase 2**: Infrastructure and code generation (future).
+
+Users can select Firebase services during `rns init`:
+- `firebase.firestore` (Cloud Firestore)
+- `firebase.realtime-database` (Realtime Database)
+- `firebase.storage` (Cloud Storage)
+- `firebase.remote-config` (Remote Config)
+
+Implementation rules (Phase 1):
+- Add to `InitInputs.selectedOptions` interface: `firebase?: { firestore?: boolean; realtimeDatabase?: boolean; storage?: boolean; remoteConfig?: boolean }`
+- Add to `collectInitInputs()` prompt logic (multi-select, all work for Expo and Bare)
+- Install dependencies in `installCoreDependencies()` when selected:
+  - `@react-native-firebase/firestore@latest` (if firestore selected)
+  - `@react-native-firebase/database@latest` (if realtimeDatabase selected)
+  - `@react-native-firebase/storage@latest` (if storage selected)
+  - `@react-native-firebase/remote-config@latest` (if remoteConfig selected)
+- Store selections in manifest (automatic via existing logic)
+- Ensure idempotency (use `installedPackages` Set to avoid duplicates)
+
+Verification:
+- `npm run typecheck`
+- `npm test`
+- Manual test: Run `rns init`, select Firebase products, verify dependencies installed in `package.json`
+
+## [ ] 38) Offline-first as Init Options (Phase 1: Dependencies Only)
+
+Convert offline-first plugin category to init options. **Phase 1**: Install dependencies only. **Phase 2**: Infrastructure and code generation (future).
+
+Users can select offline capabilities during `rns init`:
+- `offline.netinfo` (Network info detection)
+- `offline.outbox` (Offline queue/outbox pattern)
+- `offline.sync` (Sync manager)
+
+**Note:** The outbox pattern typically requires custom implementation. Phase 2 will add infrastructure for queue management and sync logic.
+
+Implementation rules (Phase 1):
+- Add to `InitInputs.selectedOptions` interface: `offline?: { netinfo?: boolean; outbox?: boolean; sync?: boolean }`
+- Add to `collectInitInputs()` prompt logic (multi-select, all work for Expo and Bare)
+- Install dependencies in `installCoreDependencies()` when selected:
+  - `@react-native-community/netinfo@latest` (if netinfo selected)
+  - `redux-persist@latest` (if outbox selected - for state persistence, custom outbox logic in Phase 2)
+  - `@react-native-async-storage/async-storage@latest` (if sync selected, for persistence layer)
+- Store selections in manifest (automatic via existing logic)
+- Ensure idempotency (use `installedPackages` Set to avoid duplicates)
+
+Verification:
+- `npm run typecheck`
+- `npm test`
+- Manual test: Run `rns init`, select offline capabilities, verify dependencies installed in `package.json`
+
+## [ ] 39) Notifications as Init Options (Phase 1: Dependencies Only)
+
+Convert notifications plugin category to init options. **Phase 1**: Install dependencies only. **Phase 2**: Infrastructure and code generation (future).
+
+Users can select notification providers during `rns init`:
+- `notify.expo` (Expo Notifications - Expo target only)
+- `notify.fcm` (Firebase Cloud Messaging - push notifications)
+- `notify.onesignal` (OneSignal - push notification service)
+
+**Note:** `notify.expo` is only available for Expo target. FCM and OneSignal work for both targets.
+
+Implementation rules (Phase 1):
+- Add to `InitInputs.selectedOptions` interface: `notifications?: { expo?: boolean; fcm?: boolean; onesignal?: boolean }`
+- Add to `collectInitInputs()` prompt logic with target-aware filtering:
+  - Expo target: Show all three options
+  - Bare target: Show only `fcm` and `onesignal` (hide `expo`)
+- Install dependencies in `installCoreDependencies()` when selected:
+  - `expo-notifications@latest` (if expo selected, Expo target only)
+  - `@react-native-firebase/messaging@latest` (if fcm selected)
+  - `react-native-onesignal@latest` (if onesignal selected)
+- Store selections in manifest (automatic via existing logic)
+- Ensure idempotency (use `installedPackages` Set to avoid duplicates)
+
+Verification:
+- `npm run typecheck`
+- `npm test`
+- Manual test: Run `rns init`, select notification providers, verify dependencies installed in `package.json`
+
+## [ ] 40) Maps / Location as Init Options (Phase 1: Dependencies Only)
+
+Convert maps/location plugin category to init options. **Phase 1**: Install dependencies only. **Phase 2**: Infrastructure and code generation (future).
+
+Users can select map/location services during `rns init`:
+- `geo.location` (Geolocation - get device location)
+- `maps.mapbox` (Mapbox - map rendering and services)
+- `maps.google` (Google Maps - map rendering and services)
+
+Implementation rules (Phase 1):
+- Add to `InitInputs.selectedOptions` interface: `maps?: { location?: boolean; mapbox?: boolean; google?: boolean }`
+- Add to `collectInitInputs()` prompt logic (multi-select, all work for Expo and Bare)
+- Install dependencies in `installCoreDependencies()` when selected:
+  - `expo-location@latest` (if location selected, Expo target)
+  - `@react-native-community/geolocation@latest` (if location selected, Bare target)
+  - `@rnmapbox/maps@latest` (if mapbox selected)
+  - `react-native-maps@latest` (if google selected)
+- Store selections in manifest (automatic via existing logic)
+- Ensure idempotency (use `installedPackages` Set to avoid duplicates)
+
+Verification:
+- `npm run typecheck`
+- `npm test`
+- Manual test: Run `rns init`, select map/location services, verify dependencies installed in `package.json`
+
+## [ ] 41) Camera / Media as Init Options (Phase 1: Dependencies Only)
+
+Convert camera/media plugin category to init options. **Phase 1**: Install dependencies only. **Phase 2**: Infrastructure and code generation (future).
+
+Users can select media capabilities during `rns init`:
+- `media.camera` (Camera access - basic camera functionality)
+- `media.vision-camera` (Vision Camera - advanced camera with frame processing, Bare target only)
+- `media.picker` (Image/Media picker - select images/videos from device)
+
+**Note:** `vision-camera` is Bare-only (requires native modules). For Expo, use `media.camera` instead.
+
+Implementation rules (Phase 1):
+- Add to `InitInputs.selectedOptions` interface: `media?: { camera?: boolean; visionCamera?: boolean; picker?: boolean }`
+- Add to `collectInitInputs()` prompt logic with target-aware filtering:
+  - Expo target: Show `camera` and `picker` options (hide `visionCamera`)
+  - Bare target: Show all three options
+- Install dependencies in `installCoreDependencies()` when selected:
+  - `expo-camera@latest` (if camera selected, Expo target)
+  - `react-native-vision-camera@latest` (if visionCamera selected, Bare target only)
+  - `expo-image-picker@latest` (if picker selected, Expo target)
+  - `react-native-image-picker@latest` (if picker selected, Bare target)
+- Store selections in manifest (automatic via existing logic)
+- Ensure idempotency (use `installedPackages` Set to avoid duplicates)
+
+Verification:
+- `npm run typecheck`
+- `npm test`
+- Manual test: Run `rns init`, select media capabilities, verify dependencies installed in `package.json`
+
+## [ ] 42) Payments as Init Options (Phase 1: Dependencies Only)
+
+Convert payments plugin category to init options. **Phase 1**: Install dependencies only. **Phase 2**: Infrastructure and code generation (future).
+
+Users can select payment providers during `rns init`:
+- `pay.stripe` (Stripe)
+
+Implementation rules (Phase 1):
+- Add to `InitInputs.selectedOptions` interface: `payments?: { stripe?: boolean }`
+- Add to `collectInitInputs()` prompt logic (works for Expo and Bare)
+- Install dependencies in `installCoreDependencies()` when selected:
+  - `@stripe/stripe-react-native@latest`
+- Store selections in manifest (automatic via existing logic)
+- Ensure idempotency (use `installedPackages` Set to avoid duplicates)
+
+Verification:
+- `npm run typecheck`
+- `npm test`
+- Manual test: Run `rns init`, select Stripe, verify dependencies installed in `package.json`
+
+## [ ] 43) Subscriptions / IAP as Init Options (Phase 1: Dependencies Only)
+
+Convert subscriptions/IAP plugin category to init options. **Phase 1**: Install dependencies only. **Phase 2**: Infrastructure and code generation (future).
+
+Users can select IAP providers during `rns init` (single-select - only one provider can be selected):
+- `iap.revenuecat` (RevenueCat - subscription management platform)
+- `iap.adapty` (Adapty - subscription management platform)
+- `iap.app-store` (App Store IAP - native iOS in-app purchases)
+- `iap.play-billing` (Google Play Billing - native Android in-app purchases)
+
+**Note:** This is a single-slot category. The prompt must enforce single selection (only one IAP provider can be selected).
+
+Implementation rules (Phase 1):
+- Add to `InitInputs.selectedOptions` interface: `iap?: { revenuecat?: boolean; adapty?: boolean; appStore?: boolean; playBilling?: boolean }`
+- Add to `collectInitInputs()` prompt logic (single-select - enforce only one selection in prompt UI)
+- Install dependencies in `installCoreDependencies()` when selected:
+  - `react-native-purchases@latest` (if revenuecat selected)
+  - `adapty-react-native@latest` (if adapty selected)
+  - `react-native-iap@latest` (if appStore or playBilling selected)
+- Store selections in manifest (automatic via existing logic)
+- Ensure idempotency (use `installedPackages` Set to avoid duplicates)
+
+Verification:
+- `npm run typecheck`
+- `npm test`
+- Manual test: Run `rns init`, select IAP provider, verify dependencies installed in `package.json`
+
+## [ ] 44) Analytics / Observability as Init Options (Phase 1: Dependencies Only)
+
+Convert analytics/observability plugin category to init options. **Phase 1**: Install dependencies only. **Phase 2**: Infrastructure and code generation (future).
+
+Users can select analytics/observability services during `rns init`:
+- `analytics.firebase` (Firebase Analytics)
+- `analytics.amplitude` (Amplitude)
+- `obs.sentry` (Sentry)
+- `obs.bugsnag` (Bugsnag)
+
+Implementation rules (Phase 1):
+- Add to `InitInputs.selectedOptions` interface: `analytics?: { firebase?: boolean; amplitude?: boolean; sentry?: boolean; bugsnag?: boolean }`
+- Add to `collectInitInputs()` prompt logic (multi-select, all work for Expo and Bare)
+- Install dependencies in `installCoreDependencies()` when selected:
+  - `@react-native-firebase/analytics@latest` (if firebase selected)
+  - `@amplitude/analytics-react-native@latest` (if amplitude selected)
+  - `@sentry/react-native@latest` (if sentry selected)
+  - `@bugsnag/react-native@latest` (if bugsnag selected)
+- Store selections in manifest (automatic via existing logic)
+- Ensure idempotency (use `installedPackages` Set to avoid duplicates)
+
+Verification:
+- `npm run typecheck`
+- `npm test`
+- Manual test: Run `rns init`, select analytics/observability services, verify dependencies installed in `package.json`
+
+## [ ] 45) Search as Init Options (Phase 1: Dependencies Only)
+
+Convert search plugin category to init options. **Phase 1**: Install dependencies only. **Phase 2**: Infrastructure and code generation (future).
+
+Users can select search services during `rns init`:
+- `search.algolia` (Algolia - cloud search service)
+- `search.local-index` (Local search index - client-side full-text search)
+
+Implementation rules (Phase 1):
+- Add to `InitInputs.selectedOptions` interface: `search?: { algolia?: boolean; localIndex?: boolean }`
+- Add to `collectInitInputs()` prompt logic (multi-select, all work for Expo and Bare)
+- Install dependencies in `installCoreDependencies()` when selected:
+  - `algoliasearch-react-native@latest` (if algolia selected)
+  - `lunr@latest` (if localIndex selected - cross-platform full-text search library)
+- Store selections in manifest (automatic via existing logic)
+- Ensure idempotency (use `installedPackages` Set to avoid duplicates)
+
+Verification:
+- `npm run typecheck`
+- `npm test`
+- Manual test: Run `rns init`, select search services, verify dependencies installed in `package.json`
+
+## [ ] 46) OTA Updates as Init Options (Phase 1: Dependencies Only)
+
+Convert OTA Updates plugin category to init options. **Phase 1**: Install dependencies only. **Phase 2**: Infrastructure and code generation (future).
+
+Users can select OTA update providers during `rns init` (single-select - only one provider can be selected):
+- `ota.expo-updates` (Expo Updates - Expo-managed OTA, Expo target only)
+- `ota.code-push` (CodePush - Microsoft CodePush, works for both Expo and Bare)
+
+**Note:** This is a single-slot category. The prompt must enforce single selection. Expo Updates is only available for Expo target; CodePush works for both targets.
+
+Implementation rules (Phase 1):
+- Add to `InitInputs.selectedOptions` interface: `ota?: { expoUpdates?: boolean; codePush?: boolean }`
+- Add to `collectInitInputs()` prompt logic with target-aware filtering:
+  - Expo target: Show both options, enforce single selection
+  - Bare target: Show only `codePush` option
+  - Enforce single selection in prompt UI
+- Install dependencies in `installCoreDependencies()` when selected:
+  - `expo-updates@latest` (if expoUpdates selected, Expo target only)
+  - `react-native-code-push@latest` (if codePush selected)
+- Store selections in manifest (automatic via existing logic)
+- Ensure idempotency (use `installedPackages` Set to avoid duplicates)
+
+Verification:
+- `npm run typecheck`
+- `npm test`
+- Manual test: Run `rns init`, select OTA provider, verify dependencies installed in `package.json`
+
+## [ ] 47) Background Tasks as Init Options (Phase 1: Dependencies Only)
+
+Convert background tasks plugin category to init options. **Phase 1**: Install dependencies only. **Phase 2**: Infrastructure and code generation (future).
+
+Users can select background task capabilities during `rns init`:
+- `background.tasks` (Background tasks - general background processing)
+- `background.geofencing` (Geofencing - location-based triggers)
+- `background.fetch` (Background fetch - periodic data sync)
+
+**Note:** Background task implementation varies by platform. Phase 2 will add platform-specific setup and task handlers.
+
+Implementation rules (Phase 1):
+- Add to `InitInputs.selectedOptions` interface: `background?: { tasks?: boolean; geofencing?: boolean; fetch?: boolean }`
+- Add to `collectInitInputs()` prompt logic (multi-select, all work for Expo and Bare)
+- Install dependencies in `installCoreDependencies()` when selected:
+  - `react-native-background-job@latest` (if tasks selected)
+  - `react-native-geolocation-service@latest` (if geofencing selected)
+  - `react-native-background-fetch@latest` (if fetch selected)
+- Store selections in manifest (automatic via existing logic)
+- Ensure idempotency (use `installedPackages` Set to avoid duplicates)
+
+Verification:
+- `npm run typecheck`
+- `npm test`
+- Manual test: Run `rns init`, select background tasks, verify dependencies installed in `package.json`
+
+## [ ] 48) Privacy & Consent as Init Options (Phase 1: Dependencies Only)
+
+Convert privacy & consent plugin category to init options. **Phase 1**: Install dependencies only. **Phase 2**: Infrastructure and code generation (future).
+
+Users can select privacy/consent capabilities during `rns init`:
+- `privacy.att` (App Tracking Transparency - iOS ATT framework)
+- `privacy.consent` (Consent management - user consent dialogs and preferences)
+- `privacy.gdpr` (GDPR compliance - data privacy utilities)
+
+**Note:** Consent and GDPR features typically require custom implementation. Phase 2 will add hooks and utilities for consent management.
+
+Implementation rules (Phase 1):
+- Add to `InitInputs.selectedOptions` interface: `privacy?: { att?: boolean; consent?: boolean; gdpr?: boolean }`
+- Add to `collectInitInputs()` prompt logic (multi-select, all work for Expo and Bare)
+- Install dependencies in `installCoreDependencies()` when selected:
+  - `react-native-tracking-transparency@latest` (if att selected, iOS only)
+  - `@react-native-async-storage/async-storage@latest` (if consent or gdpr selected, for storing consent preferences)
+- Store selections in manifest (automatic via existing logic)
+- Ensure idempotency (use `installedPackages` Set to avoid duplicates)
+
+**Note:** Consent and GDPR management typically require custom business logic. Phase 2 will add infrastructure hooks; developers will implement consent flows based on their requirements.
+
+Verification:
+- `npm run typecheck`
+- `npm test`
+- Manual test: Run `rns init`, select privacy/consent capabilities, verify dependencies installed in `package.json`
+
+## [ ] 49) Device / Hardware as Init Options (Phase 1: Dependencies Only)
+
+Convert device/hardware plugin category to init options. **Phase 1**: Install dependencies only. **Phase 2**: Infrastructure and code generation (future).
+
+Users can select device/hardware capabilities during `rns init`:
+- `device.biometrics` (Biometric authentication - Face ID, Touch ID, fingerprint)
+- `device.bluetooth` (Bluetooth - device communication)
+
+Implementation rules (Phase 1):
+- Add to `InitInputs.selectedOptions` interface: `device?: { biometrics?: boolean; bluetooth?: boolean }`
+- Add to `collectInitInputs()` prompt logic (multi-select, all work for Expo and Bare)
+- Install dependencies in `installCoreDependencies()` when selected:
+  - `expo-local-authentication@latest` (if biometrics selected, Expo target)
+  - `react-native-biometrics@latest` (if biometrics selected, Bare target)
+  - `react-native-bluetooth-classic@latest` (if bluetooth selected, for classic Bluetooth)
+  - `react-native-ble-plx@latest` (if bluetooth selected, for BLE - Bluetooth Low Energy)
+- Store selections in manifest (automatic via existing logic)
+- Ensure idempotency (use `installedPackages` Set to avoid duplicates)
+
+**Note:** Bluetooth implementation may require both classic and BLE packages depending on use case. Phase 2 will clarify which package(s) to use based on specific requirements.
+
+Verification:
+- `npm run typecheck`
+- `npm test`
+- Manual test: Run `rns init`, select device/hardware capabilities, verify dependencies installed in `package.json`
+
+## [ ] 50) Testing as Init Options (Phase 1: Dependencies Only)
+
+Convert testing plugin category to init options. **Phase 1**: Install dependencies only. **Phase 2**: Infrastructure and code generation (future).
+
+Users can select testing frameworks during `rns init`:
+- `test.detox` (Detox E2E testing)
+
+Implementation rules (Phase 1):
+- Add to `InitInputs.selectedOptions` interface: `testing?: { detox?: boolean }`
+- Add to `collectInitInputs()` prompt logic (works for Expo and Bare)
+- Install dependencies in `installCoreDependencies()` when selected (dev dependencies):
+  - `detox@latest` (dev dependency)
+- Store selections in manifest (automatic via existing logic)
+- Ensure idempotency (use `installedPackages` Set to avoid duplicates)
+
+Verification:
+- `npm run typecheck`
+- `npm test`
+- Manual test: Run `rns init`, select testing framework, verify dependencies installed in `package.json`
