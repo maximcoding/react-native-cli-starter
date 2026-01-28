@@ -175,6 +175,25 @@ function getTabLabel(routeName: string, t?: (key: string) => string): string {
   return translated;
 }
 
+/**
+ * Get translated stack screen title (e.g. for header).
+ * Uses screens.{screen}.title; falls back to readable route name if i18n missing.
+ */
+function getStackLabel(routeName: string, t?: (key: string) => string): string {
+  if (!t) {
+    return routeName.replace(/^SCREEN_|^MODAL_/, '').replace(/_/g, ' ');
+  }
+  const translationKey =
+    routeName.startsWith('MODAL_')
+      ? 'screens.modal.title'
+      : `screens.${routeName.replace(/^SCREEN_/, '').toLowerCase()}.title`;
+  const translated = t(translationKey);
+  if (translated === translationKey) {
+    return routeName.replace(/^SCREEN_|^MODAL_/, '').replace(/_/g, ' ');
+  }
+  return translated;
+}
+
 function TabsNavigator(): React.ReactElement {
   const registry = getUserRegistry();
   
@@ -274,6 +293,7 @@ function DrawerNavigator(): React.ReactElement {
 function RootStackNavigator(): React.ReactElement {
   const registry = getUserRegistry();
   const preset = NAVIGATION_PRESET;
+  const t = useT ? useT() : undefined;
   
   // Preset flags (starting point, not constraint)
   const presetHasTabs = preset === 'stack-tabs' || preset === 'stack-tabs-modals' || preset === 'tabs-only';
@@ -407,7 +427,7 @@ function RootStackNavigator(): React.ReactElement {
             component={screen.component}
             options={{
               headerShown: true,
-              title: screen.options?.title || screen.name,
+              title: screen.options?.title ?? getStackLabel(screen.name, t),
               ...screen.options,
             }}
           />

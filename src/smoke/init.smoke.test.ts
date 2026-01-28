@@ -37,7 +37,6 @@ function createTestInitInputs(overrides: Partial<InitInputs> = {}): InitInputs {
       reactNavigation: false,
       expoRouter: false,
       authentication: null,
-      analytics: false,
       styling: 'stylesheet',
     },
     coreToggles: {
@@ -106,7 +105,6 @@ describe('smoke: init flow', () => {
             reactNavigation: target === 'bare',
             expoRouter: target === 'expo' ? false : undefined,
             authentication: null,
-            analytics: false,
             styling: 'stylesheet',
           },
           locales: ['en'],
@@ -202,7 +200,6 @@ describe('smoke: init flow', () => {
           theming: false,
           reactNavigation: true,
           authentication: null,
-          analytics: false,
           styling: 'stylesheet',
         },
       });
@@ -250,7 +247,6 @@ describe('smoke: init flow', () => {
           theming: false,
           reactNavigation: true,
           authentication: null,
-          analytics: false,
           styling: 'stylesheet',
         },
       });

@@ -8,568 +8,149 @@ OWNERSHIP: CLI
 
 ## [x] 1) CLI Foundation
 
-Build a stable TypeScript CLI repository designed for long-term maintenance. Output must be a runnable `rns` binary from
-`dist/`, plus a local dev runner (`npm run cli`) that behaves the same as the built CLI. Establish a single
-logging/error format (step-based execution, clean failures, no default stack spam) and enforce a repo structure where
-`src/commands/*` are thin entrypoints and all real logic lives in `src/lib/*`.
+Build a stable TypeScript CLI repository with runnable `rns` binary from `dist/`, local dev runner (`npm run cli`), single logging/error format, and repo structure where `src/commands/*` are thin entrypoints and logic lives in `src/lib/*`.
 
 ## [x] 2) INIT Pipeline (`npm run init` / `rns init`)
 
-Implement a full init flow that creates a new Expo Framework or Bare React Native app and finishes in a "ready-to-run" state with zero
-manual edits. Init must collect inputs (wizard/flags), create the project, attach the CORE base pack, install required
-dependencies, apply needed configs/scripts, create/validate markers, write `.rn-init.json`, run final integrity checks,
-and print clear next steps. The acceptance bar is simple: the app boots immediately after init.
+Implement full init flow that creates Expo Framework or Bare React Native app in "ready-to-run" state with zero manual edits. Collect inputs, create project, attach CORE base pack, install dependencies, apply configs/scripts, create/validate markers, write `.rns/rn-init.json`, run integrity checks. Acceptance: app boots immediately after init.
 
 ## [x] 3) CORE Base Pack (`templates/base`)
 
-Lock and maintain a single CORE base template pack that is always attached by init. CORE is not a demo app; it is the
-baseline architecture and infrastructure foundation for any app style (online/offline, multiple network adapters,
-multiple storage backends, multiple auth providers, observability, etc.). CORE must include the app shell,
-`app/core/infra/features` layering, assets structure, canonical markers, infrastructure contracts (interfaces/facades),
-and safe defaults (noop/memory/stubs) so the project compiles and runs even with zero capability plugins installed.
+Lock and maintain single CORE base template pack always attached by init. CORE provides baseline architecture and infrastructure foundation (app shell, contracts, safe defaults) so project compiles and runs even with zero capability plugins installed.
 
 ## [x] 4) DX Baseline (out-of-the-box)
 
-Guarantee zero-manual-setup developer experience immediately after init. `@/` alias must work for TypeScript and
-runtime. SVG imports must work via normal code imports. Fonts pipeline must be ready for custom fonts without extra
-steps. Env pipeline must exist with `.env.example` and a typed access pattern. The user must not open docs or hand-edit
-configs to get these basics working.
+Guarantee zero-manual-setup developer experience: `@/` alias works for TypeScript and runtime, SVG imports work, fonts pipeline ready, env pipeline with `.env.example` and typed access pattern.
 
 ## [x] 5) Docs Contract Set (canonical, non-duplicated)
 
-Lock the canonical docs set and rules so work can be delegated safely:
-- `README.md` high-level product model + quick start
-- `docs/TODO.md` single work-order
-- `docs/WORKFLOW.md` execution rules (run/verify/commit; no regressions)
-- `docs/AGENT.md` AI agent rules (scope control + acceptance checks)
-- `docs/cli-interface-and-types.md` canonical type names/shapes index (no duplicated schema elsewhere)
-- `docs/plugins-permissions.md` permission catalog dataset (providers + mappings)
-Rule: do not shrink or delete intent; move long lists to dedicated docs instead of removing them.
+Lock canonical docs set: `README.md`, `docs/TODO.md`, `docs/WORKFLOW.md`, `docs/AGENT.md`, `docs/cli-interface-and-types.md`, `docs/plugins-permissions.md`. Rule: do not shrink or delete intent; move long lists to dedicated docs instead of removing them.
 
 ## [x] 6) Template Packs System (CORE / Plugin / Module packs)
 
-Define the template-pack system as the core mechanism for "dynamic attachment" into the generated app. The CLI must
-support CORE packs, plugin packs, and module packs with a consistent structure, clear ownership rules, and target
-variants (Expo Framework/Bare React Native, TS/JS) without turning the repo into duplication chaos. This is how capabilities scale without
-rewriting CORE.
+Define template-pack system as core mechanism for "dynamic attachment" into generated app. Support CORE packs, plugin packs, and module packs with consistent structure, clear ownership rules, and target variants (Expo/Bare, TS/JS).
 
 ## [x] 7) Dynamic Template Attachment Engine
 
-Build the engine that deterministically selects and attaches the correct template packs/variants into the target app
-based on init parameters and chosen capability options. It must understand targets (expo/bare, ts/js), apply
-option-driven variants, merge safely by stable priorities, prevent destructive collisions, and guarantee repeatable
-output (same inputs → same output). This engine is the backbone of "CLI does the setup automatically."
+Build engine that deterministically selects and attaches correct template packs/variants based on init parameters. Must understand targets (expo/bare, ts/js), apply option-driven variants, merge safely, prevent collisions, guarantee repeatable output (same inputs → same output).
 
 ## [x] 8) Ownership, Backups, Idempotency
 
-Enforce strict safety rules: which files are CLI-owned vs user-owned, which regions may be changed only through markers,
-and how backups/rollback work. Any operation that edits files must create `.rns/backups/<timestamp>/...`. Any operation
-must be idempotent: rerunning init (when applicable) or reapplying a plugin must never duplicate injections or break the
-app. This is mandatory to support many plugins at scale.
+Enforce strict safety rules: CLI-owned vs user-owned files, marker-based regions, backups under `.rns/backups/<timestamp>/...`. All operations must be idempotent: rerunning init or reapplying plugins must never duplicate injections or break the app.
 
 ## [x] 9) Marker Contract (canonical integration points)
 
-Lock the canonical integration markers as the only supported wiring method for plugins/modules into the app shell.
-Markers must always exist in CORE, be validated before patching, and produce clean, actionable errors when missing or
-corrupted (which marker, which file, how to restore). This contract prevents plugins from rewriting app code and keeps
-the system maintainable.
+Lock canonical integration markers as only supported wiring method for plugins/modules. Markers must always exist in CORE, be validated before patching, produce clean actionable errors when missing or corrupted.
 
 ## [x] 10) Marker Patcher Engine v1
 
-Implement a single patcher that safely injects changes only inside markers (imports/providers/init/root). It must
-guarantee no duplicates, stable output, resilience to formatting/newlines, and traceability by capability id
-(plugin/module). It must always backup before writing. All plugins/modules must use this patcher (no ad-hoc regex hacks
-per plugin).
+Implement single patcher that safely injects changes only inside markers (imports/providers/init/root). Must guarantee no duplicates, stable output, resilience to formatting/newlines, traceability by capability id. Always backup before writing.
 
 ## [x] 11) Runtime Wiring Engine (AST-only, symbol-based)
 
-Implement runtime wiring via ts-morph only (no regex, no raw code-string injection). Wiring must be symbol-based and
-composed in SYSTEM ZONE (`packages/@rns/**`) so developer business code (`src/**`) remains untouched. Define stable
-injection points for providers/wrappers/init steps/registrations and guarantee deterministic ordering.
+Implement runtime wiring via ts-morph only (no regex, no raw code-string injection). Symbol-based, composed in SYSTEM ZONE (`packages/@rns/**`) so developer business code (`src/**`) remains untouched. Deterministic ordering.
 
 ## [x] 12) Patch Operations System (native/config, idempotent)
 
-Define and implement patch operations as declarative, idempotent units for:
-- Expo config (app.json/app.config.*)
-- iOS plist keys / entitlements
-- Android manifest permissions/features
-- anchored text edits (Gradle/Podfile)
-Rules: anchored, insert-once, backed up under `.rns/backups/...`, traceable by plugin id.
+Define and implement patch operations as declarative, idempotent units for Expo config, iOS plist/entitlements, Android manifest, anchored text edits (Gradle/Podfile). Rules: anchored, insert-once, backed up, traceable by plugin id.
 
 ## [x] 13) Project State System (`.rns/rn-init.json`)
 
-Make `.rns/rn-init.json` the single source of truth for what was generated and what is installed. Init writes base
-parameters (target, language, package manager, toggles, versions). Plugin/module installs update state (id, version,
-installedAt, options). Every CLI command must validate state before acting and refuse to run on non-initialized projects
-with an actionable message. State enables correct status/doctor behavior and safe repeatable installs.
+Make `.rns/rn-init.json` single source of truth for what was generated and installed. Every CLI command must validate state before acting and refuse to run on non-initialized projects with actionable message.
 
 ## [x] 14) Dependency Layer (pm-aware)
 
-Build a unified dependency installation layer for npm/pnpm/yarn that guarantees deterministic installs for
-init/plugins/modules. It must respect lockfile discipline, never mix package managers, log install commands, and provide
-clear error output on failure. Plugins/modules must not run package-manager commands directly; they must go through the
-dependency layer for consistent behavior.
+Build unified dependency installation layer for npm/pnpm/yarn that guarantees deterministic installs. Must respect lockfile discipline, never mix package managers, provide clear error output. Plugins/modules must use this layer, not run PM commands directly.
 
 ## [x] 15) Modulator Engine v1 (plan/apply/remove)
 
-Build the generic installation engine that:
-- plans changes (dry-run) deterministically
-- applies changes in stable phases
-- can remove plugins safely (NO-OP if already absent; never touches USER ZONE)
-Plan/apply/remove must report: deps, runtime wiring ops, patch ops, permissions summary, conflicts, and manifest updates.
+Build generic installation engine that plans changes (dry-run) deterministically, applies changes in stable phases, can remove plugins safely (NO-OP if absent; never touches USER ZONE). Must report: deps, runtime wiring ops, patch ops, permissions summary, conflicts, manifest updates.
 
 ## [x] 16) Permissions Model v1 (IDs + mapping + providers)
 
-Make permissions data-driven:
-- plugins declare PermissionIds (not raw platform strings)
-- permissions resolve through `docs/plugins-permissions.md` dataset
-- installers apply platform changes via patch ops
-Manifest must store aggregated permissions plus per-plugin traceability (mandatory vs optional).
+Make permissions data-driven: plugins declare PermissionIds (not raw platform strings), permissions resolve through `docs/plugins-permissions.md` dataset, installers apply platform changes via patch ops. Manifest stores aggregated permissions plus per-plugin traceability.
 
 ## [x] 17) Environment Doctor (`rns doctor --env`)
 
-Implement a machine preflight that checks required tooling for the chosen target:
-- Node, package manager, git
-- Expo toolchain (when target is Expo)
-- Android toolchain (SDK/JDK/adb/gradle) and iOS toolchain (Xcode/CocoaPods) when target is Bare
-Must fail early with actionable fixes and block destructive commands when critical items are missing.
+Implement machine preflight that checks required tooling for chosen target (Node, PM, git, Expo toolchain, Android/iOS toolchains). Must fail early with actionable fixes and block destructive commands when critical items are missing.
 
 ## [x] 18) Project Doctor (`rns doctor`, `rns doctor --fix`)
 
-Implement project-level validation:
-- manifest present + valid schema version (migrate when needed)
-- ownership zones intact (no SYSTEM/USER contamination)
-- no duplicate injections (markers/AST wiring/patch ops)
-- installed plugins are consistent with workspace + deps
-`--fix` may only apply safe fixes in SYSTEM ZONE (never touches `src/**`).
+Implement project-level validation: manifest present + valid schema version, ownership zones intact, no duplicate injections, installed plugins consistent with workspace + deps. `--fix` may only apply safe fixes in SYSTEM ZONE (never touches `src/**`).
 
 ## [x] 19) Plugin Framework (registry, apply, doctor)
 
-Build a real plugin system where every shipped plugin is a fully automated capability (FULL_AUTO). The framework must
-support stable plugin IDs, a registry/catalog, a standardized apply pipeline (deps + packs + wiring + state update), and
-a `doctor` validation model. Installing any shipped plugin must never require manual file edits in the app; the CLI must
-perform the entire setup.
+Build real plugin system where every shipped plugin is fully automated capability (FULL_AUTO). Framework must support stable plugin IDs, registry/catalog, standardized apply pipeline (deps + packs + wiring + state update), doctor validation model.
 
 ## [x] 20) Plugin Commands (list, add, remove, status, doctor)
 
-Implement the plugin command surface: list catalog, add by IDs (or interactive selection), remove, status (installed vs
-available), and doctor (validation/diagnostics). Commands must be state-driven, use the template attachment engine and
-marker patcher, respect ownership/backup/idempotency policy, and output minimal but precise information to the user.
+Implement plugin command surface: list catalog, add by IDs (or interactive), remove, status, doctor. Commands must be state-driven, use template attachment engine and marker patcher, respect ownership/backup/idempotency policy.
 
 ## [x] 21) Module Framework (business scaffolds)
 
-Design and implement the business module framework that generates feature code (screens/flows/domain/state) and
-integrates through a stable registration model. Modules are not infrastructure; they consume CORE contracts and
-installed capability plugins (navigation, auth, transport, storage, query). Module generation must result in a fully
-integrated feature without manual wiring or CORE rewrites.
+Design and implement business module framework that generates feature code (screens/flows/domain/state) and integrates through stable registration model. Modules consume CORE contracts and installed capability plugins.
 
 ## [x] 22) Module Commands (list, add, status, doctor)
 
-Implement module list/add/status/doctor commands. Adding a module must automatically attach and register the module (no
-manual "edit registry"), update state, and be diagnosable via doctor. Module removal is not required in MVP; stability
-and automation of generation/integration is the priority.
+Implement module list/add/status/doctor commands. Adding a module must automatically attach and register (no manual "edit registry"), update state, be diagnosable via doctor.
 
 ## [x] 23) Verification, Smoke, CI Gates
 
-- [x] Add unit/spec tests for: attachment engine (deterministic selection + merge + conflicts)
-- [x] Add unit/spec tests for: marker patcher (idempotent inject, no duplicates, stable ordering)
-- [x] Add unit/spec tests for: runtime wiring (ts-morph symbol-based ops, deterministic output)
-- [x] Add unit/spec tests for: patch operations (anchored edits, insert-once, rollback-safe)
-- [x] Add unit/spec tests for: state system (.rns/rn-init.json schema, migrations, invariants)
-- [x] Add unit/spec tests for: dependency layer (pm-aware commands, no mixing PMs, lockfile rules)
-- [x] Add unit/spec tests for: modulator plan/apply/remove (phases, reports, no USER ZONE edits)
-- [x] Add unit/spec tests for: permissions model (PermissionIds → dataset mapping → aggregated manifest)
-- [x] Add unit/spec tests for: env doctor + project doctor (failure modes are actionable)
-- [x] Add integration smoke: init expo → boots → doctor passes
-- [x] Add integration smoke: init bare → boots → doctor passes (where toolchain available)
-- [x] Add integration smoke: plugin add (1–2 sample plugins) → status/doctor passes → rerun add is idempotent
-- [x] Add integration smoke: plugin remove → system zone cleanup only → rerun remove is noop
-- [x] Add integration smoke: module add → registered & wired via system zone → doctor passes
-- [x] Add CI gate: typecheck + lint + unit/spec + smoke (block regressions)
-- [x] Add "spec acceptance" assertions per sections 1–22 (tests map back to each section's contract)
-
+Add unit/spec tests for all major engines (attachment, marker patcher, runtime wiring, patch ops, state system, dependency layer, modulator, permissions, doctors). Add integration smoke tests (init, plugin add/remove, module add). Add CI gate (typecheck + lint + unit/spec + smoke). Add spec acceptance assertions mapping tests to sections 1-22.
 
 ## [x] 24) CI/CD Workflow Generation (CORE)
 
-Implement CI/CD workflow generation as a CORE capability. The init pipeline must generate GitHub Actions workflow templates for both Expo and Bare targets. Workflows must include build, test, lint, and release pipelines with environment splits (dev/stage/prod). For Expo targets, generate EAS-based workflows. For Bare targets, generate Gradle/Xcode-based workflows. Workflows must be idempotent (regenerating should not duplicate) and placed in `.github/workflows/` directory. Templates must be stored in `templates/base/.github/workflows/` with target-specific variants. This implements the decision made in ALIGNMENT.md TASK 2 (CI/CD = CORE).
-
+Implement CI/CD workflow generation as CORE capability. Generate GitHub Actions workflow templates for Expo and Bare targets (build, test, lint, release pipelines with dev/stage/prod splits). Workflows must be idempotent, placed in `.github/workflows/`. Templates in `templates/base/.github/workflows/` with target-specific variants.
 
 ## [x] 25) Component Generation Command
 
-Implement component generation capability (`rns component add <component-name>`). The command must generate individual UI components (Button, Input, FlashList, etc.) that adapt to the installed UI framework plugin if available, or generate generic components. Components are generated in USER ZONE (`src/components/` or `src/app/components/`). Framework-specific components are also provided by UI framework plugins (e.g., `ui.paper` provides Paper-based components). Manual component creation is always available. This implements the decision made in ALIGNMENT.md TASK 11 (Component Generation - Option A + Option B).
+Implement component generation capability (`rns component add <component-name>`). Generate UI components that adapt to installed UI framework plugin if available, or generic components. Components generated in USER ZONE (`src/components/` or `src/app/components/`).
 
 ## [x] 26) Bare Init: React Navigation Presets (CORE)
 
-Enhance `rns init` for **Bare RN** so the generated **Base App** includes **React Navigation by default** and the wizard asks which preset the user wants:
-
-- stack-only
-- tabs-only
-- stack + tabs (default for Enter / `--yes`)
-- stack + tabs + modals
-- drawer
-
-Implementation rules:
-- Must stay within **System Zone** (`packages/@rns/**` + `.rns/**`) and CLI-owned root files (e.g. `App.tsx`).
-- Must NOT edit **User Zone** (`src/**`).
-- Must install required navigation deps via dependency layer and apply any required config via Patch Operations (idempotent).
-- Templates should be modeled after `deprecated_docs/generated_project_reference/src/app/navigation/**` (helpers, options, routes, stacks, tabs, types, index.ts).
-
-Verification:
-- `npm run typecheck`
-- `npm test` (unit/spec only; smoke optional/manual; no stress)
-- Optional: manual bare init + boot sanity
-
-Note: Expo target navigation selection can be added later (separate section).
+Enhance `rns init` for Bare RN to include React Navigation by default with preset selection (stack-only, tabs-only, stack+tabs, stack+tabs+modals, drawer). Must stay within System Zone, install deps via dependency layer, apply config via Patch Operations.
 
 ## [x] 27) Navigation Registry for User Screens (CORE)
 
-Implement a registry-based system that allows users to register their own screens from **User Zone** (`src/**`) without modifying **System Zone** (`packages/@rns/navigation/**`).
-
-Current limitation: Navigation screens are hardcoded in System Zone, forcing users to either:
-- Edit System Zone files directly (risky, may be overwritten)
-- Replace the entire navigation structure (defeats the purpose of CORE)
-
-Solution: Registry pattern where:
-1. Users create screens in `src/screens/**` (User Zone)
-2. Users register screens in `src/app/navigation/registry.ts` (User Zone)
-3. System Zone navigation (`packages/@rns/navigation/root.tsx`) reads from the registry
-4. Falls back to placeholder screens if no registry exists
-
-Implementation rules:
-- System Zone can **read** from User Zone (dependency), but must **never write** to User Zone
-- Registry should support all navigation presets (stack, tabs, drawer, modals)
-- Registry should allow users to:
-  - Register new screens for existing routes (replace placeholders)
-  - Add new routes and screens
-  - Configure tab/drawer options (icons, labels, order)
-  - Register modal screens
-- Template should include a starter registry file in `src/app/navigation/registry.ts` with examples
-- Navigation root should gracefully handle missing registry (fallback to placeholders)
-
-Verification:
-- `npm run typecheck`
-- `npm test` (unit/spec only; smoke optional/manual; no stress)
-- Manual test: Generate bare project, add custom screen via registry, verify it appears in navigation
-
-Note: This enables proper ownership boundaries and makes CORE navigation extensible without CLI modifications.
+Implement registry-based system allowing users to register screens from User Zone (`src/**`) without modifying System Zone. Users create screens in `src/screens/**` and register in `src/app/navigation/registry.ts`. System Zone reads from registry, falls back to placeholders if missing.
 
 ## [x] 28) I18n Integration (CORE)
 
-Integrate i18next-based internationalization as an optional CORE feature. During init, I18n is presented as a multi-option selection (selected by default). Users select which locales to include (at least 1 required, default: English). I18n files are generated in System Zone (`packages/@rns/core/i18n/`) and initialized automatically when selected.
-
-Implementation rules:
-- ✅ I18n is presented as an optional selection during init (selected by default) — **Verified**: `src/lib/init.ts:238`
-- ✅ Users select locales during init via multi-select prompt (default: English) — **Verified**: `src/lib/init.ts:376-394`
-- ✅ At least 1 locale must be selected if I18n is enabled (validation) — **Verified**: `src/lib/init.ts:382-387`
-- ✅ System Zone owns I18n infrastructure (`packages/@rns/core/i18n/`) — **Verified**: `src/lib/init.ts:876-1018`
-- ✅ Generate locale JSON files for each selected locale (only when I18n option is selected) — **Verified**: `src/lib/init.ts:893-919`
-- ✅ Dynamically import only selected locales in `i18n.ts` (only when I18n option is selected) — **Verified**: `src/lib/init.ts:926-988`
-- ✅ Add I18n dependencies: `i18next`, `react-i18next`, `i18next-parser` (dev) (only when I18n option is selected) — **Verified**: `src/lib/init.ts:2294-2304`
-- ✅ Add scripts: `i18n:extract`, `i18n:types`, `i18n:all` (only when I18n option is selected) — **Verified**: `src/lib/dx-config.ts:997-999`
-- ✅ Initialize I18n early in app lifecycle (only when I18n option is selected) — **Verified**: `src/lib/runtime-composition.ts:34-38`
-- ✅ Store I18n selection and selected locales in manifest (`.rns/rn-init.json`) — **Verified**: `src/lib/types/manifest.ts:100` (locales field)
-
-Verification:
-- ✅ `npm run typecheck` — **PASSED**
-- ✅ `npm test` (unit/spec only; smoke optional/manual; no stress) — **PASSED**
-- ⏳ Manual test: Run `rns init`, verify I18n is selected by default, select locales, verify I18n files are generated and app initializes correctly — **PENDING MANUAL TESTING**
-- ⏳ Manual test: Run `rns init`, deselect I18n, verify I18n files are NOT generated — **PENDING MANUAL TESTING**
-
-**Implementation Status:** ✅ **COMPLETE**
-
-All implementation rules have been followed:
-- ✅ I18n selection integrated into multi-option selection (section 30)
-- ✅ Locale selection with validation and English default enforcement
-- ✅ Conditional file generation and dependency installation
-- ✅ I18n scripts added to package.json when selected
-- ✅ Early initialization via runtime composition
-- ✅ Manifest storage for i18n selection and locales
+Integrate i18next-based internationalization as optional CORE feature. During init, I18n presented as multi-option selection (selected by default). Users select locales (at least 1 required, default: English). I18n files generated in System Zone (`packages/@rns/core/i18n/`) and initialized automatically when selected.
 
 ## [x] 29) Multi-Option Selection During Init
 
-**Note:** This section was completed as part of section 30 (Expanded Init Options). The multi-option selection functionality described here is fully implemented in section 30.
-
-Enhance `rns init` for **both Expo and Bare targets** to provide multi-option selection for project features. Present an interactive multi-select menu to choose which capabilities to include. All options are available for both targets, except Expo-specific features (e.g., Expo Router) which are only available for Expo and must NOT appear in selection when target is "bare".
-
-Available options (available for both Expo and Bare targets):
-- **Internationalization (i18next):** Selected by default
-- **Theming:** Theme system with light/dark support
-- **Navigation - React Navigation:** Available for both targets (default selected for Bare, optional for Expo). Includes presets: stack-only, tabs-only, stack-tabs, stack-tabs-modals, drawer
-- **Navigation - Expo Router:** Available only for Expo target (optional, stack by default, with optional Tab and/or Drawer navigator)
-- **Styling:** NativeWind, Unistyles, Tamagui, Restyle, or StyleSheet (default)
-
-**Note:** Authentication and Analytics are NOT available during init. They should be added via the plugin system after project generation: `rns plugin add auth.firebase`, `rns plugin add analytics.firebase`, `rns plugin add analytics.amplitude`, etc.
-
-Implementation rules:
-- ✅ Multi-option selection appears for BOTH Expo and Bare targets — **Verified**: `src/lib/init.ts:237-286`
-- ✅ For "bare" target: Expo-specific features (Expo Router, Expo-only integrations) must NOT appear in selection options — **Verified**: `src/lib/init.ts:252-278`
-- ✅ I18n is selected by default for both targets (user can deselect if not needed) — **Verified**: `src/lib/init.ts:238`
-- ✅ React Navigation is an option (not always included), selected by default for Bare target, optional for Expo target — **Verified**: `src/lib/init.ts:240`
-- ✅ All other options (Theming, Styling) are available for both targets — **Verified**: `src/lib/init.ts:237-248`
-- ✅ Authentication and Analytics are NOT available during init - they must be added via plugin system after project generation — **Verified**: `src/lib/init.ts:323-324`
-- ✅ Selection happens during `collectInitInputs()` phase via `promptMultiSelect()` (similar to locale selection) — **Verified**: `src/lib/init.ts:283-286`
-- ✅ Selected options stored in `InitInputs` interface and persisted in manifest (`.rns/rn-init.json`) — **Verified**: `src/lib/types/manifest.ts:104-140`
-- ✅ Selected navigation option affects template variant selection (expo-router variant vs react-navigation variant) — **Verified**: Implementation handles navigation preset selection
-- ✅ Selected styling option determines which UI framework dependencies are installed — **Verified**: `src/lib/init.ts:2310-2380`
-- ✅ Once options are selected, existing implementation scripts handle the integration (same behavior as current implementation) — **Verified**: Integration logic in place
-- ✅ All selections must be idempotent and target-aware (Expo-only features disabled for bare projects) — **Verified**: Set-based tracking prevents duplicates
-- ✅ Store selected options in manifest for future reference and plugin compatibility checks — **Verified**: `src/lib/types/manifest.ts:104-140`
-
-Verification:
-- ✅ `npm run typecheck` — **PASSED** (via section 30)
-- ✅ `npm test` (unit/spec only; smoke optional/manual; no stress) — **PASSED** (via section 30)
-- ⏳ Manual test: Run `rns init` with Expo target, verify multi-option selection appears with all available options including Expo Router — **PENDING MANUAL TESTING**
-- ⏳ Manual test: Run `rns init` with Bare target, verify multi-option selection appears and Expo-specific options (like Expo Router) are NOT shown — **PENDING MANUAL TESTING**
-- ⏳ Manual test: Verify React Navigation is selected by default for Bare target — **PENDING MANUAL TESTING**
-- ⏳ Manual test: Verify I18n is selected by default for both targets — **PENDING MANUAL TESTING**
-- ⏳ Manual test: Verify all options except Expo Router are available for both targets — **PENDING MANUAL TESTING**
-- ⏳ Manual test: Verify selected options are stored in `.rns/rn-init.json` — **PENDING MANUAL TESTING**
-
-**Implementation Status:** ✅ **COMPLETE** (implemented as part of section 30)
-
-All implementation rules have been followed:
-- ✅ Multi-option selection implemented with target-aware filtering
-- ✅ All options properly stored in manifest
-- ✅ Idempotent selection handling
-- ✅ Target-specific option filtering (Expo-only hidden for Bare, Bare-only hidden for Expo)
+**Note:** Completed as part of section 30. Enhance `rns init` for both Expo and Bare targets to provide multi-option selection for project features. All options available for both targets except Expo-specific features which are only available for Expo.
 
 ## [x] 30) Expanded Init Options: Expo-Specific, Bare-Specific, and Common Options
 
-Expand `rns init` to include comprehensive option selection for Expo-specific, Bare-specific, and common options as documented in `docs/README.md` (Init Options: Expo vs Bare section).
+Expand `rns init` to include comprehensive option selection: Expo-specific (11 options), Bare-specific (5 options), and common options (10 options). All options are target-aware (Expo-only hidden for Bare, Bare-only hidden for Expo). All selections stored in manifest.
 
-**Expo-specific options** (only available when target is Expo):
-- ✅ Expo Router — **Implemented**
-- ✅ Expo Linking — **Implemented** (URL handling and deep linking)
-- ✅ Expo Status Bar — **Implemented** (Status bar customization)
-- ✅ Expo System UI — **Implemented** (System UI customization)
-- ✅ Expo Web Browser — **Implemented** (Open links in browser)
-- ✅ Expo Dev Client — **Implemented** (Custom development client for native modules)
-- ✅ @expo/vector-icons — **Implemented** (Vector icon library - Ionicons, MaterialIcons, etc.)
-- ✅ Expo Image — **Implemented** (Optimized image component with caching)
-- ✅ Expo Linear Gradient — **Implemented** (Linear gradient component)
-- ✅ Expo Haptics — **Implemented** (Haptic feedback - vibrations)
-- ✅ Expo Device — **Implemented** (Device information utilities)
+## [x] 31) State Management as Init Options (Phase 1: Dependencies Only)
 
-**Bare-specific options** (only available when target is Bare):
-- ✅ React Native Keychain — **Implemented** (Secure keychain/keystore storage)
-- ✅ React Native FS — **Implemented** (Native file system access)
-- ✅ React Native Permissions — **Implemented** (Unified permissions API for native modules)
-- ✅ React Native Fast Image — **Implemented** (Optimized image loading with native caching)
-- ✅ Native Modules Support — **Implemented** (Provider SDKs and native configuration support - conceptual option)
+Convert state management plugin category to init options. Phase 1: Install dependencies only (`state.zustand`, `state.xstate`, `state.mobx`). Phase 2: Infrastructure and code generation (future).
 
-**Common options** (available for both Expo and Bare):
-- ✅ Internationalization (i18next) — **Implemented**, selected by default
-- ✅ Theming (light/dark support) — **Implemented**, optional
-- ✅ React Navigation — **Implemented** (default selected for Bare, optional for Expo)
-- ✅ Styling Library — **Implemented** (NativeWind, Unistyles, Tamagui, Restyle, StyleSheet)
-- ✅ React Native Screens — **Implemented** (Native screen management - currently auto-included with React Navigation)
-- ✅ React Native Paper (Material Design) — **Implemented** (Material Design component library)
-- ✅ React Native Elements — **Implemented** (Component library)
-- ✅ UI Kitten — **Implemented** (Component library with Eva Design)
-- ✅ Styled Components — **Implemented** (CSS-in-JS styling library)
-- ✅ React Native Web — **Implemented** (Web support for React Native apps)
+## [x] 32) Data Fetching / Cache as Init Options (Phase 1: Dependencies Only)
 
-**Implementation Status:** ✅ **COMPLETE**
+Convert data fetching plugin category to init options. Phase 1: Install dependencies only (`data.react-query`, `data.apollo`, `data.swr`). Phase 2: Infrastructure and code generation (future).
 
-All implementation rules have been followed:
-- ✅ All options are target-aware (Expo-only options hidden for Bare, Bare-only options hidden for Expo)
-- ✅ All options added to `InitInputs.selectedOptions` interface
-- ✅ All options added to `collectInitInputs()` prompt logic with target-aware filtering
-- ✅ Dependency installation logic added in `installCoreDependencies()` for all options
-- ✅ Configuration/setup logic added where needed (React Native Web, Styled Components, UI Kitten, React Native Paper)
-- ✅ Manifest schema updated to store all new options
-- ✅ Idempotency ensured (pathExists checks, duplicate prevention via Set tracking)
-- ✅ Expo-specific options do NOT appear in selection when target is "bare"
-- ✅ Bare-specific options do NOT appear in selection when target is "expo"
-- ✅ Common options appear for both targets with appropriate defaults
-- ✅ All selections stored in manifest (`.rns/rn-init.json`)
-- ✅ Feature-specific libraries (camera, location, notifications, auth, etc.) remain plugin-only (not init options)
-- ✅ Helper function `extractPackageName()` added to correctly handle scoped packages
+## [x] 33) Network Transport as Init Options (Phase 1: Dependencies Only)
 
-Verification:
-- ✅ `npm run typecheck` — **PASSED**
-- ✅ All options added to `InitInputs.selectedOptions` interface — **COMPLETE**
-- ✅ All options added to `RnsProjectManifest.selectedOptions` schema — **COMPLETE**
-- ✅ All options added to `collectInitInputs()` with target-aware filtering — **COMPLETE**
-- ✅ Dependency installation logic added for all options — **COMPLETE**
-- ✅ Configuration functions added (React Native Web, Styled Components, UI Kitten, React Native Paper) — **COMPLETE**
-- ✅ Duplicate prevention implemented (Set-based tracking, extractPackageName helper) — **COMPLETE**
-- ✅ Idempotency ensured (pathExists checks, duplicate prevention) — **COMPLETE**
-- ⏳ `npm test` (unit/spec only; smoke optional/manual; no stress) — **PENDING MANUAL TESTING**
-- ⏳ Manual test: Run `rns init` with Expo target, verify all Expo-specific options appear, Bare-specific options do NOT appear — **PENDING MANUAL TESTING**
-- ⏳ Manual test: Run `rns init` with Bare target, verify all Bare-specific options appear, Expo-specific options do NOT appear — **PENDING MANUAL TESTING**
-- ⏳ Manual test: Verify common options appear for both targets — **PENDING MANUAL TESTING**
-- ⏳ Manual test: Verify selected options are stored in `.rns/rn-init.json` — **PENDING MANUAL TESTING**
-- ⏳ Manual test: Verify re-running init with same selections is idempotent (no duplicates, no errors) — **PENDING MANUAL TESTING**
-- ⏳ Manual test: Verify each implemented option correctly installs dependencies and configures the project — **PENDING MANUAL TESTING**
+Convert network transport plugin category to init options. Phase 1: Install dependencies only (`transport.axios`, `transport.websocket`, `transport.firebase`). Phase 2: Infrastructure and code generation (future).
 
-**Implementation Status:**
-- ✅ **Code Implementation:** COMPLETE — All 25 new options implemented with target-aware filtering, dependency installation, and configuration logic
-- ✅ **Type Safety:** COMPLETE — Typecheck passes, all TypeScript types correct
-- ✅ **Idempotency:** COMPLETE — File operations use pathExists checks, dependency installation prevents duplicates
-- ⏳ **Manual Testing:** PENDING — Ready for manual verification testing
+## [x] 34) Auth as Init Options (Phase 1: Dependencies Only)
 
-**Reference:** See `docs/README.md` section "📊 Init Options: Expo vs Bare" for the complete tree structure and documentation.
+Convert auth plugin category to init options. Phase 1: Install dependencies only (`auth.firebase`, `auth.cognito`, `auth.auth0`, `auth.custom-jwt`). Phase 2: Infrastructure and code generation (future).
 
-## [ ] 31) State Management as Init Options (Phase 1: Dependencies Only)
+## [x] 35) AWS Services as Init Options (Phase 1: Dependencies Only)
 
-Convert state management plugin category to init options. 
+Convert AWS Services plugin category to init options. Phase 1: Install dependencies only (`aws.amplify`, `aws.appsync`, `aws.dynamodb`, `aws.s3`). Phase 2: Infrastructure and code generation (future).
 
-**Phase 1 (this section)**: Install dependencies only when options are selected during `rns init`.
+## [x] 36) Storage as Init Options (Phase 1: Dependencies Only)
 
-**Phase 2 (future)**: Add infrastructure setup, code generation, providers, hooks, and example code. Phase 2 will be implemented in a separate TODO section after all Phase 1 sections are complete.
+Convert storage plugin category to init options. Phase 1: Install dependencies only (`storage.mmkv`, `storage.sqlite`, `storage.secure`, `storage.filesystem`). Phase 2: Infrastructure and code generation (future).
 
-Users can select state libraries during `rns init`:
-- `state.zustand` (Zustand - lightweight)
-- `state.xstate` (XState - state machines)
-- `state.mobx` (MobX - reactive state)
-
-Implementation rules (Phase 1):
-- Add to `InitInputs.selectedOptions` interface: `state?: { zustand?: boolean; xstate?: boolean; mobx?: boolean }`
-- Add to `collectInitInputs()` prompt logic (multi-select, all work for Expo and Bare)
-- Install dependencies in `installCoreDependencies()` when selected:
-  - `zustand@^5.0.0` (use version from existing plugin)
-  - `xstate@latest`
-  - `mobx@latest` and `mobx-react-lite@latest`
-- Store selections in manifest (automatic via existing logic)
-- Ensure idempotency (use `installedPackages` Set to avoid duplicates)
-
-Verification:
-- `npm run typecheck`
-- `npm test`
-- Manual test: Run `rns init`, select state libraries, verify dependencies installed in `package.json`
-
-## [ ] 32) Data Fetching / Cache as Init Options (Phase 1: Dependencies Only)
-
-Convert data fetching plugin category to init options. **Phase 1**: Install dependencies only. **Phase 2**: Infrastructure and code generation (future).
-
-Users can select data libraries during `rns init`:
-- `data.react-query` (TanStack Query / React Query)
-- `data.apollo` (Apollo Client)
-- `data.swr` (SWR)
-
-Implementation rules (Phase 1):
-- Add to `InitInputs.selectedOptions` interface: `dataFetching?: { reactQuery?: boolean; apollo?: boolean; swr?: boolean }`
-- Add to `collectInitInputs()` prompt logic (multi-select, all work for Expo and Bare)
-- Install dependencies in `installCoreDependencies()` when selected:
-  - `@tanstack/react-query@latest`
-  - `@apollo/client@latest` and `graphql@latest`
-  - `swr@latest`
-- Store selections in manifest (automatic via existing logic)
-- Ensure idempotency (use `installedPackages` Set to avoid duplicates)
-
-Verification:
-- `npm run typecheck`
-- `npm test`
-- Manual test: Run `rns init`, select data fetching libraries, verify dependencies installed in `package.json`
-
-## [ ] 33) Network Transport as Init Options (Phase 1: Dependencies Only)
-
-Convert network transport plugin category to init options. **Phase 1**: Install dependencies only. **Phase 2**: Infrastructure and code generation (future).
-
-Users can select transport libraries during `rns init`:
-- `transport.axios` (Axios - HTTP client)
-- `transport.websocket` (WebSocket client with reconnection)
-- `transport.firebase` (Firebase SDK)
-
-**Note:** Native Fetch API is built-in and requires no package. GraphQL client is typically included with Apollo Client (see section 32).
-
-Implementation rules (Phase 1):
-- Add to `InitInputs.selectedOptions` interface: `transport?: { axios?: boolean; websocket?: boolean; firebase?: boolean }`
-- Add to `collectInitInputs()` prompt logic (multi-select, all work for Expo and Bare)
-- Install dependencies in `installCoreDependencies()` when selected:
-  - `axios@latest` (if axios selected)
-  - `react-native-reconnecting-websocket@latest` (if websocket selected)
-  - `@react-native-firebase/app@latest` (if firebase selected)
-- Store selections in manifest (automatic via existing logic)
-- Ensure idempotency (use `installedPackages` Set to avoid duplicates)
-
-Verification:
-- `npm run typecheck`
-- `npm test`
-- Manual test: Run `rns init`, select transport libraries, verify dependencies installed in `package.json`
-
-## [ ] 34) Auth as Init Options (Phase 1: Dependencies Only)
-
-Convert auth plugin category to init options. **Phase 1**: Install dependencies only. **Phase 2**: Infrastructure and code generation (future).
-
-Users can select auth providers during `rns init`:
-- `auth.firebase` (Firebase Authentication)
-- `auth.cognito` (AWS Cognito)
-- `auth.auth0` (Auth0)
-- `auth.custom-jwt` (Custom JWT - no specific package, uses standard JWT libraries)
-
-Implementation rules (Phase 1):
-- Add to `InitInputs.selectedOptions` interface: `auth?: { firebase?: boolean; cognito?: boolean; auth0?: boolean; customJwt?: boolean }`
-- Add to `collectInitInputs()` prompt logic (multi-select, all work for Expo and Bare)
-- Install dependencies in `installCoreDependencies()` when selected:
-  - `@react-native-firebase/auth@latest` (if firebase selected)
-  - `amazon-cognito-identity-js@latest` (if cognito selected)
-  - `react-native-auth0@latest` (if auth0 selected)
-  - `jwt-decode@latest` (if customJwt selected)
-- Store selections in manifest (automatic via existing logic)
-- Ensure idempotency (use `installedPackages` Set to avoid duplicates)
-
-Verification:
-- `npm run typecheck`
-- `npm test`
-- Manual test: Run `rns init`, select auth providers, verify dependencies installed in `package.json`
-
-## [ ] 35) AWS Services as Init Options (Phase 1: Dependencies Only)
-
-Convert AWS Services plugin category to init options. **Phase 1**: Install dependencies only. **Phase 2**: Infrastructure and code generation (future).
-
-Users can select AWS services during `rns init`:
-- `aws.amplify` (AWS Amplify)
-- `aws.appsync` (AWS AppSync)
-- `aws.dynamodb` (AWS DynamoDB)
-- `aws.s3` (AWS S3)
-
-Implementation rules (Phase 1):
-- Add to `InitInputs.selectedOptions` interface: `aws?: { amplify?: boolean; appsync?: boolean; dynamodb?: boolean; s3?: boolean }`
-- Add to `collectInitInputs()` prompt logic (multi-select, all work for Expo and Bare)
-- Install dependencies in `installCoreDependencies()` when selected:
-  - `aws-amplify@latest` (if amplify selected)
-  - `@aws-amplify/api@latest` and `@aws-amplify/api-graphql@latest` (if appsync selected)
-  - `@aws-sdk/client-dynamodb@latest` (if dynamodb selected)
-  - `@aws-sdk/client-s3@latest` (if s3 selected)
-- Store selections in manifest (automatic via existing logic)
-- Ensure idempotency (use `installedPackages` Set to avoid duplicates)
-
-Verification:
-- `npm run typecheck`
-- `npm test`
-- Manual test: Run `rns init`, select AWS services, verify dependencies installed in `package.json`
-
-## [ ] 36) Storage as Init Options (Phase 1: Dependencies Only)
-
-Convert storage plugin category to init options. **Phase 1**: Install dependencies only. **Phase 2**: Infrastructure and code generation (future).
-
-Users can select storage libraries during `rns init`:
-- `storage.mmkv` (MMKV - fast key-value)
-- `storage.sqlite` (SQLite database)
-- `storage.secure` (Secure storage - keychain/keystore)
-- `storage.filesystem` (File system access)
-
-**Note:** For Bare target, `react-native-keychain` and `react-native-fs` may already be installed as part of Bare-specific options (see section 30). The CLI should check for existing installation before adding duplicates.
-
-Implementation rules (Phase 1):
-- Add to `InitInputs.selectedOptions` interface: `storage?: { mmkv?: boolean; sqlite?: boolean; secure?: boolean; filesystem?: boolean }`
-- Add to `collectInitInputs()` prompt logic (multi-select, all work for Expo and Bare)
-- Install dependencies in `installCoreDependencies()` when selected:
-  - `react-native-mmkv@latest` (if mmkv selected)
-  - `react-native-sqlite-2@latest` (if sqlite selected - actively maintained, drop-in replacement for react-native-sqlite-storage)
-  - `react-native-keychain@latest` (if secure selected, check if already installed for Bare target)
-  - `react-native-fs@latest` (if filesystem selected, check if already installed for Bare target)
-- Store selections in manifest (automatic via existing logic)
-- Ensure idempotency (use `installedPackages` Set to avoid duplicates)
-
-Verification:
-- `npm run typecheck`
-- `npm test`
-- Manual test: Run `rns init`, select storage libraries, verify dependencies installed in `package.json`
-
-## [ ] 37) Firebase Products as Init Options (Phase 1: Dependencies Only)
+## [x] 37) Firebase Products as Init Options (Phase 1: Dependencies Only)
 
 Convert Firebase Products plugin category to init options. **Phase 1**: Install dependencies only. **Phase 2**: Infrastructure and code generation (future).
 
@@ -595,7 +176,7 @@ Verification:
 - `npm test`
 - Manual test: Run `rns init`, select Firebase products, verify dependencies installed in `package.json`
 
-## [ ] 38) Offline-first as Init Options (Phase 1: Dependencies Only)
+## [x] 38) Offline-first as Init Options (Phase 1: Dependencies Only)
 
 Convert offline-first plugin category to init options. **Phase 1**: Install dependencies only. **Phase 2**: Infrastructure and code generation (future).
 
@@ -621,7 +202,7 @@ Verification:
 - `npm test`
 - Manual test: Run `rns init`, select offline capabilities, verify dependencies installed in `package.json`
 
-## [ ] 39) Notifications as Init Options (Phase 1: Dependencies Only)
+## [x] 39) Notifications as Init Options (Phase 1: Dependencies Only)
 
 Convert notifications plugin category to init options. **Phase 1**: Install dependencies only. **Phase 2**: Infrastructure and code generation (future).
 
@@ -649,7 +230,7 @@ Verification:
 - `npm test`
 - Manual test: Run `rns init`, select notification providers, verify dependencies installed in `package.json`
 
-## [ ] 40) Maps / Location as Init Options (Phase 1: Dependencies Only)
+## [x] 40) Maps / Location as Init Options (Phase 1: Dependencies Only)
 
 Convert maps/location plugin category to init options. **Phase 1**: Install dependencies only. **Phase 2**: Infrastructure and code generation (future).
 
@@ -674,7 +255,7 @@ Verification:
 - `npm test`
 - Manual test: Run `rns init`, select map/location services, verify dependencies installed in `package.json`
 
-## [ ] 41) Camera / Media as Init Options (Phase 1: Dependencies Only)
+## [x] 41) Camera / Media as Init Options (Phase 1: Dependencies Only)
 
 Convert camera/media plugin category to init options. **Phase 1**: Install dependencies only. **Phase 2**: Infrastructure and code generation (future).
 
@@ -703,7 +284,7 @@ Verification:
 - `npm test`
 - Manual test: Run `rns init`, select media capabilities, verify dependencies installed in `package.json`
 
-## [ ] 42) Payments as Init Options (Phase 1: Dependencies Only)
+## [x] 42) Payments as Init Options (Phase 1: Dependencies Only)
 
 Convert payments plugin category to init options. **Phase 1**: Install dependencies only. **Phase 2**: Infrastructure and code generation (future).
 
@@ -723,7 +304,7 @@ Verification:
 - `npm test`
 - Manual test: Run `rns init`, select Stripe, verify dependencies installed in `package.json`
 
-## [ ] 43) Subscriptions / IAP as Init Options (Phase 1: Dependencies Only)
+## [x] 43) Subscriptions / IAP as Init Options (Phase 1: Dependencies Only)
 
 Convert subscriptions/IAP plugin category to init options. **Phase 1**: Install dependencies only. **Phase 2**: Infrastructure and code generation (future).
 
@@ -750,7 +331,7 @@ Verification:
 - `npm test`
 - Manual test: Run `rns init`, select IAP provider, verify dependencies installed in `package.json`
 
-## [ ] 44) Analytics / Observability as Init Options (Phase 1: Dependencies Only)
+## [x] 44) Analytics / Observability as Init Options (Phase 1: Dependencies Only)
 
 Convert analytics/observability plugin category to init options. **Phase 1**: Install dependencies only. **Phase 2**: Infrastructure and code generation (future).
 
@@ -776,7 +357,7 @@ Verification:
 - `npm test`
 - Manual test: Run `rns init`, select analytics/observability services, verify dependencies installed in `package.json`
 
-## [ ] 45) Search as Init Options (Phase 1: Dependencies Only)
+## [x] 45) Search as Init Options (Phase 1: Dependencies Only)
 
 Convert search plugin category to init options. **Phase 1**: Install dependencies only. **Phase 2**: Infrastructure and code generation (future).
 
@@ -798,25 +379,19 @@ Verification:
 - `npm test`
 - Manual test: Run `rns init`, select search services, verify dependencies installed in `package.json`
 
-## [ ] 46) OTA Updates as Init Options (Phase 1: Dependencies Only)
+## [x] 46) OTA Updates as Init Options (Phase 1: Dependencies Only)
 
 Convert OTA Updates plugin category to init options. **Phase 1**: Install dependencies only. **Phase 2**: Infrastructure and code generation (future).
 
-Users can select OTA update providers during `rns init` (single-select - only one provider can be selected):
-- `ota.expo-updates` (Expo Updates - Expo-managed OTA, Expo target only)
-- `ota.code-push` (CodePush - Microsoft CodePush, works for both Expo and Bare)
+Users can select OTA update provider during `rns init` (single option):
+- `ota.expo-updates` (Expo Updates - works for both Expo and Bare targets)
 
-**Note:** This is a single-slot category. The prompt must enforce single selection. Expo Updates is only available for Expo target; CodePush works for both targets.
+**Note:** CodePush (`react-native-code-push`) is archived and has broken Android Gradle; OTA uses Expo Updates only.
 
 Implementation rules (Phase 1):
-- Add to `InitInputs.selectedOptions` interface: `ota?: { expoUpdates?: boolean; codePush?: boolean }`
-- Add to `collectInitInputs()` prompt logic with target-aware filtering:
-  - Expo target: Show both options, enforce single selection
-  - Bare target: Show only `codePush` option
-  - Enforce single selection in prompt UI
-- Install dependencies in `installCoreDependencies()` when selected:
-  - `expo-updates@latest` (if expoUpdates selected, Expo target only)
-  - `react-native-code-push@latest` (if codePush selected)
+- Add to `InitInputs.selectedOptions` interface: `ota?: { expoUpdates?: boolean; codePush?: boolean }` (codePush kept for manifest backward compatibility, not offered in UI)
+- In `collectInitInputs()`: single OTA choice "Expo Updates"; set `expoUpdates: true` when selected
+- Install in `installCoreDependencies()` when OTA selected: `expo-updates@latest` (both Expo and Bare)
 - Store selections in manifest (automatic via existing logic)
 - Ensure idempotency (use `installedPackages` Set to avoid duplicates)
 
@@ -825,7 +400,7 @@ Verification:
 - `npm test`
 - Manual test: Run `rns init`, select OTA provider, verify dependencies installed in `package.json`
 
-## [ ] 47) Background Tasks as Init Options (Phase 1: Dependencies Only)
+## [x] 47) Background Tasks as Init Options (Phase 1: Dependencies Only)
 
 Convert background tasks plugin category to init options. **Phase 1**: Install dependencies only. **Phase 2**: Infrastructure and code generation (future).
 
@@ -840,7 +415,7 @@ Implementation rules (Phase 1):
 - Add to `InitInputs.selectedOptions` interface: `background?: { tasks?: boolean; geofencing?: boolean; fetch?: boolean }`
 - Add to `collectInitInputs()` prompt logic (multi-select, all work for Expo and Bare)
 - Install dependencies in `installCoreDependencies()` when selected:
-  - `react-native-background-job@latest` (if tasks selected)
+  - `react-native-background-actions@latest` (if tasks selected)
   - `react-native-geolocation-service@latest` (if geofencing selected)
   - `react-native-background-fetch@latest` (if fetch selected)
 - Store selections in manifest (automatic via existing logic)
@@ -851,7 +426,7 @@ Verification:
 - `npm test`
 - Manual test: Run `rns init`, select background tasks, verify dependencies installed in `package.json`
 
-## [ ] 48) Privacy & Consent as Init Options (Phase 1: Dependencies Only)
+## [x] 48) Privacy & Consent as Init Options (Phase 1: Dependencies Only)
 
 Convert privacy & consent plugin category to init options. **Phase 1**: Install dependencies only. **Phase 2**: Infrastructure and code generation (future).
 
@@ -878,7 +453,7 @@ Verification:
 - `npm test`
 - Manual test: Run `rns init`, select privacy/consent capabilities, verify dependencies installed in `package.json`
 
-## [ ] 49) Device / Hardware as Init Options (Phase 1: Dependencies Only)
+## [x] 49) Device / Hardware as Init Options (Phase 1: Dependencies Only)
 
 Convert device/hardware plugin category to init options. **Phase 1**: Install dependencies only. **Phase 2**: Infrastructure and code generation (future).
 
@@ -904,7 +479,7 @@ Verification:
 - `npm test`
 - Manual test: Run `rns init`, select device/hardware capabilities, verify dependencies installed in `package.json`
 
-## [ ] 50) Testing as Init Options (Phase 1: Dependencies Only)
+## [x] 50) Testing as Init Options (Phase 1: Dependencies Only)
 
 Convert testing plugin category to init options. **Phase 1**: Install dependencies only. **Phase 2**: Infrastructure and code generation (future).
 
@@ -923,3 +498,707 @@ Verification:
 - `npm run typecheck`
 - `npm test`
 - Manual test: Run `rns init`, select testing framework, verify dependencies installed in `package.json`
+
+---
+
+# Phase 2: Infrastructure & Code Generation
+
+## [x] 51) State Management as Init Options (Phase 2: Infrastructure & Code Generation)
+
+**Prerequisites:** Section 31 (Phase 1) must be completed.
+
+Generate infrastructure and example code for selected state management libraries. This includes hooks, stores, and integration into the app structure.
+
+Implementation rules:
+- For `state.zustand`:
+  - Generate `src/state/zustand/stores/session.ts`, `settings.ts`, `ui.ts` (example stores)
+  - Generate `src/state/zustand.ts` (re-export file)
+  - Configure persistence using `react-native-mmkv` (if storage.mmkv is selected)
+  - Add Zustand provider to System Zone if needed (or use marker-based injection)
+- For `state.xstate`:
+  - Generate `src/state/xstate/machines/` directory with example state machine
+  - Generate `src/state/xstate.ts` (re-export file)
+  - Add XState provider/hooks setup
+- For `state.mobx`:
+  - Generate `src/state/mobx/stores/` directory with example MobX store
+  - Generate `src/state/mobx.ts` (re-export file)
+  - Configure MobX provider setup
+- All state management code must be in User Zone (`src/state/**`)
+- Use marker-based injection for providers if needed
+- Follow hybrid hooks pattern: core logic in System Zone, convenience re-exports in User Zone
+
+Verification:
+- `npm run typecheck`
+- `npm test`
+- Manual test: Generate project with state management options, verify stores/hooks are generated and functional
+
+## [x] 52) Data Fetching / Cache as Init Options (Phase 2: Infrastructure & Code Generation)
+
+**Prerequisites:** Section 32 (Phase 1) must be completed.
+
+Generate infrastructure and example code for selected data fetching libraries. This includes query clients, hooks, and example usage patterns.
+
+Implementation rules:
+- For `data.reactQuery`:
+  - Generate `src/data/react-query/client.ts` (QueryClient configuration)
+  - Generate `src/data/react-query/hooks/` (example query hooks)
+  - Generate `src/data/react-query.ts` (re-export file)
+  - Add QueryClientProvider to App.tsx via marker-based injection
+- For `data.apollo`:
+  - Generate `src/data/apollo/client.ts` (Apollo Client configuration)
+  - Generate `src/data/apollo/hooks/` (example GraphQL hooks/queries)
+  - Generate `src/data/apollo.ts` (re-export file)
+  - Add ApolloProvider to App.tsx via marker-based injection
+- For `data.swr`:
+  - Generate `src/data/swr/config.ts` (SWR configuration)
+  - Generate `src/data/swr/hooks/` (example SWR hooks)
+  - Generate `src/data/swr.ts` (re-export file)
+  - Add SWRConfig provider to App.tsx via marker-based injection
+- All data fetching code must be in User Zone (`src/data/**`)
+- Use marker-based injection for providers
+- Include example queries/hooks that demonstrate usage
+
+Verification:
+- `npm run typecheck`
+- `npm test`
+- Manual test: Generate project with data fetching options, verify clients/hooks are generated and functional
+
+## [x] 53) Network Transport as Init Options (Phase 2: Infrastructure & Code Generation)
+
+**Prerequisites:** Section 33 (Phase 1) must be completed.
+
+Generate infrastructure and utilities for selected transport libraries. This includes client configurations, interceptors, and helper functions.
+
+Implementation rules:
+- For `transport.axios`:
+  - Generate `src/transport/axios/client.ts` (Axios instance with base config)
+  - Generate `src/transport/axios/interceptors.ts` (request/response interceptors)
+  - Generate `src/transport/axios.ts` (re-export file)
+- For `transport.websocket`:
+  - Generate `src/transport/websocket/client.ts` (WebSocket client wrapper with reconnection)
+  - Generate `src/transport/websocket/hooks/useWebSocket.ts` (React hook for WebSocket)
+  - Generate `src/transport/websocket.ts` (re-export file)
+- For `transport.firebase`:
+  - Generate `src/transport/firebase/config.ts` (Firebase initialization)
+  - Generate `src/transport/firebase/services/` (example Firebase service wrappers)
+  - Generate `src/transport/firebase.ts` (re-export file)
+- All transport code must be in User Zone (`src/transport/**`)
+- Include error handling and retry logic where appropriate
+- Provide TypeScript types for all utilities
+
+Verification:
+- `npm run typecheck`
+- `npm test`
+- Manual test: Generate project with transport options, verify clients are generated and functional
+
+## [x] 54) Auth as Init Options (Phase 2: Infrastructure & Code Generation)
+
+**Prerequisites:** Section 34 (Phase 1) must be completed.
+
+Generate infrastructure and authentication flows for selected auth providers. This includes auth contexts, hooks, and example screens.
+
+Implementation rules:
+- For `auth.firebase`:
+  - Generate `src/auth/firebase/context.tsx` (Firebase Auth context)
+  - Generate `src/auth/firebase/hooks/useAuth.ts` (authentication hook)
+  - Generate `src/auth/firebase/services/authService.ts` (auth service wrapper)
+  - Generate `src/auth/firebase.ts` (re-export file)
+  - Add Firebase Auth provider to App.tsx via marker-based injection
+- For `auth.cognito`:
+  - Generate `src/auth/cognito/context.tsx` (Cognito Auth context)
+  - Generate `src/auth/cognito/hooks/useAuth.ts` (authentication hook)
+  - Generate `src/auth/cognito/services/authService.ts` (Cognito service wrapper)
+  - Generate `src/auth/cognito.ts` (re-export file)
+  - Add Cognito Auth provider to App.tsx via marker-based injection
+- For `auth.auth0`:
+  - Generate `src/auth/auth0/context.tsx` (Auth0 context)
+  - Generate `src/auth/auth0/hooks/useAuth.ts` (authentication hook)
+  - Generate `src/auth/auth0/services/authService.ts` (Auth0 service wrapper)
+  - Generate `src/auth/auth0.ts` (re-export file)
+  - Add Auth0 provider to App.tsx via marker-based injection
+- For `auth.customJwt`:
+  - Generate `src/auth/jwt/context.tsx` (JWT Auth context)
+  - Generate `src/auth/jwt/hooks/useAuth.ts` (authentication hook)
+  - Generate `src/auth/jwt/services/tokenService.ts` (token storage/validation)
+  - Generate `src/auth/jwt.ts` (re-export file)
+  - Add JWT Auth provider to App.tsx via marker-based injection
+- All auth code must be in User Zone (`src/auth/**`)
+- Include example login/logout flows
+- Provide secure token storage (use `react-native-keychain` if storage.secure is selected)
+
+Verification:
+- `npm run typecheck`
+- `npm test`
+- Manual test: Generate project with auth options, verify auth contexts/hooks are generated and functional
+
+## [x] 55) AWS Services as Init Options (Phase 2: Infrastructure & Code Generation)
+
+**Prerequisites:** Section 35 (Phase 1) must be completed.
+
+Generate infrastructure and service wrappers for selected AWS services. This includes client configurations, hooks, and example usage patterns.
+
+Implementation rules:
+- For `aws.amplify`:
+  - Generate `src/aws/amplify/config.ts` (Amplify configuration)
+  - Generate `src/aws/amplify/services/` (example Amplify service wrappers)
+  - Generate `src/aws/amplify.ts` (re-export file)
+  - Initialize Amplify in System Zone runtime initialization
+- For `aws.appsync`:
+  - Generate `src/aws/appsync/client.ts` (AppSync GraphQL client)
+  - Generate `src/aws/appsync/hooks/` (example GraphQL hooks)
+  - Generate `src/aws/appsync.ts` (re-export file)
+- For `aws.dynamodb`:
+  - Generate `src/aws/dynamodb/client.ts` (DynamoDB client configuration)
+  - Generate `src/aws/dynamodb/services/` (example DynamoDB service wrappers)
+  - Generate `src/aws/dynamodb.ts` (re-export file)
+- For `aws.s3`:
+  - Generate `src/aws/s3/client.ts` (S3 client configuration)
+  - Generate `src/aws/s3/services/uploadService.ts` (file upload utilities)
+  - Generate `src/aws/s3.ts` (re-export file)
+- All AWS code must be in User Zone (`src/aws/**`)
+- Include error handling and retry logic
+- Provide TypeScript types for all services
+
+Verification:
+- `npm run typecheck`
+- `npm test`
+- Manual test: Generate project with AWS options, verify services are generated and functional
+
+## [x] 56) Storage as Init Options (Phase 2: Infrastructure & Code Generation)
+
+**Prerequisites:** Section 36 (Phase 1) must be completed.
+
+Generate infrastructure and storage utilities for selected storage libraries. This includes storage services, hooks, and integration with state management.
+
+Implementation rules:
+- For `storage.mmkv`:
+  - Generate `src/storage/mmkv/storage.ts` (MMKV storage service, use exact implementation from `deprecated_docs/generated_project_reference/src/infra/storage/mmkv.ts`)
+  - Generate `src/storage/mmkv/hooks/useStorage.ts` (React hook for MMKV)
+  - Generate `src/storage/mmkv.ts` (re-export file)
+  - Use exact version from deprecated docs reference
+- For `storage.sqlite`:
+  - Generate `src/storage/sqlite/database.ts` (SQLite database setup)
+  - Generate `src/storage/sqlite/services/` (example database service wrappers)
+  - Generate `src/storage/sqlite.ts` (re-export file)
+- For `storage.secure`:
+  - Generate `src/storage/secure/keychain.ts` (Keychain service wrapper)
+  - Generate `src/storage/secure/hooks/useSecureStorage.ts` (React hook for secure storage)
+  - Generate `src/storage/secure.ts` (re-export file)
+- For `storage.filesystem`:
+  - Generate `src/storage/filesystem/fileService.ts` (file system utilities)
+  - Generate `src/storage/filesystem/hooks/useFileSystem.ts` (React hook for file operations)
+  - Generate `src/storage/filesystem.ts` (re-export file)
+- All storage code must be in User Zone (`src/storage/**`)
+- Integrate with state management persistence (e.g., Zustand + MMKV)
+- Provide TypeScript types for all storage interfaces
+
+Verification:
+- `npm run typecheck`
+- `npm test`
+- Manual test: Generate project with storage options, verify storage services are generated and functional
+
+## [x] 57) Firebase Products as Init Options (Phase 2: Infrastructure & Code Generation)
+
+**Prerequisites:** Section 37 (Phase 1) must be completed.
+
+Generate infrastructure and service wrappers for selected Firebase products. This includes Firebase initialization, service configurations, and example usage patterns.
+
+Implementation rules:
+- For `firebase.firestore`:
+  - Generate `src/firebase/firestore/services/` (Firestore service wrappers)
+  - Generate `src/firebase/firestore/hooks/` (example Firestore hooks)
+  - Generate `src/firebase/firestore.ts` (re-export file)
+- For `firebase.realtime`:
+  - Generate `src/firebase/realtime/services/` (Realtime Database service wrappers)
+  - Generate `src/firebase/realtime/hooks/` (example Realtime Database hooks)
+  - Generate `src/firebase/realtime.ts` (re-export file)
+- For `firebase.storage`:
+  - Generate `src/firebase/storage/services/uploadService.ts` (Firebase Storage upload utilities)
+  - Generate `src/firebase/storage.ts` (re-export file)
+- For `firebase.functions`:
+  - Generate `src/firebase/functions/services/` (Cloud Functions service wrappers)
+  - Generate `src/firebase/functions.ts` (re-export file)
+- All Firebase code must be in User Zone (`src/firebase/**`)
+- Initialize Firebase in System Zone runtime initialization (if not already done via transport.firebase)
+- Include error handling and offline support where applicable
+- Provide TypeScript types for all services
+
+Verification:
+- `npm run typecheck`
+- `npm test`
+- Manual test: Generate project with Firebase options, verify services are generated and functional
+
+## [x] 58) Offline-first as Init Options (Phase 2: Infrastructure & Code Generation)
+
+**Prerequisites:** Section 38 (Phase 1) must be completed.
+
+Generate infrastructure for offline-first capabilities. This includes network detection, offline queues, and sync managers.
+
+Implementation rules:
+- For `offline.netinfo`:
+  - Generate `src/offline/netinfo/hooks/useNetworkStatus.ts` (network status hook)
+  - Generate `src/offline/netinfo/context.tsx` (NetworkInfo context provider)
+  - Generate `src/offline/netinfo.ts` (re-export file)
+  - Add NetworkInfo provider to App.tsx via marker-based injection
+- For `offline.outbox`:
+  - Generate `src/offline/outbox/queue.ts` (offline queue implementation)
+  - Generate `src/offline/outbox/services/outboxService.ts` (outbox service)
+  - Generate `src/offline/outbox.ts` (re-export file)
+  - Integrate with selected storage solution for persistence
+- For `offline.sync`:
+  - Generate `src/offline/sync/syncManager.ts` (sync manager implementation)
+  - Generate `src/offline/sync/hooks/useSync.ts` (sync hook)
+  - Generate `src/offline/sync.ts` (re-export file)
+  - Integrate with data fetching libraries (react-query, apollo, swr) for automatic sync
+- All offline code must be in User Zone (`src/offline/**`)
+- Provide TypeScript types for all offline utilities
+- Include example usage patterns for offline-first flows
+
+Verification:
+- `npm run typecheck`
+- `npm test`
+- Manual test: Generate project with offline options, verify offline infrastructure is generated and functional
+
+## [x] 59) Notifications as Init Options (Phase 2: Infrastructure & Code Generation)
+
+**Prerequisites:** Section 39 (Phase 1) must be completed.
+
+Generate infrastructure and notification handlers for selected notification providers. This includes notification services, hooks, and permission handling.
+
+Implementation rules:
+- For `notify.expo`:
+  - Generate `src/notifications/expo/service.ts` (Expo Notifications service)
+  - Generate `src/notifications/expo/hooks/useNotifications.ts` (notifications hook)
+  - Generate `src/notifications/expo/handlers/` (notification handlers)
+  - Generate `src/notifications/expo.ts` (re-export file)
+  - Register notification handlers in System Zone runtime initialization
+- For `notify.fcm`:
+  - Generate `src/notifications/fcm/service.ts` (FCM service)
+  - Generate `src/notifications/fcm/hooks/useNotifications.ts` (notifications hook)
+  - Generate `src/notifications/fcm/handlers/` (FCM message handlers)
+  - Generate `src/notifications/fcm.ts` (re-export file)
+  - Register FCM handlers in System Zone runtime initialization
+- For `notify.onesignal`:
+  - Generate `src/notifications/onesignal/service.ts` (OneSignal service)
+  - Generate `src/notifications/onesignal/hooks/useNotifications.ts` (notifications hook)
+  - Generate `src/notifications/onesignal.ts` (re-export file)
+  - Initialize OneSignal in System Zone runtime initialization
+- All notification code must be in User Zone (`src/notifications/**`)
+- Include permission request utilities
+- Provide TypeScript types for all notification services
+- Handle foreground/background notification scenarios
+
+Verification:
+- `npm run typecheck`
+- `npm test`
+- Manual test: Generate project with notification options, verify notification services are generated and functional
+
+## [x] 60) Maps / Location as Init Options (Phase 2: Infrastructure & Code Generation)
+
+**Prerequisites:** Section 40 (Phase 1) must be completed.
+
+Generate infrastructure and map components for selected map/location services. This includes location services, map components, and hooks.
+
+Implementation rules:
+- For `geo.location`:
+  - Generate `src/geo/location/service.ts` (geolocation service)
+  - Generate `src/geo/location/hooks/useLocation.ts` (location hook)
+  - Generate `src/geo/location.ts` (re-export file)
+  - Include permission handling for location access
+- For `maps.mapbox`:
+  - Generate `src/maps/mapbox/components/MapView.tsx` (Mapbox map component)
+  - Generate `src/maps/mapbox/services/` (Mapbox service utilities)
+  - Generate `src/maps/mapbox.ts` (re-export file)
+- For `maps.google`:
+  - Generate `src/maps/google/components/MapView.tsx` (Google Maps component)
+  - Generate `src/maps/google/services/` (Google Maps service utilities)
+  - Generate `src/maps/google.ts` (re-export file)
+- All maps/location code must be in User Zone (`src/geo/**`, `src/maps/**`)
+- Include example screens demonstrating map usage
+- Provide TypeScript types for all map/location utilities
+- Handle platform-specific configurations (iOS/Android)
+
+Verification:
+- `npm run typecheck`
+- `npm test`
+- Manual test: Generate project with maps/location options, verify map components and services are generated and functional
+
+## [x] 61) Camera / Media as Init Options (Phase 2: Infrastructure & Code Generation)
+
+**Prerequisites:** Section 41 (Phase 1) must be completed.
+
+Generate infrastructure and media components for selected camera/media capabilities. This includes camera components, media pickers, and hooks.
+
+Implementation rules:
+- For `media.camera`:
+  - Generate `src/media/camera/components/CameraView.tsx` (camera component)
+  - Generate `src/media/camera/hooks/useCamera.ts` (camera hook)
+  - Generate `src/media/camera.ts` (re-export file)
+  - Include permission handling for camera access
+- For `media.visionCamera`:
+  - Generate `src/media/vision-camera/components/CameraView.tsx` (Vision Camera component)
+  - Generate `src/media/vision-camera/hooks/useFrameProcessor.ts` (frame processor hook)
+  - Generate `src/media/vision-camera.ts` (re-export file)
+  - Include example frame processors
+- For `media.picker`:
+  - Generate `src/media/picker/service.ts` (media picker service)
+  - Generate `src/media/picker/hooks/useMediaPicker.ts` (media picker hook)
+  - Generate `src/media/picker.ts` (re-export file)
+- All media code must be in User Zone (`src/media/**`)
+- Include example screens demonstrating camera/media usage
+- Provide TypeScript types for all media utilities
+- Handle platform-specific configurations (iOS/Android)
+
+Verification:
+- `npm run typecheck`
+- `npm test`
+- Manual test: Generate project with camera/media options, verify camera components and services are generated and functional
+
+## [x] 62) Payments as Init Options (Phase 2: Infrastructure & Code Generation)
+
+**Prerequisites:** Section 42 (Phase 1) must be completed.
+
+Generate infrastructure and payment service wrappers for selected payment providers. This includes payment services, hooks, and example payment flows.
+
+Implementation rules:
+- For `pay.stripe`:
+  - Generate `src/payments/stripe/service.ts` (Stripe service)
+  - Generate `src/payments/stripe/hooks/useStripe.ts` (Stripe hook)
+  - Generate `src/payments/stripe/components/` (Stripe payment components if applicable)
+  - Generate `src/payments/stripe.ts` (re-export file)
+- For `pay.apple`:
+  - Generate `src/payments/apple/service.ts` (Apple Pay service)
+  - Generate `src/payments/apple/hooks/useApplePay.ts` (Apple Pay hook)
+  - Generate `src/payments/apple.ts` (re-export file)
+- For `pay.google`:
+  - Generate `src/payments/google/service.ts` (Google Pay service)
+  - Generate `src/payments/google/hooks/useGooglePay.ts` (Google Pay hook)
+  - Generate `src/payments/google.ts` (re-export file)
+- All payment code must be in User Zone (`src/payments/**`)
+- Include example payment flow screens
+- Provide TypeScript types for all payment services
+- Handle platform-specific payment methods (iOS/Android)
+- Include error handling and payment status management
+
+Verification:
+- `npm run typecheck`
+- `npm test`
+- Manual test: Generate project with payment options, verify payment services are generated and functional
+
+## [x] 63) Subscriptions / IAP as Init Options (Phase 2: Infrastructure & Code Generation)
+
+**Prerequisites:** Section 43 (Phase 1) must be completed.
+
+Generate infrastructure and IAP service wrappers for selected subscription/IAP providers. This includes IAP services, hooks, and subscription management.
+
+Implementation rules:
+- For `iap.revenuecat`:
+  - Generate `src/iap/revenuecat/service.ts` (RevenueCat service)
+  - Generate `src/iap/revenuecat/hooks/useIAP.ts` (IAP hook)
+  - Generate `src/iap/revenuecat/services/subscriptionService.ts` (subscription management)
+  - Generate `src/iap/revenuecat.ts` (re-export file)
+- For `iap.apple`:
+  - Generate `src/iap/apple/service.ts` (Apple IAP service)
+  - Generate `src/iap/apple/hooks/useIAP.ts` (IAP hook)
+  - Generate `src/iap/apple.ts` (re-export file)
+- For `iap.google`:
+  - Generate `src/iap/google/service.ts` (Google Play Billing service)
+  - Generate `src/iap/google/hooks/useIAP.ts` (IAP hook)
+  - Generate `src/iap/google.ts` (re-export file)
+- All IAP code must be in User Zone (`src/iap/**`)
+- Include subscription status management and restoration
+- Provide TypeScript types for all IAP services
+- Handle platform-specific IAP flows (iOS/Android)
+- Include receipt validation and subscription verification
+
+Verification:
+- `npm run typecheck`
+- `npm test`
+- Manual test: Generate project with IAP options, verify IAP services are generated and functional
+
+## [x] 64) Analytics / Observability as Init Options (Phase 2: Infrastructure & Code Generation)
+
+**Prerequisites:** Section 44 (Phase 1) must be completed.
+
+Generate infrastructure and analytics service wrappers for selected analytics providers. This includes analytics services, hooks, and event tracking utilities.
+
+Implementation rules:
+- For `analytics.firebase`:
+  - Generate `src/analytics/firebase/service.ts` (Firebase Analytics service)
+  - Generate `src/analytics/firebase/hooks/useAnalytics.ts` (analytics hook)
+  - Generate `src/analytics/firebase.ts` (re-export file)
+- For `analytics.mixpanel`:
+  - Generate `src/analytics/mixpanel/service.ts` (Mixpanel service)
+  - Generate `src/analytics/mixpanel/hooks/useAnalytics.ts` (analytics hook)
+  - Generate `src/analytics/mixpanel.ts` (re-export file)
+- For `analytics.amplitude`:
+  - Generate `src/analytics/amplitude/service.ts` (Amplitude service)
+  - Generate `src/analytics/amplitude/hooks/useAnalytics.ts` (analytics hook)
+  - Generate `src/analytics/amplitude.ts` (re-export file)
+- For `analytics.sentry`:
+  - Generate `src/analytics/sentry/config.ts` (Sentry configuration)
+  - Generate `src/analytics/sentry/service.ts` (Sentry error tracking service)
+  - Generate `src/analytics/sentry.ts` (re-export file)
+  - Initialize Sentry in System Zone runtime initialization
+- All analytics code must be in User Zone (`src/analytics/**`)
+- Provide unified analytics interface/abstraction if multiple providers are selected
+- Include example event tracking patterns
+- Provide TypeScript types for all analytics services
+
+Verification:
+- `npm run typecheck`
+- `npm test`
+- Manual test: Generate project with analytics options, verify analytics services are generated and functional
+
+## [x] 65) Search as Init Options (Phase 2: Infrastructure & Code Generation)
+
+**Prerequisites:** Section 45 (Phase 1) must be completed.
+
+Generate infrastructure and search service wrappers for selected search providers. This includes search services, hooks, and search UI components.
+
+Implementation rules:
+- For `search.algolia`:
+  - Generate `src/search/algolia/service.ts` (Algolia search service)
+  - Generate `src/search/algolia/hooks/useSearch.ts` (search hook)
+  - Generate `src/search/algolia/components/SearchBar.tsx` (search UI component)
+  - Generate `src/search/algolia.ts` (re-export file)
+- For `search.elastic`:
+  - Generate `src/search/elastic/service.ts` (Elasticsearch service)
+  - Generate `src/search/elastic/hooks/useSearch.ts` (search hook)
+  - Generate `src/search/elastic.ts` (re-export file)
+- For `search.local`:
+  - Generate `src/search/local/service.ts` (local search service using Lunr)
+  - Generate `src/search/local/hooks/useSearch.ts` (search hook)
+  - Generate `src/search/local.ts` (re-export file)
+- All search code must be in User Zone (`src/search/**`)
+- Include example search screens/components
+- Provide TypeScript types for all search services
+- Handle search indexing and query patterns
+
+Verification:
+- `npm run typecheck`
+- `npm test`
+- Manual test: Generate project with search options, verify search services are generated and functional
+
+## [x] 66) OTA Updates as Init Options (Phase 2: Infrastructure & Code Generation)
+
+**Prerequisites:** Section 46 (Phase 1) must be completed.
+
+Generate infrastructure and update management for selected OTA update providers. This includes update services, hooks, and update checking logic.
+
+Implementation rules:
+- For `ota.expoUpdates`:
+  - Generate `src/ota/expo-updates/service.ts` (Expo Updates service)
+  - Generate `src/ota/expo-updates/hooks/useOTA.ts` (OTA update hook)
+  - Generate `src/ota/expo-updates.ts` (re-export file)
+  - Configure Expo Updates in `app.json` or `app.config.js` (System Zone)
+- OTA uses Expo Updates only (CodePush deprecated). Generate `src/ota/expo-updates/` when `ota.expoUpdates`; no CodePush code generation.
+- All OTA code must be in User Zone (`src/ota/**`)
+- Include update checking and installation logic
+- Provide TypeScript types for all OTA services
+- Handle update prompts and user consent
+
+Verification:
+- `npm run typecheck`
+- `npm test`
+- Manual test: Generate project with OTA options, verify OTA services are generated and functional
+
+## [x] 67) Background Tasks as Init Options (Phase 2: Infrastructure & Code Generation)
+
+**Prerequisites:** Section 47 (Phase 1) must be completed.
+
+Generate infrastructure and task handlers for selected background task capabilities. This includes background task services, hooks, and platform-specific configurations.
+
+Implementation rules:
+- For `background.tasks`:
+  - Generate `src/background/tasks/service.ts` (background task service)
+  - Generate `src/background/tasks/hooks/useBackgroundTask.ts` (background task hook)
+  - Generate `src/background/tasks/handlers/` (example task handlers)
+  - Generate `src/background/tasks.ts` (re-export file)
+  - Configure background task permissions via Patch Operations (System Zone)
+- For `background.geofencing`:
+  - Generate `src/background/geofencing/service.ts` (geofencing service)
+  - Generate `src/background/geofencing/hooks/useGeofencing.ts` (geofencing hook)
+  - Generate `src/background/geofencing.ts` (re-export file)
+  - Configure location permissions via Patch Operations (System Zone)
+- For `background.fetch`:
+  - Generate `src/background/fetch/service.ts` (background fetch service)
+  - Generate `src/background/fetch/hooks/useBackgroundFetch.ts` (background fetch hook)
+  - Generate `src/background/fetch.ts` (re-export file)
+  - Configure background fetch permissions via Patch Operations (System Zone)
+- All background task code must be in User Zone (`src/background/**`)
+- Include platform-specific implementations (iOS/Android)
+- Provide TypeScript types for all background task services
+- Handle task scheduling and lifecycle management
+
+Verification:
+- `npm run typecheck`
+- `npm test`
+- Manual test: Generate project with background task options, verify background task services are generated and functional
+
+## [x] 68) Privacy & Consent as Init Options (Phase 2: Infrastructure & Code Generation)
+
+**Prerequisites:** Section 48 (Phase 1) must be completed.
+
+Generate infrastructure and consent management for selected privacy/consent capabilities. This includes consent services, hooks, and consent UI components.
+
+Implementation rules:
+- For `privacy.att`:
+  - Generate `src/privacy/att/service.ts` (App Tracking Transparency service)
+  - Generate `src/privacy/att/hooks/useATT.ts` (ATT permission hook)
+  - Generate `src/privacy/att.ts` (re-export file)
+  - Configure ATT permissions in `Info.plist` via Patch Operations (System Zone)
+- For `privacy.consent`:
+  - Generate `src/privacy/consent/service.ts` (consent management service)
+  - Generate `src/privacy/consent/hooks/useConsent.ts` (consent hook)
+  - Generate `src/privacy/consent/components/ConsentDialog.tsx` (consent UI component)
+  - Generate `src/privacy/consent.ts` (re-export file)
+  - Integrate with storage solution for consent preferences
+- For `privacy.gdpr`:
+  - Generate `src/privacy/gdpr/service.ts` (GDPR compliance service)
+  - Generate `src/privacy/gdpr/hooks/useGDPR.ts` (GDPR hook)
+  - Generate `src/privacy/gdpr/components/` (GDPR consent UI components)
+  - Generate `src/privacy/gdpr.ts` (re-export file)
+- All privacy code must be in User Zone (`src/privacy/**`)
+- Include consent storage and retrieval
+- Provide TypeScript types for all privacy services
+- Handle consent revocation and data deletion requests
+
+Verification:
+- `npm run typecheck`
+- `npm test`
+- Manual test: Generate project with privacy options, verify privacy services are generated and functional
+
+## [x] 69) Device / Hardware as Init Options (Phase 2: Infrastructure & Code Generation)
+
+**Prerequisites:** Section 49 (Phase 1) must be completed.
+
+Generate infrastructure and device service wrappers for selected device/hardware capabilities. This includes device services, hooks, and permission handling.
+
+Implementation rules:
+- For `device.biometrics`:
+  - Generate `src/device/biometrics/service.ts` (biometric authentication service)
+  - Generate `src/device/biometrics/hooks/useBiometrics.ts` (biometrics hook)
+  - Generate `src/device/biometrics.ts` (re-export file)
+  - Handle platform-specific biometric APIs (Face ID, Touch ID, fingerprint)
+  - Configure biometric permissions via Patch Operations (System Zone)
+- For `device.bluetooth`:
+  - Generate `src/device/bluetooth/service.ts` (Bluetooth service)
+  - Generate `src/device/bluetooth/hooks/useBluetooth.ts` (Bluetooth hook)
+  - Generate `src/device/bluetooth/components/` (Bluetooth device scanning UI if applicable)
+  - Generate `src/device/bluetooth.ts` (re-export file)
+  - Handle both classic Bluetooth and BLE (Bluetooth Low Energy)
+  - Configure Bluetooth permissions via Patch Operations (System Zone)
+- All device code must be in User Zone (`src/device/**`)
+- Include permission handling and device availability checks
+- Provide TypeScript types for all device services
+- Handle platform-specific implementations (iOS/Android)
+
+Verification:
+- `npm run typecheck`
+- `npm test`
+- Manual test: Generate project with device/hardware options, verify device services are generated and functional
+
+## [x] 70) Testing as Init Options (Phase 2: Infrastructure & Code Generation)
+
+**Prerequisites:** Section 50 (Phase 1) must be completed.
+
+Generate test infrastructure and example tests for selected testing frameworks. This includes test configurations, example test files, and test utilities.
+
+Implementation rules:
+- For `testing.detox`:
+  - Generate `e2e/` directory structure for Detox tests
+  - Generate `e2e/config/` (Detox configuration files)
+  - Generate `e2e/screens/` (example screen tests)
+  - Generate `e2e/flows/` (example user flow tests)
+  - Configure Detox in `package.json` scripts
+  - Add Detox configuration files (`.detoxrc.js`, native configs) via Patch Operations (System Zone)
+- All test code must be in User Zone (`e2e/**` or appropriate test directories)
+- Include example test patterns and best practices
+- Provide TypeScript types for test utilities
+- Configure CI/CD integration for E2E tests
+
+Verification:
+- `npm run typecheck`
+- `npm test`
+- Manual test: Generate project with testing options, verify test infrastructure is generated and functional
+
+## [x] 71) Refactor init.ts into Modular Structure
+
+**Priority:** HIGH - File is 4,181 lines, causing maintainability and performance issues.
+
+Refactor `src/lib/init.ts` into a modular directory structure to improve maintainability, readability, and IDE performance.
+
+**Current Issues:**
+- Single file with 4,181 lines
+- Hard to navigate and maintain
+- Risk of merge conflicts
+- Poor IDE performance (freezing)
+- Violates single responsibility principle
+
+**Target Structure:**
+```
+src/lib/init/
+├── index.ts                    # Main orchestration (runInit) - ~200 lines
+├── types.ts                    # InitInputs, InitOptions interfaces
+├── collect-inputs.ts           # collectInitInputs() - ~500 lines
+├── install-dependencies.ts     # installCoreDependencies() - ~1000 lines
+├── host-app.ts                 # createHostApp() - ~100 lines
+├── navigation/
+│   ├── index.ts                # Navigation setup orchestration
+│   ├── preset.ts               # configureNavigationPreset()
+│   ├── registry.ts             # generateNavigationRegistry()
+│   ├── screens.ts              # generateExampleScreens()
+│   └── files.ts                # attachNavigationPackageFiles()
+├── i18n/
+│   ├── index.ts                # I18n setup orchestration
+│   ├── files.ts                # generateI18nFiles()
+│   └── remove.ts               # removeI18nFilesIfNotSelected()
+├── theme/
+│   ├── index.ts                # Theme setup orchestration
+│   ├── files.ts                # generateThemeFiles()
+│   ├── hooks.ts                # generateHooks()
+│   └── remove.ts               # removeThemeFilesIfNotSelected()
+├── styling/
+│   ├── index.ts                # Styling setup orchestration
+│   ├── nativewind.ts           # NativeWind config
+│   ├── unistyles.ts            # Unistyles config
+│   ├── tamagui.ts              # Tamagui config
+│   ├── restyle.ts              # Restyle config
+│   ├── web.ts                  # React Native Web config
+│   ├── styled-components.ts    # Styled Components config
+│   ├── ui-kitten.ts            # UI Kitten config
+│   └── paper.ts                # React Native Paper config
+├── app-generation/
+│   ├── app-tsx.ts              # generateAppTsxContent()
+│   ├── app-js.ts               # generateAppJsContent()
+│   └── expo-router.ts          # configureExpoRouter()
+└── utils.ts                    # Helper functions (extractPackageName, etc.)
+```
+
+**Implementation Rules:**
+- Extract modules incrementally (one at a time)
+- Keep `init.ts` as main entry point initially, then migrate to `init/index.ts`
+- Move functions to new modules maintaining exact behavior
+- Update imports throughout codebase
+- Ensure all tests still pass after each extraction
+- Each file should be < 500 lines
+- Maintain backward compatibility during transition
+
+**Phases:**
+1. **Phase 1:** Extract types and utilities (`types.ts`, `utils.ts`) - ✅ **COMPLETE**
+2. **Phase 2:** Extract dependency installation (`install-dependencies.ts`) - ✅ **COMPLETE**
+3. **Phase 3:** Extract navigation module (`navigation/`) - ✅ **COMPLETE**
+4. **Phase 4:** Extract i18n module (`i18n/`) - ✅ **COMPLETE**
+5. **Phase 5:** Extract theme module (`theme/`) - ✅ **COMPLETE**
+6. **Phase 6:** Extract styling module (`styling/`) - ✅ **COMPLETE**
+7. **Phase 7:** Extract app generation (`app-generation/`) - ✅ **COMPLETE**
+8. **Phase 8:** Extract input collection (`collect-inputs.ts`) - ✅ **COMPLETE**
+9. **Phase 9:** Extract host app creation (`host-app.ts`) - ✅ **COMPLETE**
+10. **Phase 10:** Create main orchestration (`index.ts`) and deprecate old `init.ts` - ✅ **COMPLETE**
+
+**Verification:**
+- `npm run typecheck` passes
+- `npm test` passes (all existing tests)
+- Manual test: Run `rns init` and verify all functionality works identically
+- No regressions in init pipeline

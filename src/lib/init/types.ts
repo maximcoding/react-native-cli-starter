@@ -1,107 +1,44 @@
 /**
- * FILE: src/lib/types/manifest.ts
- * PURPOSE: Project manifest types for .rns/rn-init.json (section 13)
+ * FILE: src/lib/init/types.ts
+ * PURPOSE: Type definitions for init pipeline
  * OWNERSHIP: CLI
- * 
- * Canonical Docs: docs/cli-interface-and-types.md §2.2
  */
 
-/**
- * Manifest schema version for migration support
- * Increment when making breaking changes to the manifest structure
- */
-export type ManifestSchemaVersion = '1.0.0';
+import { RuntimeContext } from '../runtime';
 
-/**
- * Current manifest schema version
- */
-export const CURRENT_MANIFEST_SCHEMA_VERSION: ManifestSchemaVersion = '1.0.0';
-
-/**
- * Project identity information
- */
-export interface RnsProjectIdentity {
-  /** Project name (package.json name) */
-  name: string;
-  /** Display name (app.json displayName) */
-  displayName?: string;
-  /** iOS bundle identifier */
-  bundleId?: string;
-  /** Android package name */
-  packageName?: string;
-  /** Project version */
-  version?: string;
-  /** Build number */
-  build?: string;
-}
-
-/**
- * Permission requirement record (for manifest storage)
- */
-export interface PermissionRequirementRecord {
-  /** Permission ID */
-  permissionId: string;
-  /** Whether permission is mandatory */
-  mandatory: boolean;
-}
-
-/**
- * Installed plugin/module record
- * Tracks what plugins/modules are installed and when
- */
-export interface InstalledPluginRecord {
-  /** Plugin/module ID */
-  id: string;
-  /** Installed version */
-  version: string;
-  /** Installation timestamp */
-  installedAt: string;
-  /** Installation options (plugin-specific) */
-  options?: Record<string, unknown>;
-  /** Files/directories owned by this plugin (for cleanup) */
-  ownedFiles?: string[];
-  ownedDirs?: string[];
-  /** Permission requirements (for traceability) */
-  permissions?: PermissionRequirementRecord[];
-  /** Last updated timestamp */
-  updatedAt?: string;
-}
-
-/**
- * Project manifest structure
- * Single source of truth for what was generated and what is installed
- */
-export interface RnsProjectManifest {
-  /** Manifest schema version (for migrations) */
-  schemaVersion: ManifestSchemaVersion;
-  /** CLI version that generated this manifest */
-  cliVersion: string;
-  /** Workspace model (Option A) */
-  workspaceModel: 'Option A';
-  /** Project identity */
-  identity: RnsProjectIdentity;
-  /** Target platform (expo/bare) */
-  target: 'expo' | 'bare';
-  /** Language (ts/js) */
-  language: 'ts' | 'js';
-  /** Package manager (npm/pnpm/yarn) */
-  packageManager: 'npm' | 'pnpm' | 'yarn';
-  /** React Native version */
+export interface InitOptions {
+  projectName?: string;
+  destination?: string;
+  target?: 'expo' | 'bare';
+  language?: 'ts' | 'js';
+  packageManager?: 'npm' | 'pnpm' | 'yarn';
   reactNativeVersion?: string;
+  platforms?: string[];
+  locales?: string[];
+  context: RuntimeContext;
+}
+
+export interface InitInputs {
+  projectName: string;
+  destination: string;
+  target: 'expo' | 'bare';
+  language: 'ts' | 'js';
+  packageManager: 'npm' | 'pnpm' | 'yarn';
+  reactNativeVersion?: string; // Only for Bare
   /**
-   * Init-selected CORE navigation preset.
-   * Note: currently Bare RN only (section 26); Expo selection can be added later.
+   * Bare init navigation preset (CORE).
+   * Note: Expo navigation selection can be added later as a separate TODO section.
    */
   navigationPreset?: 'stack-only' | 'tabs-only' | 'stack-tabs' | 'stack-tabs-modals' | 'drawer';
   /**
    * Selected locales for I18n (CORE).
    * Only populated if i18n option is selected in selectedOptions.
    */
-  locales?: string[];
+  locales: string[];
   /**
    * Selected project feature options (section 29, 30).
    */
-  selectedOptions?: {
+  selectedOptions: {
     // Common options (available for both Expo and Bare)
     i18n: boolean;
     theming: boolean;
@@ -276,38 +213,12 @@ export interface RnsProjectManifest {
     // Deprecated/removed options (kept for backward compatibility)
     authentication?: 'firebase' | 'supabase' | null; // Use plugin system instead
   };
-  /** CORE toggles (from init) */
-  coreToggles?: Record<string, boolean>;
-  /** Installed plugins */
-  plugins: InstalledPluginRecord[];
-  /** Installed modules */
-  modules?: InstalledPluginRecord[];
-  /** Aggregated permissions (all installed plugins) */
-  permissions?: {
-    /** All permission IDs */
-    permissionIds: string[];
-    /** Mandatory permission IDs */
-    mandatory: string[];
-    /** Optional permission IDs */
-    optional: string[];
-    /** Per-plugin traceability */
-    byPlugin: Record<string, {
-      pluginId: string;
-      permissions: PermissionRequirementRecord[];
-    }>;
+  coreToggles: {
+    alias: boolean;
+    svg: boolean;
+    fonts: boolean;
+    env: boolean;
   };
-  /** Creation timestamp */
-  createdAt: string;
-  /** Last update timestamp */
-  updatedAt?: string;
-}
-
-/**
- * Manifest validation result
- */
-export interface ManifestValidationResult {
-  valid: boolean;
-  errors?: string[];
-  warnings?: string[];
-  migrated?: boolean;
+  plugins: string[]; // Plugin IDs to apply after init
+  installCoreDependencies: boolean; // Whether to install CORE dependencies during init
 }

@@ -36,3 +36,8 @@ Never instruct users to edit Podfile/Gradle/Manifest/Info.plist manually for shi
 Before implementing: state a short plan (3–7 bullets) + exact files to touch.
 After changes: provide concise summary + verification commands that must pass.
 Update docs/TODO.md checkbox ONLY when verification passes.
+
+**Package versions (canonical reference):**
+- `deprecated_docs/generated_project_reference/package.json` is the single source of truth for all package versions.
+- Never overwrite or change dependency versions in that file (including `react-native-mmkv`: `^4.1.0`, `react-native-nitro-modules`: `^0.31.10`, and all others).
+- When adding or installing the same packages elsewhere (e.g. init install-dependencies, generated apps), use the versions from that reference.
