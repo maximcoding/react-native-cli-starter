@@ -534,7 +534,6 @@ export async function collectInitInputs(options: InitOptions): Promise<InitInput
     if (selectedOptionIds.includes('maps-location')) {
       const mapsChoices = [
         { label: 'Geolocation', value: 'location', default: false },
-        { label: 'Mapbox', value: 'mapbox', default: false },
         { label: 'Google Maps', value: 'google', default: false },
       ];
       
@@ -545,7 +544,6 @@ export async function collectInitInputs(options: InitOptions): Promise<InitInput
       
       selectedOptions.maps = {
         location: selectedMapsLibs.includes('location'),
-        mapbox: selectedMapsLibs.includes('mapbox'),
         google: selectedMapsLibs.includes('google'),
       };
     }

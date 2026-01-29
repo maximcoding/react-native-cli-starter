@@ -605,7 +605,7 @@ export function createPersistedStore<T>(...) {
 | Firebase Products | `firebase.firestore`, `firebase.realtime-database`, `firebase.storage`, `firebase.remote-config` | multi |
 | Offline-first | `offline.netinfo`, `offline.outbox`, `offline.sync` | multi |
 | Notifications | `notify.expo`, `notify.fcm`, `notify.onesignal` | multi |
-| Maps / location | `geo.location`, `maps.mapbox`, `maps.google` | multi |
+| Maps / location | `geo.location`, `maps.google` | multi |
 | Camera / media | `media.camera`, `media.vision-camera`, `media.picker` | multi |
 | Payments | `pay.stripe` | multi |
 | Subscriptions / IAP | `iap.revenuecat`, `iap.adapty`, `iap.app-store`, `iap.play-billing` | **single** |

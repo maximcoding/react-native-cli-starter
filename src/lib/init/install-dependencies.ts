@@ -107,6 +107,7 @@ export function installCoreDependencies(
         'react-native-safe-area-context@latest',
         'react-native-screens@latest',
         'react-native-reanimated@latest',
+        'react-native-worklets@^0.7.1', // peer of react-native-reanimated; required by Reanimated Android build.gradle
       ];
       for (const dep of navDeps) {
         const pkgName = extractPackageName(dep);
@@ -401,6 +402,11 @@ export function installCoreDependencies(
     if (inputs.selectedOptions.storage.mmkv && !installedPackages.has('react-native-mmkv')) {
       depsToInstall.push('react-native-mmkv@^4.1.0');
       installedPackages.add('react-native-mmkv');
+      // react-native-mmkv 4.1.x requires nitro-modules 0.33.x (PropNameIDCache etc); 0.31.x fails Android build
+      if (!installedPackages.has('react-native-nitro-modules')) {
+        depsToInstall.push('react-native-nitro-modules@^0.33.2');
+        installedPackages.add('react-native-nitro-modules');
+      }
     }
     if (inputs.selectedOptions.storage.sqlite && !installedPackages.has('react-native-sqlite-2')) {
       depsToInstall.push('react-native-sqlite-2@latest');
@@ -481,10 +487,6 @@ export function installCoreDependencies(
         installedPackages.add('@react-native-community/geolocation');
       }
     }
-    if (inputs.selectedOptions.maps.mapbox && !installedPackages.has('@rnmapbox/maps')) {
-      depsToInstall.push('@rnmapbox/maps@latest');
-      installedPackages.add('@rnmapbox/maps');
-    }
     if (inputs.selectedOptions.maps.google && !installedPackages.has('react-native-maps')) {
       depsToInstall.push('react-native-maps@latest');
       installedPackages.add('react-native-maps');
@@ -500,7 +502,7 @@ export function installCoreDependencies(
       }
     }
     if (inputs.selectedOptions.media.visionCamera && inputs.target === 'bare' && !installedPackages.has('react-native-vision-camera')) {
-      depsToInstall.push('react-native-vision-camera@latest');
+      depsToInstall.push('react-native-vision-camera@^4.6.3');
       installedPackages.add('react-native-vision-camera');
     }
     if (inputs.selectedOptions.media.picker) {

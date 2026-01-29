@@ -6,7 +6,7 @@
 
 import { join, resolve } from 'path';
 import { CliError, ExitCode } from '../errors';
-import { pathExists, writeTextFile } from '../fs';
+import { pathExists, readJsonFile, writeJsonFile, writeTextFile } from '../fs';
 import { execCommand } from '../exec';
 import { createStepRunner } from '../step-runner';
 import { CLI_AUDIT_DIR } from '../constants';
@@ -90,6 +90,51 @@ export function applyCoreDxConfigs(
   }
   
   stepRunner.ok('Apply CORE DX configs');
+}
+
+/** React version that satisfies react-dom@19.2.x peer (^19.2.4). Avoids ERESOLVE after every init. */
+const REACT_PEER_STABLE = '19.2.4';
+
+/**
+ * Ensures app root has .npmrc with legacy-peer-deps=true so npm install never fails on peer
+ * conflicts (e.g. react-native-fast-image, react-dom). Applied to every generated app.
+ */
+export function ensureAppNpmRc(appRoot: string): void {
+  const npmrcPath = join(appRoot, '.npmrc');
+  const content = `# CLI-generated: avoid ERESOLVE on peer deps (react-dom, react-native-fast-image, etc.)
+legacy-peer-deps=true
+`;
+  writeTextFile(npmrcPath, content);
+}
+
+/**
+ * Normalizes react/react-test-renderer to a version that satisfies react-dom peer (^19.2.4).
+ * Bare template often ships react@19.2.0; bumping to 19.2.4 avoids ERESOLVE. Only for Bare.
+ */
+export function ensureReactPeerCompatibility(appRoot: string, inputs: InitInputs): void {
+  if (inputs.target !== 'bare') {
+    return;
+  }
+  const pkgPath = join(appRoot, 'package.json');
+  if (!pathExists(pkgPath)) {
+    return;
+  }
+  const pkg = readJsonFile<{ dependencies?: Record<string, string>; devDependencies?: Record<string, string> }>(pkgPath);
+  let changed = false;
+  if (pkg.dependencies?.react && /^19\.2\.\d+$/.test(pkg.dependencies.react.replace(/[\^~]/, ''))) {
+    pkg.dependencies.react = REACT_PEER_STABLE;
+    changed = true;
+  }
+  if (pkg.devDependencies?.['react-test-renderer']) {
+    const v = pkg.devDependencies['react-test-renderer'].replace(/[\^~]/, '');
+    if (/^19\.2\.\d+$/.test(v)) {
+      pkg.devDependencies['react-test-renderer'] = REACT_PEER_STABLE;
+      changed = true;
+    }
+  }
+  if (changed) {
+    writeJsonFile(pkgPath, pkg);
+  }
 }
 
 /**

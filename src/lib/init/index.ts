@@ -18,6 +18,7 @@ import { generateDataFetchingInfrastructure } from './data-fetching';
 import { generateTransportInfrastructure } from './transport';
 import { generateAuthInfrastructure } from './auth';
 import { generateRemainingPhase2Infrastructure } from './remaining-phase2';
+import { wireInitCapabilities } from './wiring';
 import {
   configureStyling,
   configureReactNativeWeb,
@@ -35,13 +36,30 @@ import {
   runBootSanityChecks,
   applyPlugins,
   printNextSteps,
+  ensureAppNpmRc,
+  ensureReactPeerCompatibility,
 } from './utils-helpers';
 import { generateRuntimeComposition } from '../runtime-composition';
 import { generateCiCdWorkflows } from '../cicd-workflows';
 import { verifyCoreBaselineAcceptance, verifyGeneratedProjectStructure } from '../init-verification';
 import { verifyDxBaselineAcceptance } from '../dx-verification';
+import { applyPatchOp } from '../patch-ops';
+import type { GradlePatchOp } from '../types/patch-ops';
 import type { InitOptions, InitInputs } from './types';
 import type { RuntimeContext } from '../runtime';
+
+/** Auth0 Android manifest placeholders patch (Bare only). react-native-auth0 requires these in app build.gradle. */
+function getAuth0GradlePatch(): GradlePatchOp {
+  return {
+    capabilityId: 'auth.auth0',
+    operationId: 'auth0-manifest-placeholders',
+    file: 'android/app/build.gradle',
+    type: 'gradle',
+    anchor: 'versionName "1.0"',
+    content: 'manifestPlaceholders = [auth0Domain: "placeholder.auth0.com", auth0Scheme: "${applicationId}.auth0"]',
+    mode: 'after',
+  };
+}
 
 /**
  * Main init pipeline orchestration
@@ -92,6 +110,10 @@ export async function runInit(options: InitOptions): Promise<void> {
     stepRunner.start('Initialize CLI folders');
     initializeCliFolders(appRoot);
     stepRunner.ok('Initialize CLI folders');
+    
+    // 4.1 Ensure npm peer deps work: .npmrc (legacy-peer-deps) + Bare react/react-test-renderer bump
+    ensureAppNpmRc(appRoot);
+    ensureReactPeerCompatibility(appRoot, inputs);
     
     // 5. Install Option A Workspace Packages model (includes App.tsx from templates/base)
     installWorkspacePackages(appRoot, inputs, stepRunner, options.context);
@@ -209,6 +231,18 @@ export async function runInit(options: InitOptions): Promise<void> {
       stepRunner.ok('Install CORE dependencies (skipped by user)');
     }
     
+    // 7.0.0 Apply Auth0 Android config (Bare only) - manifest placeholders required by react-native-auth0
+    if (inputs.target === 'bare' && inputs.selectedOptions.auth?.auth0) {
+      stepRunner.start('Apply Auth0 Android config');
+      const auth0Patch = getAuth0GradlePatch();
+      const result = applyPatchOp(appRoot, auth0Patch, false);
+      if (!result.success && result.error) {
+        stepRunner.fail('Apply Auth0 Android config', new Error(result.error));
+      } else {
+        stepRunner.ok('Apply Auth0 Android config');
+      }
+    }
+    
     // 7.0.1 Section 51: Generate state management infrastructure
     if (inputs.selectedOptions.state) {
       stepRunner.start('Generate state management infrastructure');
@@ -241,6 +275,11 @@ export async function runInit(options: InitOptions): Promise<void> {
     stepRunner.start('Generate remaining Phase 2 infrastructure');
     generateRemainingPhase2Infrastructure(appRoot, inputs);
     stepRunner.ok('Generate remaining Phase 2 infrastructure');
+    
+    // 7.0.6 Wire init-selected capabilities (providers into packages/@rns/runtime)
+    stepRunner.start('Wire capability providers');
+    wireInitCapabilities(appRoot, inputs);
+    stepRunner.ok('Wire capability providers');
     
     // 7.1 Write CORE baseline audit marker (section 3.6)
     stepRunner.start('Write CORE baseline marker');

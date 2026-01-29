@@ -236,16 +236,14 @@ Convert maps/location plugin category to init options. **Phase 1**: Install depe
 
 Users can select map/location services during `rns init`:
 - `geo.location` (Geolocation - get device location)
-- `maps.mapbox` (Mapbox - map rendering and services)
 - `maps.google` (Google Maps - map rendering and services)
 
 Implementation rules (Phase 1):
-- Add to `InitInputs.selectedOptions` interface: `maps?: { location?: boolean; mapbox?: boolean; google?: boolean }`
+- Add to `InitInputs.selectedOptions` interface: `maps?: { location?: boolean; google?: boolean }`
 - Add to `collectInitInputs()` prompt logic (multi-select, all work for Expo and Bare)
 - Install dependencies in `installCoreDependencies()` when selected:
   - `expo-location@latest` (if location selected, Expo target)
   - `@react-native-community/geolocation@latest` (if location selected, Bare target)
-  - `@rnmapbox/maps@latest` (if mapbox selected)
   - `react-native-maps@latest` (if google selected)
 - Store selections in manifest (automatic via existing logic)
 - Ensure idempotency (use `installedPackages` Set to avoid duplicates)
@@ -805,10 +803,6 @@ Implementation rules:
   - Generate `src/geo/location/hooks/useLocation.ts` (location hook)
   - Generate `src/geo/location.ts` (re-export file)
   - Include permission handling for location access
-- For `maps.mapbox`:
-  - Generate `src/maps/mapbox/components/MapView.tsx` (Mapbox map component)
-  - Generate `src/maps/mapbox/services/` (Mapbox service utilities)
-  - Generate `src/maps/mapbox.ts` (re-export file)
 - For `maps.google`:
   - Generate `src/maps/google/components/MapView.tsx` (Google Maps component)
   - Generate `src/maps/google/services/` (Google Maps service utilities)

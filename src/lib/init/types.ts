@@ -121,7 +121,6 @@ export interface InitInputs {
     // Maps/Location options (section 40)
     maps?: {
       location?: boolean; // Geolocation
-      mapbox?: boolean; // Mapbox
       google?: boolean; // Google Maps
     };
     
