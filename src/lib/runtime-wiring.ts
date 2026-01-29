@@ -404,10 +404,16 @@ function injectProviderContribution(
   markerStartLine: number,
   markerEndLine: number
 ): void {
-  // Build provider JSX element string
+  // Build provider JSX element string. String values that are valid identifiers
+  // are emitted as variable refs (e.g. client={queryClient}), others as literals.
   const propsStr = contribution.props
     ? ' ' + Object.entries(contribution.props)
-        .map(([k, v]) => `${k}={${JSON.stringify(v)}}`)
+        .map(([k, v]) => {
+          if (typeof v === 'string' && /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(v)) {
+            return `${k}={${v}}`;
+          }
+          return `${k}={${JSON.stringify(v)}}`;
+        })
         .join(' ')
     : '';
   

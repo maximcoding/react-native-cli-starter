@@ -34,7 +34,6 @@ function createTestInitInputs(overrides: Partial<InitInputs> = {}): InitInputs {
       reactNavigation: false,
       expoRouter: false,
       authentication: null,
-      analytics: false,
       styling: 'stylesheet',
     },
     coreToggles: {

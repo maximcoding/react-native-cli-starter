@@ -35,7 +35,6 @@ function createTestInitInputs(overrides: Partial<InitInputs> = {}): InitInputs {
       reactNavigation: false,
       expoRouter: false,
       authentication: null,
-      analytics: false,
       styling: 'stylesheet',
     },
     coreToggles: {
@@ -106,7 +105,6 @@ describe('smoke: CI/CD workflow generation (Section 24)', () => {
           theming: false,
           reactNavigation: true,
           authentication: null,
-          analytics: false,
           styling: 'stylesheet',
         },
       });

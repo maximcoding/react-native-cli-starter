@@ -14,5 +14,9 @@
    Command: npm run cli -- init MyApp --target expo --lang ts --pm pnpm
 
 6. Name: smoke init bare
-   Command: npm run cli -- init MyApp --target bare --lang ts --pm pnpm --platforms ios,android# climobilecommands
+   Command: npm run cli -- init MyApp --target bare --lang ts --pm pnpm --platforms ios,android
+
+7. Name: init all options (test)
+   Command: npm run cli -- init TestAll
+   Note: In the first prompt "Select features to include", choose "Select all (testing only)" to select every option for testing. Installs many deps in batches.
 
