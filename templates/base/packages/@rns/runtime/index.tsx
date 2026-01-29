@@ -1,14 +1,14 @@
 /**
- * FILE: packages/@rns/runtime/index.ts
+ * FILE: packages/@rns/runtime/index.tsx
  * PURPOSE: Runtime composition layer that wires CORE into the app
  * OWNERSHIP: CORE
- * 
+ *
  * PLUGIN-FREE GUARANTEE:
  * - Only imports React Native core (react, react-native)
  * - No navigation, i18n, query, auth dependencies
  * - MinimalUI renders without any plugins
  * - Plugins integrate via RootProvider composition/extensions, NOT direct modification
- * 
+ *
  * PLUGIN INTEGRATION PATTERN:
  * - Plugins should extend RootProvider via HOC/wrapper components
  * - Plugins register via runtime registries (not direct imports in CORE)
@@ -104,5 +104,3 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
 });
-
-

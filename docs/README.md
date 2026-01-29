@@ -312,6 +312,7 @@ Each plugin is a **declarative blueprint** (descriptor) that can express:
 MyApp/
 ├── .rns/                       # SYSTEM: manifest, logs, backups
 │   └── rn-init.json            # Project Manifest (source of truth)
+├── index.js                    # Bare only: Metro entry; imports App, registers via AppRegistry
 ├── App.tsx                     # USER: app entrypoint (user-editable, CLI generates initial structure)
 │                                #      Contains providers directly (standard React Native pattern)
 │                                #      Plugin injection via @rns-marker:providers:start/end
@@ -321,10 +322,12 @@ MyApp/
 ├── packages/                   # SYSTEM: CLI-managed workspace packages
 │   └── @rns/
 │       ├── core/               # kernel contracts + safe defaults
-│       ├── runtime/            # runtime utilities (initCore, deprecated RnsApp)
+│       ├── runtime/            # runtime utilities (initCore, deprecated RnsApp); entry index.tsx
 │       └── plugin-*/           # installed plugins as local packages
 └── ...                         # Expo/Bare native scaffolding (target-specific)
 ```
+
+**Bare entry point:** Bare projects use `index.js` as the Metro entry (imports `App`, registers via `AppRegistry`). `package.json` must include `"main": "index.js"`. Expo projects use `index.ts`/`index.js` per template (e.g. `expo-router/entry` or `registerRootComponent`).
 
 **Key principle:** plugins integrate via marker-based injection in `App.tsx`/`app/_layout.tsx` (User Zone, CLI generates initial structure) and `packages/@rns/runtime/core-init.ts` (System Zone). `App.tsx` is user-editable but CLI generates initial structure with providers and injection markers. Plugins do not patch `src/**` directly.
 
@@ -593,7 +596,7 @@ export function createPersistedStore<T>(...) {
 | Navigation root | `nav.react-navigation`, `nav.expo-router` | **single** |
 | UI framework | `ui.paper`, `ui.tamagui`, `ui.nativebase` | **single** |
 | Animations | `animation.reanimated`, `animation.lottie` | multi |
-| State | `state.zustand`, `state.xstate`, `state.mobx` | multi |
+| State | **`state.zustand`**, `state.xstate`, `state.mobx` | multi |
 | Data fetching / cache | `data.react-query`, `data.apollo`, `data.swr` | multi |
 | Network transport | `transport.axios`, `transport.fetch`, `transport.graphql`, `transport.websocket`, `transport.firebase` | **multi** |
 | Auth | `auth.firebase`, `auth.cognito`, `auth.auth0`, `auth.custom-jwt` | multi |
