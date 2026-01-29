@@ -19,6 +19,11 @@ export function generateAppJsContent(inputs: InitInputs): string {
 import { initCore } from '@rns/runtime/core-init';
 `;
   
+  if (inputs.selectedOptions?.i18n === true) {
+    imports += `import '@rns/core/i18n';
+`;
+  }
+
   // Only include gesture handler and safe area provider if React Navigation is enabled
   if (hasReactNavigation) {
     imports += `import { GestureHandlerRootView } from 'react-native-gesture-handler';

@@ -7,6 +7,7 @@
 import { join } from 'path';
 import { ensureDir, writeTextFile } from '../../fs';
 import { USER_SRC_DIR } from '../../constants';
+import { AVAILABLE_LOCALES } from '../utils';
 import type { InitInputs } from '../types';
 
 /**
@@ -29,7 +30,12 @@ export function generateExampleScreens(appRoot: string, inputs: InitInputs): voi
   const homeScreenContent = generateHomeScreen(inputs.language, hasI18n, hasTheming, inputs.navigationPreset);
   writeTextFile(join(screensDir, `HomeScreen.${fileExt}`), homeScreenContent);
 
-  const settingsScreenContent = generateSettingsScreen(inputs.language, hasI18n, hasTheming);
+  const settingsScreenContent = generateSettingsScreen(
+    inputs.language,
+    hasI18n,
+    hasTheming,
+    hasI18n ? (inputs.locales ?? []) : []
+  );
   writeTextFile(join(screensDir, `SettingsScreen.${fileExt}`), settingsScreenContent);
 
   // Generate additional screens based on preset
@@ -194,7 +200,8 @@ ${detailButton}
 export function generateSettingsScreen(
   language: 'ts' | 'js',
   hasI18n: boolean,
-  hasTheming: boolean
+  hasTheming: boolean,
+  locales: string[] = []
 ): string {
   const isTS = language === 'ts';
   const typeAnnotation = isTS ? ': React.FC' : '';
@@ -273,28 +280,29 @@ import i18n from '@rns/core/i18n';
     },
   });`;
 
-  const languageSwitcher = hasI18n
-    ? `
-      <Text style={styles.title}>${hasI18n ? '{t(\'screens.settings.language\')}' : '\'Language\''}</Text>
-      <Pressable
+  const languageButtons =
+    locales
+      .map(
+        (code) =>
+          AVAILABLE_LOCALES.find((l) => l.code === code)?.name ?? code
+      )
+      .map(
+        (displayName, i) =>
+          `<Pressable
         style={styles.button}
-        onPress={() => i18n.changeLanguage('en')}
+        onPress={() => i18n.changeLanguage('${locales[i]}')}
       >
-        <Text style={styles.buttonText}>English</Text>
-      </Pressable>
-      <Pressable
-        style={styles.button}
-        onPress={() => i18n.changeLanguage('ru')}
-      >
-        <Text style={styles.buttonText}>Русский</Text>
-      </Pressable>
-      <Pressable
-        style={styles.button}
-        onPress={() => i18n.changeLanguage('de')}
-      >
-        <Text style={styles.buttonText}>Deutsch</Text>
+        <Text style={styles.buttonText}>${displayName}</Text>
       </Pressable>`
-    : '';
+      )
+      .join('\n      ');
+
+  const languageSwitcher =
+    hasI18n && locales.length > 0
+      ? `
+      <Text style={styles.title}>${hasI18n ? '{t(\'screens.settings.language\')}' : '\'Language\''}</Text>
+      ${languageButtons}`
+      : '';
 
   const themeSwitcher = hasTheming
     ? `
